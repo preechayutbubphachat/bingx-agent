@@ -1,13 +1,13 @@
 {
   "plan_state": "FAKEOUT_CONFIRMED_RANGE_PLAY",
   "decision_mode_lock": "GRID",
-  "t": 1766550329536,
+  "t": 1766550749530,
   "plan_status_state": {
-    "generated_at": "2025-12-24T04:25:29.536Z",
-    "age_sec": 148,
+    "generated_at": "2025-12-24T04:32:29.530Z",
+    "age_sec": 268,
     "price": {
-      "close_5m": 87314.2,
-      "close_1h": 87314.2
+      "close_5m": 87314.9,
+      "close_1h": 87314.9
     },
     "plan": {
       "market_regime": "UNKNOWN",

@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "updated_at": 1766550183919,
+  "updated_at": 1766551084250,
   "symbols": {
     "BTC-USDT": {
       "funding": {
         "source": "local-cache (sampled from /openApi/swap/v2/quote/premiumIndex)",
-        "last_sample_time": 1766550183919,
+        "last_sample_time": 1766551084250,
         "series_5m_6h": [
           {
             "t": 1766537100000,
@@ -314,16 +314,30 @@
             "indexPrice": 87353.1,
             "lastFundingRate": 0.0001,
             "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766550300000,
+            "markPrice": 87322.9,
+            "indexPrice": 87361.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766550600000,
+            "markPrice": 87227.6,
+            "indexPrice": 87269.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766550900000,
+            "markPrice": 87242.9,
+            "indexPrice": 87283.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
           }
         ],
         "series_15m_24h": [
-          {
-            "t": 1766464200000,
-            "markPrice": 88082.9,
-            "indexPrice": 88121.4,
-            "lastFundingRate": 0.0001,
-            "nextFundingTime": 1766476800000
-          },
           {
             "t": 1766465100000,
             "markPrice": 87916.5,
@@ -578,8 +592,15 @@
           },
           {
             "t": 1766549700000,
-            "markPrice": 87318,
-            "indexPrice": 87353.1,
+            "markPrice": 87322.9,
+            "indexPrice": 87361.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766550600000,
+            "markPrice": 87242.9,
+            "indexPrice": 87283.3,
             "lastFundingRate": 0.0001,
             "nextFundingTime": 1766563200000
           }
@@ -587,7 +608,7 @@
       },
       "openInterest": {
         "source": "local-cache (sampled from /openApi/swap/v2/quote/openInterest)",
-        "last_sample_time": 1766550183919,
+        "last_sample_time": 1766551084250,
         "series_5m_6h": [
           {
             "t": 1766537100000,
@@ -764,13 +785,21 @@
           {
             "t": 1766550000000,
             "openInterest": 1375089524.2
+          },
+          {
+            "t": 1766550300000,
+            "openInterest": 1373874642.4
+          },
+          {
+            "t": 1766550600000,
+            "openInterest": 1370757906.3
+          },
+          {
+            "t": 1766550900000,
+            "openInterest": 1376002352.1
           }
         ],
         "series_15m_24h": [
-          {
-            "t": 1766464200000,
-            "openInterest": 1437890629.8
-          },
           {
             "t": 1766465100000,
             "openInterest": 1438489318.1
@@ -917,7 +946,11 @@
           },
           {
             "t": 1766549700000,
-            "openInterest": 1375089524.2
+            "openInterest": 1373874642.4
+          },
+          {
+            "t": 1766550600000,
+            "openInterest": 1376002352.1
           }
         ]
       }

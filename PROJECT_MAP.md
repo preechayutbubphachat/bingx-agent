@@ -72,6 +72,20 @@
 - `derivatives_history_cache.json`, `oi_history_cache.json`, `volatility_baseline_cache.json`
 
 ---
+## Source of Truth (ข้อมูลจริงของระบบอยู่ที่ไหน)
+
+**ระบบถือว่าไฟล์ที่ root เป็น “ความจริง” (authoritative):**
+- `C:\bingx-agent\market_snapshot.json`  → snapshot ตลาดล่าสุด (OHLC / orderbook / derivatives / session / volatility)
+- `C:\bingx-agent\latest_decision.json`  → ผลวิเคราะห์ STEP01 ล่าสุด (market_mode / risk_warning / reason / levels / parameters / summary)
+
+**Dashboard/API ของ Next.js ต้องอ่านจาก 2 ไฟล์นี้เป็นหลัก**
+- ห้ามไปอ้างไฟล์อื่นเป็นหลักแทน ถ้ามีไฟล์ซ้ำใน `dashboard/app/public/data/` ให้ถือว่าเป็น “mirror/สำเนาเพื่อโชว์” เท่านั้น
+ 
+ ### Data Flow (ของจริง)
+1) Trigger snapshot → อัปเดต `market_snapshot.json`
+2) STEP01 run → เขียน `latest_decision.json`
+3) Dashboard `/api/plan-status` → อ่าน 2 ไฟล์นี้เพื่อสร้างการ์ด/steps
+4) (optional) คัดลอกบางส่วนไป `dashboard/app/public/data/` เพื่อให้หน้า public เปิดได้เร็ว
 
 ## 3) เส้นทางสำคัญ (Endpoints)
 - Dashboard UI page: `/public`

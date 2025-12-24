@@ -1,0 +1,61 @@
+{
+  "plan_state": "FAKEOUT_CONFIRMED_RANGE_PLAY",
+  "decision_mode_lock": "GRID",
+  "t": 1766550329536,
+  "plan_status_state": {
+    "generated_at": "2025-12-24T04:25:29.536Z",
+    "age_sec": 148,
+    "price": {
+      "close_5m": 87314.2,
+      "close_1h": 87314.2
+    },
+    "plan": {
+      "market_regime": "UNKNOWN",
+      "market_mode": "RANGE",
+      "sweep_zone_up": {
+        "low": 88350,
+        "high": 88380
+      },
+      "grid": {
+        "lower": 86800,
+        "upper": 88380,
+        "count": null
+      }
+    },
+    "state": {
+      "code": "FAKEOUT_CONFIRMED_RANGE_PLAY",
+      "headline": "1H ยืนยันกลับเข้า range → โหมดเล่นในกรอบมีน้ำหนัก",
+      "direction_hint": "RANGE_PLAY",
+      "confidence": 0.45,
+      "step_set": "GRID_SWEEP_PIPELINE"
+    },
+    "signals": {
+      "sweep_5m": "WAIT_SWEEP_UP",
+      "rejection_15m": "REJECTION_15M_PENDING",
+      "breakout_1h": "FAKEOUT_1H_CONFIRMED"
+    },
+    "next_actions": [
+      "รอข้อมูลยืนยันเพิ่มเติม"
+    ],
+    "steps": [
+      {
+        "id": "SWEEP_5M",
+        "title": "5m Sweep โซนบน 88350–88380",
+        "status": "WAITING",
+        "why": "WAIT_SWEEP_UP"
+      },
+      {
+        "id": "REJECTION_15M",
+        "title": "15m Rejection (ปิดกลับใต้โซน)",
+        "status": "WAITING",
+        "why": "swept=false, closedBackIn=true, closedBelowLow=true, bearishClose=true, wickDominant=false"
+      },
+      {
+        "id": "CONFIRM_1H",
+        "title": "1H Confirm (Fakeout/Breakout)",
+        "status": "PASS",
+        "why": "1H close กลับเข้าในกรอบชัดเจน"
+      }
+    ]
+  }
+}

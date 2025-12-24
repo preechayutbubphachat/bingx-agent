@@ -1,0 +1,14 @@
+{
+  "symbol": "BTC-USDT",
+  "markPrice": 87539.8,
+  "indexPrice": 87575.6,
+  "lastFundingRate": 0.0001,
+  "nextFundingTime": 1766563200000,
+  "raw": {
+    "symbol": "BTC-USDT",
+    "markPrice": "87539.8",
+    "indexPrice": "87575.6",
+    "lastFundingRate": "0.00010000",
+    "nextFundingTime": 1766563200000
+  }
+}

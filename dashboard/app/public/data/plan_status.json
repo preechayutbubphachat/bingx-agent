@@ -1,0 +1,39 @@
+{
+  "generated_at": "2025-12-20T00:00:00.000Z",
+  "age_sec": 0,
+
+  "price": {
+    "close_5m": 0,
+    "close_1h": 0
+  },
+
+  "plan": {
+    "market_regime": "RANGE",
+    "market_mode": "GRID_NEUTRAL",
+    "sweep_zone_up": { "low": 88350, "high": 88380 },
+    "grid": { "lower": 86800, "upper": 88380, "count": 6 }
+  },
+
+  "state": {
+    "code": "PLAN_WAIT_SWEEP_UP",
+    "headline": "รอ sweep ด้านบน 88350–88380",
+    "direction_hint": "UPPER_SWEEP_THEN_REJECT",
+    "confidence": 0.72
+  },
+
+  "signals": {
+    "sweep_5m": "NO_SWEEP",
+    "rejection_15m": "UNKNOWN",
+    "breakout_1h": "UNKNOWN"
+  },
+
+  "next_actions": [
+    "รอ 15m ปิดยืนยัน rejection ใต้ 88350",
+    "ถ้า 1H ปิดกลับใต้ supply → false break confirmed",
+    "ถ้า 1H ยืนเหนือ 88500 → ระวัง breakout, ลด/พัก grid"
+  ],
+
+  "event_log": [
+    { "t": "2025-12-20T00:00:00.000Z", "event": "PLAN_SET", "note": "Waiting sweep-up zone" }
+  ]
+}

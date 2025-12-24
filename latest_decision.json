@@ -1,0 +1,52 @@
+{
+"confidence": 0.45,
+"market_mode": "RANGE",
+"trade_action": "NO_TRADE",
+"risk_warning": [
+"volatility baseline insufficient",
+"history weak on 5m funding & open interest",
+"ADX calculation unavailable"
+],
+"reason": {
+"technical": "ราคาปัจจุบันอยู่ต่ำกว่า EMA200 4H และ EMA50 1H สะท้อนแนวโน้มขาลงปานกลาง RSI 4H/1H อยู่ราว 45-46 ไม่ได้อยู่ในเขตแรงมาก MACD 4H ยังคงติดลบ แต่ MACD histogram ของ 1H เริ่มขยับเป็นบวกแสดงว่าแรงขายเริ่มชะลอตัว ATR และ BBW บ่งชี้ความผันผวนปานกลาง ข้อมูล ADX คำนวณไม่ได้จึงยังไม่ยืนยันเทรนด์ชัดเจน",
+"derivatives": "Funding rate ล่าสุดเป็นบวกเพียงเล็กน้อย (~0.01%) ส่วน open interest ลดลงอย่างต่อเนื่องจากระดับประมาณ 1.46B เหลือ 1.36B ภายใน 24 ชั่วโมง ราคาอ่อนตัวลงพร้อมกับ OI ลดลง เป็นสัญญาณของการ liquidate หรือปิดสถานะ long มากกว่า build-up อื่น ๆ สัญญาณ open interest ใน 5 นาทีมีข้อมูลไม่เพียงพอ",
+"session": "ปัจจุบันอยู่ในช่วง ASIA ที่ความน่าจะเป็น false breakout สูง แต่โอกาสเกิด liquidity sweep ต่ำ จึงควรระวังการไส้ยาวและรอให้มีสัญญาณยืนยันบนกรอบ 5 นาทีหากจะเปิดสถานะ",
+"smc": "โครงสร้างตลาด 1H อยู่ในกรอบตั้งแต่ swing low 86555 ถึง swing high 88337 มีจุดสมดุลราว 87446 โซนย่อสำหรับเข้าชอร์ตอยู่ระหว่าง 87446–87656 การเข้าเทรดควรรอ rejection ที่ขอบบนของโซนและให้ราคา 5m ปิดต่ำกว่าโซนพร้อม OI เพิ่มขึ้น Invalidation ที่ 88466 และเป้าหมายแรกที่ swing low 86555",
+"news": "ข่าวจาก cryptopanic ไม่มีเหตุการณ์ร้อนแรง และ risk level ต่ำ การประกาศใหญ่เช่น FOMC, CPI, NFP จะเกิดภายในสัปดาห์แต่ยังไม่เกิดในวันนี้",
+"macro": "Macro overlay ระบุว่า FOMC, CPI และ NFP อยู่ในสัปดาห์นี้ ความเสี่ยงระดับกลาง ผู้เทรดควรเฝ้าระวังวันที่มีประกาศตัวเลขสำคัญเพราะอาจเพิ่มความผันผวน"
+},
+"levels": {
+"trend": {
+"dir": "DOWN",
+"pullback_zone": [
+87446.05,
+87656.34
+],
+"invalidation": 88466.75,
+"trigger_rule": "รอ 5m ยืนยันกลับตัว (ปิดใต้โซน/ทำ LH) ก่อนเข้า",
+"targets": {
+"t1": 86555.0,
+"t2": null
+},
+"entry": {
+"type": "CONFIRM",
+"hint": "เข้าตอน 5m ปิดใต้ขอบโซน + OI เริ่มกลับมาเพิ่ม"
+}
+},
+"smc": {
+"swing_high_1h": 88337.1,
+"swing_low_1h": 86555.0,
+"eq_1h": 87446.05,
+"liquidity_note": "ระวัง equal highs ใกล้จุดสูงสุด — อาจมี sweep ก่อนกลับตัว"
+}
+},
+"parameters_for_grid_or_trend": {
+"grid_upper": null,
+"grid_lower": null,
+"grid_count": null,
+"trend_entry": 87656.34,
+"trend_sl": 88466.75,
+"trend_tp": 86555.0
+},
+"summary_for_bot": "• โหมดตลาด: RANGE ขาลงอ่อน ๆ EMA200/50 อยู่เหนือราคา\n• อินดิเคเตอร์ให้ภาพกลาง ๆ RSI ใกล้ 45-46 และ MACD 1H เริ่มบวก แต่ ADX ไม่มีข้อมูล\n• Derivatives: Funding บวกเล็กน้อย ขณะที่ OI ลดลงแสดงการปิดสถานะ long\n• Macro/ข่าว: ไม่มีข่าวร้อน แต่สัปดาห์นี้มี FOMC, CPI, NFP — ระวังความผันผวน\n• Trend Zone: pullback_zone=[87446.05,87656.34], invalidation=88466.75, trigger=รอ 5m ยืนยันกลับตัว"
+}

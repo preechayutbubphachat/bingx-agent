@@ -1,0 +1,51 @@
+{
+  "generated_at": "2025-12-24T00:45:45.720Z",
+  "symbol": "BTC-USDT",
+  "source": "cryptopanic",
+  "has_hot_news": false,
+  "risk_level": "LOW",
+  "crypto_news_headlines": [
+    {
+      "title": "Bitmine’s Ethereum stash hits 4.066 million as total crypto + cash vault tops $13.2 billion",
+      "source": "cryptopanic",
+      "published_at": "2025-12-22T16:16:28Z",
+      "is_important": false,
+      "sentiment": "mixed"
+    },
+    {
+      "title": "Why Are Ripple (XRP) ETFs More Attractive to Investors Than BTC, ETH, SOL Funds?",
+      "source": "cryptopanic",
+      "published_at": "2025-12-20T15:21:49Z",
+      "is_important": false,
+      "sentiment": "mixed"
+    }
+  ],
+  "macro": {
+    "source": "forexfactory",
+    "overall_risk_level": "MED",
+    "events": [
+      {
+        "key": "FOMC",
+        "window": "THIS_WEEK",
+        "title": "FOMC detected on calendar"
+      },
+      {
+        "key": "CPI",
+        "window": "THIS_WEEK",
+        "title": "CPI detected on calendar"
+      },
+      {
+        "key": "NFP",
+        "window": "THIS_WEEK",
+        "title": "NFP detected on calendar"
+      }
+    ],
+    "notes": [
+      "Macro overlay ใช้เป็น risk overlay เท่านั้น",
+      "เวอร์ชันแรกใช้ keyword detection (best-effort). ถ้าต้องการระบุ TODAY/TOMORROW แบบเป๊ะ จะทำ parser รายแถวเพิ่มได้"
+    ]
+  },
+  "notes": [
+    "ใช้ข่าวเป็น risk overlay เท่านั้น ห้ามใช้แทนราคา/แท่งเทียนจาก market_snapshot.json"
+  ]
+}

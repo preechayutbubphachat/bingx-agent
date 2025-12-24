@@ -1,0 +1,926 @@
+{
+  "version": 1,
+  "updated_at": 1766550183919,
+  "symbols": {
+    "BTC-USDT": {
+      "funding": {
+        "source": "local-cache (sampled from /openApi/swap/v2/quote/premiumIndex)",
+        "last_sample_time": 1766550183919,
+        "series_5m_6h": [
+          {
+            "t": 1766537100000,
+            "markPrice": 87517.8,
+            "indexPrice": 87556.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766537400000,
+            "markPrice": 87516.4,
+            "indexPrice": 87554.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766537700000,
+            "markPrice": 87621.2,
+            "indexPrice": 87658.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766538000000,
+            "markPrice": 87613.6,
+            "indexPrice": 87650.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766538300000,
+            "markPrice": 87790.3,
+            "indexPrice": 87823.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766538600000,
+            "markPrice": 87684.9,
+            "indexPrice": 87717.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766538900000,
+            "markPrice": 87650.2,
+            "indexPrice": 87688.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766539200000,
+            "markPrice": 87638,
+            "indexPrice": 87675.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766539500000,
+            "markPrice": 87668.2,
+            "indexPrice": 87707.9,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766539800000,
+            "markPrice": 87599.5,
+            "indexPrice": 87637,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766540100000,
+            "markPrice": 87714.9,
+            "indexPrice": 87745.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766540400000,
+            "markPrice": 87521.8,
+            "indexPrice": 87564.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766540700000,
+            "markPrice": 87468.7,
+            "indexPrice": 87507.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766541000000,
+            "markPrice": 87561.3,
+            "indexPrice": 87602.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766541300000,
+            "markPrice": 87614.3,
+            "indexPrice": 87644,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766541600000,
+            "markPrice": 87478.8,
+            "indexPrice": 87514.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766541900000,
+            "markPrice": 87420.2,
+            "indexPrice": 87449.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766542200000,
+            "markPrice": 87369.3,
+            "indexPrice": 87407.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766542500000,
+            "markPrice": 87422,
+            "indexPrice": 87456.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766542800000,
+            "markPrice": 87404.5,
+            "indexPrice": 87444.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766543100000,
+            "markPrice": 87352.6,
+            "indexPrice": 87389.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766543400000,
+            "markPrice": 87343.2,
+            "indexPrice": 87376.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766543700000,
+            "markPrice": 87316.4,
+            "indexPrice": 87352.9,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766544000000,
+            "markPrice": 87199.8,
+            "indexPrice": 87240.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766544300000,
+            "markPrice": 86931.9,
+            "indexPrice": 86978.9,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766544600000,
+            "markPrice": 87128.4,
+            "indexPrice": 87174,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766544900000,
+            "markPrice": 87109.8,
+            "indexPrice": 87152.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766545200000,
+            "markPrice": 86900.6,
+            "indexPrice": 86945.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766545500000,
+            "markPrice": 86951.4,
+            "indexPrice": 86995.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766545800000,
+            "markPrice": 87004,
+            "indexPrice": 87044.5,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766546100000,
+            "markPrice": 87048.1,
+            "indexPrice": 87088.9,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766546400000,
+            "markPrice": 87175,
+            "indexPrice": 87216.7,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766546700000,
+            "markPrice": 87189.5,
+            "indexPrice": 87227.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766547000000,
+            "markPrice": 87229,
+            "indexPrice": 87270.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766547300000,
+            "markPrice": 87292.2,
+            "indexPrice": 87332.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766547600000,
+            "markPrice": 87264,
+            "indexPrice": 87301.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766547900000,
+            "markPrice": 87313.8,
+            "indexPrice": 87350.7,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766548200000,
+            "markPrice": 87302.7,
+            "indexPrice": 87339.9,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766548500000,
+            "markPrice": 87299.6,
+            "indexPrice": 87337.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766548800000,
+            "markPrice": 87349.4,
+            "indexPrice": 87386.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766549100000,
+            "markPrice": 87359.2,
+            "indexPrice": 87398.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766549400000,
+            "markPrice": 87381,
+            "indexPrice": 87416.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766549700000,
+            "markPrice": 87320.5,
+            "indexPrice": 87361.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766550000000,
+            "markPrice": 87318,
+            "indexPrice": 87353.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          }
+        ],
+        "series_15m_24h": [
+          {
+            "t": 1766464200000,
+            "markPrice": 88082.9,
+            "indexPrice": 88121.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766465100000,
+            "markPrice": 87916.5,
+            "indexPrice": 87952.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766466000000,
+            "markPrice": 87880.2,
+            "indexPrice": 87911.7,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766466900000,
+            "markPrice": 87969.4,
+            "indexPrice": 88007.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766467800000,
+            "markPrice": 87715.5,
+            "indexPrice": 87755.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766468700000,
+            "markPrice": 87764.8,
+            "indexPrice": 87799.5,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766469600000,
+            "markPrice": 87576.1,
+            "indexPrice": 87626.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766470500000,
+            "markPrice": 87166.5,
+            "indexPrice": 87208.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766471400000,
+            "markPrice": 87286.3,
+            "indexPrice": 87325.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766472300000,
+            "markPrice": 87356.2,
+            "indexPrice": 87400.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766473200000,
+            "markPrice": 87465.6,
+            "indexPrice": 87510.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766476800000
+          },
+          {
+            "t": 1766482200000,
+            "markPrice": 87363.1,
+            "indexPrice": 87404.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766483100000,
+            "markPrice": 87473.8,
+            "indexPrice": 87511.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766484000000,
+            "markPrice": 87502.5,
+            "indexPrice": 87543.9,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766484900000,
+            "markPrice": 87590.8,
+            "indexPrice": 87629.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766485800000,
+            "markPrice": 87573.6,
+            "indexPrice": 87609.9,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766486700000,
+            "markPrice": 87543.7,
+            "indexPrice": 87582.5,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766487600000,
+            "markPrice": 87637.1,
+            "indexPrice": 87676.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766488500000,
+            "markPrice": 87717.7,
+            "indexPrice": 87759.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766489400000,
+            "markPrice": 87696.2,
+            "indexPrice": 87740.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766490300000,
+            "markPrice": 87823.1,
+            "indexPrice": 87863.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766491200000,
+            "markPrice": 87832.7,
+            "indexPrice": 87879.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766492100000,
+            "markPrice": 87707.8,
+            "indexPrice": 87745.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766505600000
+          },
+          {
+            "t": 1766537100000,
+            "markPrice": 87621.2,
+            "indexPrice": 87658.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766538000000,
+            "markPrice": 87684.9,
+            "indexPrice": 87717.3,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766538900000,
+            "markPrice": 87668.2,
+            "indexPrice": 87707.9,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766539800000,
+            "markPrice": 87521.8,
+            "indexPrice": 87564.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766540700000,
+            "markPrice": 87614.3,
+            "indexPrice": 87644,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766541600000,
+            "markPrice": 87369.3,
+            "indexPrice": 87407.4,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766542500000,
+            "markPrice": 87352.6,
+            "indexPrice": 87389.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766543400000,
+            "markPrice": 87199.8,
+            "indexPrice": 87240.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766544300000,
+            "markPrice": 87109.8,
+            "indexPrice": 87152.2,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766545200000,
+            "markPrice": 87004,
+            "indexPrice": 87044.5,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766546100000,
+            "markPrice": 87189.5,
+            "indexPrice": 87227.8,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766547000000,
+            "markPrice": 87264,
+            "indexPrice": 87301.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766547900000,
+            "markPrice": 87299.6,
+            "indexPrice": 87337.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766548800000,
+            "markPrice": 87381,
+            "indexPrice": 87416.6,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          },
+          {
+            "t": 1766549700000,
+            "markPrice": 87318,
+            "indexPrice": 87353.1,
+            "lastFundingRate": 0.0001,
+            "nextFundingTime": 1766563200000
+          }
+        ]
+      },
+      "openInterest": {
+        "source": "local-cache (sampled from /openApi/swap/v2/quote/openInterest)",
+        "last_sample_time": 1766550183919,
+        "series_5m_6h": [
+          {
+            "t": 1766537100000,
+            "openInterest": 1362251041.4
+          },
+          {
+            "t": 1766537400000,
+            "openInterest": 1361673418.1
+          },
+          {
+            "t": 1766537700000,
+            "openInterest": 1363767031.1
+          },
+          {
+            "t": 1766538000000,
+            "openInterest": 1369530495.5
+          },
+          {
+            "t": 1766538300000,
+            "openInterest": 1366922399.1
+          },
+          {
+            "t": 1766538600000,
+            "openInterest": 1373275248.4
+          },
+          {
+            "t": 1766538900000,
+            "openInterest": 1371828249.4
+          },
+          {
+            "t": 1766539200000,
+            "openInterest": 1370568038.9
+          },
+          {
+            "t": 1766539500000,
+            "openInterest": 1371103666.4
+          },
+          {
+            "t": 1766539800000,
+            "openInterest": 1370280945.7
+          },
+          {
+            "t": 1766540100000,
+            "openInterest": 1368242740.6
+          },
+          {
+            "t": 1766540400000,
+            "openInterest": 1368354082.3
+          },
+          {
+            "t": 1766540700000,
+            "openInterest": 1369751950.5
+          },
+          {
+            "t": 1766541000000,
+            "openInterest": 1372723066.4
+          },
+          {
+            "t": 1766541300000,
+            "openInterest": 1372132498.6
+          },
+          {
+            "t": 1766541600000,
+            "openInterest": 1371591494.6
+          },
+          {
+            "t": 1766541900000,
+            "openInterest": 1369508901.3
+          },
+          {
+            "t": 1766542200000,
+            "openInterest": 1366787314.8
+          },
+          {
+            "t": 1766542500000,
+            "openInterest": 1367758604.4
+          },
+          {
+            "t": 1766542800000,
+            "openInterest": 1365960080.9
+          },
+          {
+            "t": 1766543100000,
+            "openInterest": 1370830192
+          },
+          {
+            "t": 1766543400000,
+            "openInterest": 1368988487.5
+          },
+          {
+            "t": 1766543700000,
+            "openInterest": 1370861675.8
+          },
+          {
+            "t": 1766544000000,
+            "openInterest": 1374590821.8
+          },
+          {
+            "t": 1766544300000,
+            "openInterest": 1390679892.8
+          },
+          {
+            "t": 1766544600000,
+            "openInterest": 1391766011.2
+          },
+          {
+            "t": 1766544900000,
+            "openInterest": 1392809173.3
+          },
+          {
+            "t": 1766545200000,
+            "openInterest": 1399816324.3
+          },
+          {
+            "t": 1766545500000,
+            "openInterest": 1401482333
+          },
+          {
+            "t": 1766545800000,
+            "openInterest": 1390632864.9
+          },
+          {
+            "t": 1766546100000,
+            "openInterest": 1383194221
+          },
+          {
+            "t": 1766546400000,
+            "openInterest": 1382155909.5
+          },
+          {
+            "t": 1766546700000,
+            "openInterest": 1381796148.7
+          },
+          {
+            "t": 1766547000000,
+            "openInterest": 1379374165.1
+          },
+          {
+            "t": 1766547300000,
+            "openInterest": 1379494390.9
+          },
+          {
+            "t": 1766547600000,
+            "openInterest": 1384183436
+          },
+          {
+            "t": 1766547900000,
+            "openInterest": 1379831124.8
+          },
+          {
+            "t": 1766548200000,
+            "openInterest": 1379985812.6
+          },
+          {
+            "t": 1766548500000,
+            "openInterest": 1379476361
+          },
+          {
+            "t": 1766548800000,
+            "openInterest": 1377467011.7
+          },
+          {
+            "t": 1766549100000,
+            "openInterest": 1374090180.7
+          },
+          {
+            "t": 1766549400000,
+            "openInterest": 1376674820.1
+          },
+          {
+            "t": 1766549700000,
+            "openInterest": 1373008435.9
+          },
+          {
+            "t": 1766550000000,
+            "openInterest": 1375089524.2
+          }
+        ],
+        "series_15m_24h": [
+          {
+            "t": 1766464200000,
+            "openInterest": 1437890629.8
+          },
+          {
+            "t": 1766465100000,
+            "openInterest": 1438489318.1
+          },
+          {
+            "t": 1766466000000,
+            "openInterest": 1442194904.9
+          },
+          {
+            "t": 1766466900000,
+            "openInterest": 1443886630.9
+          },
+          {
+            "t": 1766467800000,
+            "openInterest": 1466824803.6
+          },
+          {
+            "t": 1766468700000,
+            "openInterest": 1481947417.6
+          },
+          {
+            "t": 1766469600000,
+            "openInterest": 1485376540.8
+          },
+          {
+            "t": 1766470500000,
+            "openInterest": 1548831030.3
+          },
+          {
+            "t": 1766471400000,
+            "openInterest": 1558757670.5
+          },
+          {
+            "t": 1766472300000,
+            "openInterest": 1564610685.4
+          },
+          {
+            "t": 1766473200000,
+            "openInterest": 1564945558.9
+          },
+          {
+            "t": 1766482200000,
+            "openInterest": 1517875331.7
+          },
+          {
+            "t": 1766483100000,
+            "openInterest": 1514580025.1
+          },
+          {
+            "t": 1766484000000,
+            "openInterest": 1505899228.3
+          },
+          {
+            "t": 1766484900000,
+            "openInterest": 1498971305.7
+          },
+          {
+            "t": 1766485800000,
+            "openInterest": 1496790020.9
+          },
+          {
+            "t": 1766486700000,
+            "openInterest": 1501492856.7
+          },
+          {
+            "t": 1766487600000,
+            "openInterest": 1502775170.1
+          },
+          {
+            "t": 1766488500000,
+            "openInterest": 1518074695.9
+          },
+          {
+            "t": 1766489400000,
+            "openInterest": 1500907090.5
+          },
+          {
+            "t": 1766490300000,
+            "openInterest": 1478573180.3
+          },
+          {
+            "t": 1766491200000,
+            "openInterest": 1462163363.6
+          },
+          {
+            "t": 1766492100000,
+            "openInterest": 1466913794.4
+          },
+          {
+            "t": 1766537100000,
+            "openInterest": 1363767031.1
+          },
+          {
+            "t": 1766538000000,
+            "openInterest": 1373275248.4
+          },
+          {
+            "t": 1766538900000,
+            "openInterest": 1371103666.4
+          },
+          {
+            "t": 1766539800000,
+            "openInterest": 1368354082.3
+          },
+          {
+            "t": 1766540700000,
+            "openInterest": 1372132498.6
+          },
+          {
+            "t": 1766541600000,
+            "openInterest": 1366787314.8
+          },
+          {
+            "t": 1766542500000,
+            "openInterest": 1370830192
+          },
+          {
+            "t": 1766543400000,
+            "openInterest": 1374590821.8
+          },
+          {
+            "t": 1766544300000,
+            "openInterest": 1392809173.3
+          },
+          {
+            "t": 1766545200000,
+            "openInterest": 1390632864.9
+          },
+          {
+            "t": 1766546100000,
+            "openInterest": 1381796148.7
+          },
+          {
+            "t": 1766547000000,
+            "openInterest": 1384183436
+          },
+          {
+            "t": 1766547900000,
+            "openInterest": 1379476361
+          },
+          {
+            "t": 1766548800000,
+            "openInterest": 1376674820.1
+          },
+          {
+            "t": 1766549700000,
+            "openInterest": 1375089524.2
+          }
+        ]
+      }
+    }
+  }
+}

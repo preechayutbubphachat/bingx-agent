@@ -1,0 +1,25 @@
+{
+"regime": "TREND_DOWN",
+"market_mode": "TREND_SHORT",
+"confidence": 0.47,
+"risk_warning": [
+"signals mismatch history"
+],
+"reason": {
+"trend": "Daily and 4H ADX levels (~26 on 1D, ~17 on 4H) show a weak to moderate trend with minus‑DI greater than plus‑DI, indicating sellers control. Price is well below the 4H EMA200 (≈90231 USDT) and the 1H EMA50 (≈86690 USDT); the latest 1H close is around 85,329 USDT, and both 4H and 1H structures remain range–bound but biased lower. Overall the higher timeframes lean bearish.",
+"momentum": "RSI on 4H and 1H is around 40, below the mid‑line and falling, and MACD lines remain negative with a widening histogram. Open interest over the last 5–15 minutes has fallen (−8.25×10^4) while price also fell, suggesting long liquidation rather than fresh short build; funding is flat. The derivatives signal reports a CROWDED_SHORT positioning, which contrasts with the falling OI and highlights squeeze risk. The 5 min tone is **BEAR_PUSH** and the 1 h tone is **BEAR_TREND_SOFT** (downtrend with no expansion), so short‑term momentum points down but confirmation is needed.",
+"volatility": "ATR(14) is about 1426 on 4H and 852 on 1H, close to their 50‑period baselines. BBW(20) is low (~0.045 on 4H and 0.057 on 1H), and the volatility.relative state is NORMAL with confidence 0.85. Session risk overlay indicates low expected volatility and high false‑breakout risk during the Asia range session, so price may whipsaw before any expansion.",
+"orderflow": "The order‑book mid price is around 85 362 USDT with an imbalance of −0.24, indicating more sell liquidity than buy. Funding rate remains small and positive (~5.3×10⁻⁵). Open interest fell over the latest 5 min and 15 min windows while price fell (price ↓ + OI ↓), which often signals long liquidation and potential continuation lower but can precede exhaustion. Signals show crowding on the short side; this mismatch together with falling OI warns of a possible short squeeze if price stalls.",
+"smc": "On the 4H chart the market structure is still range‑bound with no recent BOS/CHoCH, and price is near the bottom of the 4H range. Key supply zones lie between 87 200 and 89 637 USDT (1H/4H bearish order blocks), while recent demand zones between 86 085 and 86 652 USDT sit above the current price. There are equal‑low liquidity pools around 85 000 USDT, and little clear demand below, so any downward sweep could target these lows. With price close to range lows, better risk‑reward for shorts arises on a retracement into supply; wait for a pull‑back to the 86.5 k–87 k area before entering.",
+"news_impact": "News risk level is LOW and there is no hot news, but macro events like FOMC, CPI and NFP occurring this week raise overall macro risk to MED according to the news context file. These events could trigger volatility spikes; position sizes should be reduced and stops respected."
+},
+"parameters_for_grid_or_trend": {
+"grid_upper": null,
+"grid_lower": null,
+"grid_count": null,
+"trend_entry": 86500,
+"trend_sl": 88000,
+"trend_tp": 83000
+},
+"summary_for_bot": "Market Regime: TREND_DOWN → market_mode = TREND_SHORT. The market is in a weak downtrend with price near the bottom of the 4H range. Expect any further downside to target liquidity near 85k, but a better entry for shorts comes on a bounce into supply near 86.5k–87.0k; wait for a lower‑high or bearish rejection to confirm.\n\n• News Risk: risk_level LOW, no hot news; macro events (FOMC/CPI/NFP this week) imply MED macro risk.\n• Derivatives Flow: OI/Funding (5m/15m) shows OI decreasing while funding is flat, pointing to long liquidation; price↓ + OI↓ suggests downtrend continuation but may exhaust; signals indicate crowding on the short side.\n• Session Context: ASIA session with high false breakout risk and low volatility expectation; ranges and sweeps are common, so require clear confirmation before entering.\n• 5m/1h Tone: 5m=BEAR_PUSH, 1h=BEAR_TREND_SOFT → follow the short bias but wait for a pull‑back/supply test; no trade if price sweeps lows without setup."
+}

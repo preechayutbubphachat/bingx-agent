@@ -101,3 +101,6 @@
 - [ ] ทำ `PROJECT_MAP.md` ให้ auto-update ด้วยสคริปต์ generate tree
 - [ ] เพิ่ม “release notes” สั้น ๆ ใน repo เมื่อเพิ่มฟีเจอร์ใหญ่
 
+Full tree: `docs/tree_full.txt`
+Dashboard tree: `docs/tree_dashboard.txt`
+Routes tree: `docs/tree_routes.txt`

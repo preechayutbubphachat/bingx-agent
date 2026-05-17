@@ -45,9 +45,19 @@
   ],
   "exclude": [
     "node_modules",
+    ".next",
+    "out",
+    "dist",
+    "build",
     "public",
     "public/**",
+    "public/bingx-agent-runner",
+    "public/bingx-agent-runner/**",
+    "bingx-agent-runner",
+    "bingx-agent-runner/**",
     "../bingx-agent-runner",
-    "../bingx-agent-runner/**"
+    "../bingx-agent-runner/**",
+    "../../bingx-agent-runner",
+    "../../bingx-agent-runner/**"
   ]
 }

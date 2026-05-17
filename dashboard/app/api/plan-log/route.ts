@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { resolveRuntimeDir } from "@/lib/readLatest";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +20,25 @@ async function fileExists(p: string) {
  * ใช้สำหรับไฟล์ที่ runner เขียนไว้ข้างนอก (เช่น plan_status_log.jsonl)
  */
 async function resolveDataDir() {
-    return (await resolveRuntimeDir()).dir;
+    const envDir = process.env.BINGX_DATA_DIR?.trim() || process.env.DATA_DIR?.trim();
+    const cwd = process.cwd();
+    const candidates = [
+        envDir ? path.resolve(cwd, envDir) : "",
+        path.resolve(cwd, ".."),
+        cwd,
+        path.resolve(cwd, "../.."),
+    ].filter(Boolean);
+
+    for (const dir of candidates) {
+        if (
+            await fileExists(path.join(dir, "latest_decision.json")) ||
+            await fileExists(path.join(dir, "market_snapshot.json"))
+        ) {
+            return dir;
+        }
+    }
+
+    return path.resolve(cwd, "..");
 }
 
 function toMs(ts: any) {

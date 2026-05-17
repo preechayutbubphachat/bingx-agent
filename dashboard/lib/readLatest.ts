@@ -44,7 +44,7 @@ async function statSafe(p: string) {
     }
 }
 
-async function resolveRuntimeDir() {
+export async function resolveRuntimeDir() {
     const envDir = process.env.BINGX_DATA_DIR?.trim() || process.env.DATA_DIR?.trim();
     const cwd = process.cwd();
     const candidates = unique([
@@ -107,7 +107,7 @@ function metaFromStat(name: string, filePath: string, source: "root" | "mirror",
     return meta;
 }
 
-async function readRuntimeJson<T>(name: string, rootDir: string, mirrorDir?: string) {
+export async function readRuntimeJson<T>(name: string, rootDir: string, mirrorDir?: string) {
     const rootPath = path.join(rootDir, name);
     const rootStat = await statSafe(rootPath);
     const rootMeta = metaFromStat(name, rootPath, "root", rootStat);
@@ -170,7 +170,7 @@ async function readRuntimeJson<T>(name: string, rootDir: string, mirrorDir?: str
     };
 }
 
-function buildSourceInfo(rootDir: string, mirrorDir: string, reads: Array<Awaited<ReturnType<typeof readRuntimeJson<any>>>>): RuntimeSourceInfo {
+export function buildSourceInfo(rootDir: string, mirrorDir: string, reads: Array<Awaited<ReturnType<typeof readRuntimeJson<any>>>>): RuntimeSourceInfo {
     const files = reads.flatMap((read) => [read.meta, "rootMeta" in read ? read.rootMeta : null, "mirrorMeta" in read ? read.mirrorMeta : null]).filter(Boolean) as RuntimeFileMeta[];
     const warnings = files.flatMap((file) => (file.warning ? [file.warning] : []));
 
@@ -213,7 +213,7 @@ function fallbackDecision() {
     };
 }
 
-async function readLatest() {
+export async function readLatest() {
     const { dir, mirrorDir } = await resolveRuntimeDir();
 
     const [snapshotRead, decisionRead, newsRead, stateRead] = await Promise.all([
@@ -268,11 +268,4 @@ export type ReadLatestExportContract = {
     readLatest: typeof readLatest;
     readRuntimeJson: typeof readRuntimeJson;
     resolveRuntimeDir: typeof resolveRuntimeDir;
-};
-
-export {
-    buildSourceInfo,
-    readLatest,
-    readRuntimeJson,
-    resolveRuntimeDir,
 };

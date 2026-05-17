@@ -262,3 +262,10 @@ export async function readLatest() {
         },
     };
 }
+
+export type ReadLatestExportContract = {
+    buildSourceInfo: typeof buildSourceInfo;
+    readLatest: typeof readLatest;
+    readRuntimeJson: typeof readRuntimeJson;
+    resolveRuntimeDir: typeof resolveRuntimeDir;
+};

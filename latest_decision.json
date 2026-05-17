@@ -1,52 +1,97 @@
 {
-"confidence": 0.45,
-"market_mode": "RANGE",
-"trade_action": "NO_TRADE",
-"risk_warning": [
-"volatility baseline insufficient",
-"history weak on 5m funding & open interest",
-"ADX calculation unavailable"
-],
-"reason": {
-"technical": "ราคาปัจจุบันอยู่ต่ำกว่า EMA200 4H และ EMA50 1H สะท้อนแนวโน้มขาลงปานกลาง RSI 4H/1H อยู่ราว 45-46 ไม่ได้อยู่ในเขตแรงมาก MACD 4H ยังคงติดลบ แต่ MACD histogram ของ 1H เริ่มขยับเป็นบวกแสดงว่าแรงขายเริ่มชะลอตัว ATR และ BBW บ่งชี้ความผันผวนปานกลาง ข้อมูล ADX คำนวณไม่ได้จึงยังไม่ยืนยันเทรนด์ชัดเจน",
-"derivatives": "Funding rate ล่าสุดเป็นบวกเพียงเล็กน้อย (~0.01%) ส่วน open interest ลดลงอย่างต่อเนื่องจากระดับประมาณ 1.46B เหลือ 1.36B ภายใน 24 ชั่วโมง ราคาอ่อนตัวลงพร้อมกับ OI ลดลง เป็นสัญญาณของการ liquidate หรือปิดสถานะ long มากกว่า build-up อื่น ๆ สัญญาณ open interest ใน 5 นาทีมีข้อมูลไม่เพียงพอ",
-"session": "ปัจจุบันอยู่ในช่วง ASIA ที่ความน่าจะเป็น false breakout สูง แต่โอกาสเกิด liquidity sweep ต่ำ จึงควรระวังการไส้ยาวและรอให้มีสัญญาณยืนยันบนกรอบ 5 นาทีหากจะเปิดสถานะ",
-"smc": "โครงสร้างตลาด 1H อยู่ในกรอบตั้งแต่ swing low 86555 ถึง swing high 88337 มีจุดสมดุลราว 87446 โซนย่อสำหรับเข้าชอร์ตอยู่ระหว่าง 87446–87656 การเข้าเทรดควรรอ rejection ที่ขอบบนของโซนและให้ราคา 5m ปิดต่ำกว่าโซนพร้อม OI เพิ่มขึ้น Invalidation ที่ 88466 และเป้าหมายแรกที่ swing low 86555",
-"news": "ข่าวจาก cryptopanic ไม่มีเหตุการณ์ร้อนแรง และ risk level ต่ำ การประกาศใหญ่เช่น FOMC, CPI, NFP จะเกิดภายในสัปดาห์แต่ยังไม่เกิดในวันนี้",
-"macro": "Macro overlay ระบุว่า FOMC, CPI และ NFP อยู่ในสัปดาห์นี้ ความเสี่ยงระดับกลาง ผู้เทรดควรเฝ้าระวังวันที่มีประกาศตัวเลขสำคัญเพราะอาจเพิ่มความผันผวน"
-},
-"levels": {
-"trend": {
-"dir": "DOWN",
-"pullback_zone": [
-87446.05,
-87656.34
-],
-"invalidation": 88466.75,
-"trigger_rule": "รอ 5m ยืนยันกลับตัว (ปิดใต้โซน/ทำ LH) ก่อนเข้า",
-"targets": {
-"t1": 86555.0,
-"t2": null
-},
-"entry": {
-"type": "CONFIRM",
-"hint": "เข้าตอน 5m ปิดใต้ขอบโซน + OI เริ่มกลับมาเพิ่ม"
-}
-},
-"smc": {
-"swing_high_1h": 88337.1,
-"swing_low_1h": 86555.0,
-"eq_1h": 87446.05,
-"liquidity_note": "ระวัง equal highs ใกล้จุดสูงสุด — อาจมี sweep ก่อนกลับตัว"
-}
-},
-"parameters_for_grid_or_trend": {
-"grid_upper": null,
-"grid_lower": null,
-"grid_count": null,
-"trend_entry": 87656.34,
-"trend_sl": 88466.75,
-"trend_tp": 86555.0
-},
-"summary_for_bot": "• โหมดตลาด: RANGE ขาลงอ่อน ๆ EMA200/50 อยู่เหนือราคา\n• อินดิเคเตอร์ให้ภาพกลาง ๆ RSI ใกล้ 45-46 และ MACD 1H เริ่มบวก แต่ ADX ไม่มีข้อมูล\n• Derivatives: Funding บวกเล็กน้อย ขณะที่ OI ลดลงแสดงการปิดสถานะ long\n• Macro/ข่าว: ไม่มีข่าวร้อน แต่สัปดาห์นี้มี FOMC, CPI, NFP — ระวังความผันผวน\n• Trend Zone: pullback_zone=[87446.05,87656.34], invalidation=88466.75, trigger=รอ 5m ยืนยันกลับตัว"
+  "market_mode": "GRID_NEUTRAL",
+  "confidence": 0.49,
+  "levels": {
+    "trend": {
+      "dir": null,
+      "pullback_zone": null,
+      "invalidation": null,
+      "trigger_rule": "ตอนนี้ยังไม่เข้าเงื่อนไข TREND_UP/TREND_DOWN ชัดเจน → เล่นกรอบ/รอ sweep-then-confirm แทน",
+      "targets": {
+        "t1": null,
+        "t2": null
+      },
+      "entry": {
+        "type": "CONFIRM",
+        "hint": "โหมดกรอบ: รอแตะขอบกรอบแล้วให้ 5m ยืนยันกลับเข้ากรอบก่อนเข้า"
+      }
+    },
+    "smc": {
+      "swing_high_1h": 90362.5,
+      "swing_low_1h": 86618.6,
+      "eq_1h": 88490.55,
+      "liquidity_note": "สนามหลัก 86619–90363; EQ≈88491 คือจุดปะทะ; ระวัง sweep ใต้/เหนือกรอบก่อนเลือกทาง"
+    }
+  },
+  "parameters_for_grid_or_trend": {
+    "grid_upper": 90363,
+    "grid_lower": 86619,
+    "grid_count": 12,
+    "trend_entry": null,
+    "trend_sl": null,
+    "trend_tp": null
+  },
+  "reason": {
+    "indicator": "1H slope≈-1.09%, ATR_1H=288.02553848801574, BBW_1H=0.009141772620250932, vol_state=NORMAL",
+    "derivatives": "Funding last=0.0001; crowding=LONG_UNWIND; oiSlope15=-269246.6526942994 fundSlope15=1.0174331237400628e-20",
+    "session": "Session: sweep=HIGH, false_breakout=MEDIUM → เน้นกติกา CONFIRM กันไส้หลอก",
+    "news": "News skipped (--no-news)",
+    "smc": "SMC: swing_low≈86619, swing_high≈90363, EQ≈88491",
+    "momentum": "trendScore≈0.41 dir=DOWN crowding=LONG_UNWIND",
+    "price_action": "Price: last_close≈87843 (ใต้ EQ)",
+    "orderbook": "Orderbook imbalance=0.441"
+  },
+  "risk_warning": [
+    "liquidity sweep probability high",
+    "news skipped (--no-news)"
+  ],
+  "summary_for_bot": "• ภาพรวม: โหมด GRID_NEUTRAL (confidence≈0.49)\n• โครงสร้างราคา: swing 86619–90363; EQ≈88491\n• กติกาเข้า: CONFIRM — ตอนนี้ยังไม่เข้าเงื่อนไข TREND_UP/TREND_DOWN ชัดเจน → เล่นกรอบ/รอ sweep-then-confirm แทน\n• Risk: sweep=HIGH, false_break=MEDIUM, news=SKIPPED, crowding=LONG_UNWIND",
+  "schema_version": "agent_like_v1",
+  "generated_at": "2026-01-01T10:00:03.055Z",
+  "symbol": "BTC-USDT",
+  "regime": null,
+  "risk_overlay": {
+    "crypto_news_risk": "SKIPPED",
+    "has_hot_news": false,
+    "macro_risk": "UNKNOWN",
+    "events": [],
+    "headlines": [],
+    "notes": [
+      "news skipped (--no-news)"
+    ]
+  },
+  "derivatives": {
+    "oi": {
+      "status": "OK",
+      "has_data": true,
+      "reason": "",
+      "source": "snapshot",
+      "integrity": "GOOD",
+      "now": 1304673499.2,
+      "trend_5m": "UP",
+      "trend_15m": "DOWN",
+      "crowd": "LONG_UNWIND",
+      "trapped": "NONE"
+    },
+    "funding": {
+      "status": "OK",
+      "has_data": true,
+      "reason": "",
+      "source": "snapshot",
+      "integrity": "GOOD",
+      "now": 0.0001,
+      "trend_5m": "FLAT",
+      "trend_15m": "FLAT"
+    }
+  },
+  "reason_agent": {
+    "one_liner": "GRID_NEUTRAL | conf=0.49 | Price: last_close≈87843 (ใต้ EQ) | news=SKIPPED",
+    "bullets": [
+      "1H slope≈-1.09%, ATR_1H=288.02553848801574, BBW_1H=0.009141772620250932, vol_state=NORMAL",
+      "SMC: swing_low≈86619, swing_high≈90363, EQ≈88491",
+      "ตอนนี้ยังไม่เข้าเงื่อนไข TREND_UP/TREND_DOWN ชัดเจน → เล่นกรอบ/รอ sweep-then-confirm แทน",
+      "liquidity sweep probability high"
+    ]
+  },
+  "extras": {}
 }

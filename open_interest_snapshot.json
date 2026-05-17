@@ -1,11 +1,11 @@
 {
   "ok": true,
   "symbol": "BTC-USDT",
-  "openInterest": 1363928570.3,
-  "time": 1766537143069,
+  "openInterest": 1263117133.9,
+  "time": 1767249580819,
   "raw": {
-    "openInterest": "1363928570.3",
+    "openInterest": "1263117133.9",
     "symbol": "BTC-USDT",
-    "time": 1766537143069
+    "time": 1767249580819
   }
 }

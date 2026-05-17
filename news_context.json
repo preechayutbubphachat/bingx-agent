@@ -1,21 +1,14 @@
 {
-  "generated_at": "2025-12-24T00:45:45.720Z",
+  "generated_at": "2025-12-31T06:52:00.892Z",
   "symbol": "BTC-USDT",
   "source": "cryptopanic",
   "has_hot_news": false,
   "risk_level": "LOW",
   "crypto_news_headlines": [
     {
-      "title": "Bitmine’s Ethereum stash hits 4.066 million as total crypto + cash vault tops $13.2 billion",
+      "title": "Strategy Buys Another $109M in Bitcoin",
       "source": "cryptopanic",
-      "published_at": "2025-12-22T16:16:28Z",
-      "is_important": false,
-      "sentiment": "mixed"
-    },
-    {
-      "title": "Why Are Ripple (XRP) ETFs More Attractive to Investors Than BTC, ETH, SOL Funds?",
-      "source": "cryptopanic",
-      "published_at": "2025-12-20T15:21:49Z",
+      "published_at": "2025-12-29T15:27:32Z",
       "is_important": false,
       "sentiment": "mixed"
     }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { computeLiquidityMagnetFromCandles } from "@/lib/liquidityMagnet";
+import { buildSourceInfo, readRuntimeJson, resolveRuntimeDir } from "@/lib/readLatest";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,6 +11,15 @@ export const runtime = "nodejs";
  * GOAL (D): endpoint ส่ง has_data/reason แบบ “มาตรฐาน”
  * - ทุก field ที่เป็น series (oi/funding) จะมี: status, has_data, reason, source, integrity, now, trend_5m, trend_15m
  * - ถ้าไฟล์หาย/parse พัง/series ว่าง → ไม่ throw แต่ส่ง reason ชัด ๆ ให้ UI แสดงแบบเดียวกันทุก field
+ *
+ * ✅ Fixes in this version (additional)
+ * - writeJsonAtomic ใช้ object จริง (ไม่ stringify ก่อน) + atomic safe
+ * - เพิ่ม TREND paper-trade events: TREND_TRADE_OPEN / TREND_TP1_HIT / TREND_STOP_HIT
+ *   เพื่อให้ winrate endpoint เห็น “close events” ได้จริงแบบเดียวกับ OB
+ *
+ * ✅ NEW (public mirror fix)
+ * - mirror plan_history.jsonl → public/data/plan_history.jsonl (append realtime)
+ * - ถ้า public history ว่าง แต่ root history มีค่า → copy ครั้งเดียวตอน GET (bootstrap)
  */
 
 type Candle = {
@@ -19,6 +30,19 @@ type Candle = {
     close: number;
     volume?: number;
 };
+
+let __writeQueue = Promise.resolve();
+
+function queueWrite<T>(task: () => Promise<T>): Promise<T> {
+    const next = __writeQueue.then(task, task);
+    // กัน queue ค้างถ้า task throw
+    __writeQueue = next.then(
+        () => undefined,
+        () => undefined
+    );
+    return next;
+}
+
 
 type Point = { t: number; v: number };
 
@@ -46,9 +70,19 @@ type TrendOut = {
     prev: number | null;
 };
 
-async function readJsonSafe<T>(
-    p: string
-): Promise<{ ok: true; value: T } | { ok: false; reason: string }> {
+function norm(x: any) {
+    return String(x ?? "").trim().toUpperCase();
+}
+
+async function ensureDir(dir: string) {
+    try {
+        await fs.mkdir(dir, { recursive: true });
+    } catch {
+        // ignore
+    }
+}
+
+async function readJsonSafe<T>(p: string): Promise<{ ok: true; value: T } | { ok: false; reason: string }> {
     try {
         const raw = await fs.readFile(p, "utf8");
         return { ok: true, value: JSON.parse(raw) as T };
@@ -70,9 +104,134 @@ async function fileExists(p: string) {
     }
 }
 
+async function fileSize(p: string) {
+    try {
+        const st = await fs.stat(p);
+        return st.size ?? 0;
+    } catch {
+        return 0;
+    }
+}
+
 async function appendJsonl(p: string, obj: any) {
-    const line = JSON.stringify(obj) + "\n";
-    await fs.appendFile(p, line, "utf8");
+    return queueWrite(async () => {
+        await ensureDir(path.dirname(p));
+        const line = JSON.stringify(obj) + "\n";
+
+        const MAX_TRIES = 6;
+        for (let i = 0; i < MAX_TRIES; i++) {
+            try {
+                await fs.appendFile(p, line, "utf8");
+                return;
+            } catch (e: any) {
+                const code = e?.code;
+                if (code === "EPERM" || code === "EACCES" || code === "EBUSY") {
+                    await sleep(25 * (i + 1));
+                    continue;
+                }
+                throw e;
+            }
+        }
+
+        // ultimate fallback: writeFile append แบบ manual (กัน deadlock)
+        const prev = (await fs.readFile(p, "utf8").catch(() => "")) ?? "";
+        await fs.writeFile(p, prev + line, "utf8");
+    });
+}
+
+
+function safeStringify(obj: any) {
+    const seen = new WeakSet();
+    return JSON.stringify(
+        obj,
+        (_k, v) => {
+            if (typeof v === "bigint") return v.toString();
+            if (v && typeof v === "object") {
+                if (seen.has(v)) return "[Circular]";
+                seen.add(v);
+            }
+            return v;
+        },
+        2
+    );
+}
+
+async function sleep(ms: number) {
+    return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Windows-safe atomic-ish move:
+ * - try rename
+ * - if EPERM/EACCES/EBUSY/EEXIST: retry a few times
+ * - final fallback: copyFile -> unlink(tmp)
+ */
+async function renameWithRetryOrCopy(tmp: string, dest: string) {
+    const MAX_TRIES = 6;
+
+    for (let i = 0; i < MAX_TRIES; i++) {
+        try {
+            // ✅ Windows: ถ้า dest มีอยู่ rename ทับอาจพัง → ลองลบก่อนแบบ force
+            await fs.rm(dest, { force: true }).catch(() => { });
+            await fs.rename(tmp, dest);
+            return;
+        } catch (e: any) {
+            const code = e?.code;
+            if (code === "EPERM" || code === "EACCES" || code === "EBUSY" || code === "EEXIST") {
+                // รอให้ watcher/antivirus ปล่อยไฟล์
+                await sleep(25 * (i + 1));
+                continue;
+            }
+            // ข้าม device (ไม่น่ากรณีนี้) → ใช้ fallback copy
+            if (code === "EXDEV") break;
+
+            throw e;
+        }
+    }
+
+    // ✅ fallback (ไม่ atomic 100% แต่กันระบบล่ม + ใช้งานได้จริงบน Windows)
+    await fs.copyFile(tmp, dest);
+    await fs.unlink(tmp).catch(() => { });
+}
+
+
+async function writeTextAtomic(p: string, payload: string, encoding: BufferEncoding = "utf8") {
+    return queueWrite(async () => {
+        await ensureDir(path.dirname(p));
+
+        // temp ต้องอยู่ directory เดียวกัน
+        const tmp = `${p}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+        try {
+            // 1) เขียนลง temp ก่อน
+            await fs.writeFile(tmp, payload, encoding);
+
+            // 2) replace แบบ Windows-safe (มี retry + fallback)
+            await renameWithRetryOrCopy(tmp, p);
+
+            return;
+        } catch (e: any) {
+            // 3) ultimate fallback: เขียนทับไฟล์ปลายทางตรง ๆ (ไม่ atomic แต่กันล่ม)
+            const code = e?.code;
+            if (code === "EPERM" || code === "EACCES" || code === "EBUSY") {
+                await fs.writeFile(p, payload, encoding);
+                return;
+            }
+            throw e;
+        } finally {
+            // กัน tmp ค้าง
+            try {
+                await fs.rm(tmp, { force: true });
+            } catch {
+                // ignore
+            }
+        }
+    });
+}
+
+async function writeJsonAtomic(p: string, obj: any) {
+    const payload = safeStringify(obj);
+    await writeTextAtomic(p, payload, "utf8");
 }
 
 /**
@@ -80,16 +239,7 @@ async function appendJsonl(p: string, obj: any) {
  * หา dir ให้เอง + รองรับ env BINGX_DATA_DIR
  */
 async function resolveDataDir() {
-    const envDir = process.env.BINGX_DATA_DIR?.trim();
-    const candidates = [envDir, process.cwd(), path.resolve(process.cwd(), ".."), path.resolve(process.cwd(), "../..")].filter(
-        Boolean
-    ) as string[];
-
-    for (const dir of candidates) {
-        const probe = path.join(dir, "latest_decision.json");
-        if (await fileExists(probe)) return dir;
-    }
-    return process.cwd();
+    return (await resolveRuntimeDir()).dir;
 }
 
 function last<T>(arr: T[]) {
@@ -114,6 +264,10 @@ function freshnessFrom(updatedAtMs: number | null): { tag: FreshTag; ageSec: num
     if (ageSec <= 180) return { tag: "FRESH", ageSec };
     if (ageSec <= 1800) return { tag: "STALE", ageSec };
     return { tag: "OLD", ageSec };
+}
+
+function cloneFresh(f: { tag: FreshTag; ageSec: number | null }) {
+    return { tag: f.tag, ageSec: f.ageSec };
 }
 
 function seriesIntegrity(series: Point[]): SeriesIntegrity {
@@ -245,6 +399,34 @@ function agg15mFrom5m(last3: Candle[]) {
     const t = last3[0].t;
     const volume = last3.reduce((s, x) => s + (x.volume ?? 0), 0);
     return { t, open, high, low, close, volume };
+}
+
+function normalizeSnapshotCandles(items: any[] | undefined): Candle[] {
+    if (!Array.isArray(items)) return [];
+    return items
+        .map((x) => {
+            const t = toNumber(x?.t ?? x?.time ?? x?.ts);
+            const open = toNumber(x?.open ?? x?.o);
+            const high = toNumber(x?.high ?? x?.h);
+            const low = toNumber(x?.low ?? x?.l);
+            const close = toNumber(x?.close ?? x?.c);
+            const volume = toNumber(x?.volume ?? x?.v);
+            if (t === null || open === null || high === null || low === null || close === null) return null;
+            return { t, open, high, low, close, volume: volume ?? undefined };
+        })
+        .filter(Boolean) as Candle[];
+}
+
+function fallbackDecision() {
+    return {
+        market_mode: "UNKNOWN",
+        confidence: null,
+        levels: {},
+        parameters_for_grid_or_trend: {},
+        risk_warning: ["runtime data is unavailable or invalid"],
+        regime: "UNKNOWN",
+        symbol: "BTC-USDT",
+    };
 }
 
 function analyzeSweepUp(candles5m: Candle[], zoneLow: number, zoneHigh: number) {
@@ -482,14 +664,28 @@ function inferCrowdAndTrap(params: {
     fundTrend5: { dir: string; pct: number };
     fundTrend15: { dir: string; pct: number };
 }) {
-    const { sweepUpSeen, rejectionConfirmed, close5m, zoneHigh, oiNow, oiAtSweep, oiTrend5, oiTrend15, fundNow, fundTrend5 } =
-        params;
+    const {
+        sweepUpSeen,
+        rejectionConfirmed,
+        close5m,
+        zoneHigh,
+        oiNow,
+        oiAtSweep,
+        oiTrend5,
+        oiTrend15,
+        fundNow,
+        fundTrend5,
+    } = params;
 
-    let crowd: "LONGS" | "SHORTS" | "MIXED" | "UNKNOWN" = "UNKNOWN";
+    type CrowdSide = "LONGS" | "SHORTS" | "MIXED" | "UNKNOWN";
+
+    let crowd: CrowdSide = "UNKNOWN";
+
     if (fundNow !== null) {
         if (fundNow > 0) crowd = "LONGS";
         else if (fundNow < 0) crowd = "SHORTS";
-    }
+        else crowd = "MIXED";
+    } else crowd = "UNKNOWN";
 
     let trapped: "LONGS_TRAPPED" | "SHORTS_TRAPPED" | "NONE" | "UNKNOWN" = "UNKNOWN";
 
@@ -499,7 +695,9 @@ function inferCrowdAndTrap(params: {
 
     const priceFailed = close5m !== null && close5m < zoneHigh;
     const oiUnwindFromSweep =
-        oiNow !== null && oiAtSweep !== null ? ((oiNow - oiAtSweep) / (Math.abs(oiAtSweep) < 1e-9 ? 1 : oiAtSweep)) * 100 : null;
+        oiNow !== null && oiAtSweep !== null
+            ? ((oiNow - oiAtSweep) / (Math.abs(oiAtSweep) < 1e-9 ? 1 : oiAtSweep)) * 100
+            : null;
 
     if (sweepUpSeen && rejectionConfirmed && priceFailed) {
         if (fundSupportsLong && oiAdded) trapped = "LONGS_TRAPPED";
@@ -510,13 +708,11 @@ function inferCrowdAndTrap(params: {
     }
 
     const crowdTH =
-        crowd === "LONGS"
-            ? "ฝั่ง Long หนา"
-            : crowd === "SHORTS"
-                ? "ฝั่ง Short หนา"
-                : crowd === "MIXED"
-                    ? "คนกระจายหลายฝั่ง"
-                    : "ยังบอกฝั่งหนาไม่ได้";
+        crowd === "LONGS" ? "ฝั่ง Long หนา"
+            : crowd === "SHORTS" ? "ฝั่ง Short หนา"
+                : "ยังบอกฝั่งหนาไม่ได้";
+
+
 
     let trappedTH = "ยังไม่เห็นสัญญาณคนติดชัด";
     if (trapped === "LONGS_TRAPPED") trappedTH = "มีโอกาส “Long ติดบน” (เติม OI + funding บวก แล้วโดนตบกลับในโซนบน)";
@@ -529,36 +725,643 @@ function inferCrowdAndTrap(params: {
     if (oiUnwindFromSweep !== null) noteBits.push(`OI vs sweep=${oiUnwindFromSweep.toFixed(2)}%`);
 
     return { crowd, trapped, crowdTH, trappedTH, note: noteBits.join(" | ") };
+
 }
 
-export async function GET() {
-    const dataDir = await resolveDataDir();
+type OBTrade = {
+    active: boolean;
 
-    const decisionPath = path.join(dataDir, "latest_decision.json");
+    trade_id: string | null;
+    symbol: string | null;
+
+    bias: "LONG" | "SHORT" | null;
+
+    opened_t: number | null; // ms
+    closed_t: number | null; // ms
+
+    entry_price: number | null; // Mode A: ใช้ close ตอน READY
+    entry_zone: { low: number; high: number } | null;
+
+    sl: number | null;
+    tp1: number | null;
+
+    // outcome
+    result: "WIN" | "LOSS" | null;
+    exit_price: number | null;
+    r_multiple: number | null;
+
+    // debug
+    open_reason?: string | null;
+    close_reason?: string | null;
+};
+
+type TrendTrade = {
+    active: boolean;
+
+    trade_id: string | null;
+    symbol: string | null;
+
+    side: "LONG" | "SHORT" | null;
+
+    opened_t: number | null;
+    closed_t: number | null;
+
+    entry_price: number | null;
+    sl: number | null;
+    tp1: number | null;
+
+    result: "WIN" | "LOSS" | null;
+    exit_price: number | null;
+    r_multiple: number | null;
+
+    open_reason?: string | null;
+    close_reason?: string | null;
+};
+
+function makeTradeId(prefix = "OB") {
+    const rnd = Math.random().toString(16).slice(2, 8).toUpperCase();
+    return `${prefix}_${Date.now()}_${rnd}`;
+}
+
+function midZone(z: { low: number; high: number } | null) {
+    if (!z) return null;
+    return (z.low + z.high) / 2;
+}
+
+function rMultiple(params: { bias: "LONG" | "SHORT"; entry: number | null; sl: number | null; exit: number | null }) {
+    const { bias, entry, sl, exit } = params;
+    if (entry == null || sl == null || exit == null) return null;
+
+    // R = ระยะเสี่ยง
+    const R = bias === "LONG" ? entry - sl : sl - entry;
+    if (!(R > 0)) return null;
+
+    const P = bias === "LONG" ? exit - entry : entry - exit;
+    return Number((P / R).toFixed(3));
+}
+
+function resolveTpSlHit(params: {
+    bias: "LONG" | "SHORT";
+    candle: Candle;
+    tp1: number | null;
+    sl: number | null;
+    prefer: "SL_FIRST" | "TP_FIRST";
+}) {
+    const { bias, candle, tp1, sl, prefer } = params;
+
+    const tpHit = tp1 != null ? (bias === "LONG" ? candle.high >= tp1 : candle.low <= tp1) : false;
+
+    const slHit = sl != null ? (bias === "LONG" ? candle.low <= sl : candle.high >= sl) : false;
+
+    if (!tpHit && !slHit) return { hit: null as null, exit: null as number | null };
+
+    // ถ้าชนทั้งคู่ในแท่งเดียวกัน → เลือกตาม policy
+    if (tpHit && slHit) {
+        if (prefer === "SL_FIRST") return { hit: "SL" as const, exit: sl! };
+        return { hit: "TP1" as const, exit: tp1! };
+    }
+
+    if (slHit) return { hit: "SL" as const, exit: sl! };
+    return { hit: "TP1" as const, exit: tp1! };
+}
+
+/** =======================
+ *  OB Gate (1H -> 5m) Helpers
+ * ======================= */
+
+type Side = "BULL" | "BEAR";
+type Bias = "LONG" | "SHORT" | "RANGE" | "UNKNOWN";
+
+type OrderBlock = {
+    tf: "1h" | "5m";
+    side: Side;
+    zone: { low: number; high: number };
+    origin: { t: number; index: number };
+    strength: {
+        displacement_pct: number;
+        bos: boolean;
+        retest_count: number;
+    };
+    note: string;
+};
+
+type OBGate = {
+    bias_1h: Bias;
+
+    h1_ob: OrderBlock | null;
+    m5_ob_confirm: OrderBlock | null;
+
+    touch: { ok: boolean; why: string };
+    sweep: { seen: boolean; side: "UP" | "DOWN" | null; t: number | null; price: number | null; idx: number | null };
+    reclaim: { ok: boolean; rule: string; t: number | null; idx: number | null };
+    choch: { ok: boolean; dir: "UP" | "DOWN" | null; t: number | null; idx: number | null };
+
+    entry: {
+        status: "WAIT" | "READY" | "INVALID";
+        entry_zone: { low: number; high: number } | null;
+        sl: number | null;
+        tp1: number | null;
+        why: string;
+    };
+};
+
+function bodyHigh(c: Candle) {
+    return Math.max(c.open, c.close);
+}
+function bodyLow(c: Candle) {
+    return Math.min(c.open, c.close);
+}
+function isBull(c: Candle) {
+    return c.close >= c.open;
+}
+function isBear(c: Candle) {
+    return c.close < c.open;
+}
+function pctMove(from: number, to: number) {
+    const base = Math.abs(from) < 1e-9 ? 1 : from;
+    return ((to - from) / base) * 100;
+}
+function inZone(price: number, z: { low: number; high: number }) {
+    return price >= z.low && price <= z.high;
+}
+function clampZone(z: { low: number; high: number }) {
+    const low = Math.min(z.low, z.high);
+    const high = Math.max(z.low, z.high);
+    return { low, high };
+}
+function midOf(z: { low: number; high: number }) {
+    return (z.low + z.high) / 2;
+}
+
+function countRetests(candles: Candle[], zone: { low: number; high: number }, lookback = 60) {
+    const tail = candles.slice(-lookback);
+    let n = 0;
+    for (const c of tail) {
+        const touched = c.low <= zone.high && c.high >= zone.low;
+        if (touched) n++;
+    }
+    return n;
+}
+
+/**
+ * Find latest 1H OB:
+ * - Bull OB: last bearish candle before bullish displacement that breaks recent highs (BOS heuristic)
+ * - Bear OB: last bullish candle before bearish displacement that breaks recent lows (BOS heuristic)
+ */
+function findOrderBlock1H(agg1h: Candle[], side: Side): OrderBlock | null {
+    if (!agg1h?.length || agg1h.length < 20) return null;
+
+    const DISP_PCT = 0.35; // heuristic
+    const LOOK_FWD = 4;
+    const BOS_LOOKBACK = 12;
+
+    for (let i = agg1h.length - 6; i >= 12; i--) {
+        const base = agg1h[i];
+
+        const okBase = side === "BULL" ? isBear(base) : isBull(base);
+        if (!okBase) continue;
+
+        const pre = agg1h.slice(Math.max(0, i - BOS_LOOKBACK), i);
+        const preHigh = Math.max(...pre.map((c) => c.high));
+        const preLow = Math.min(...pre.map((c) => c.low));
+
+        // check forward displacement
+        let bestClose = base.close;
+        let bestIdx = -1;
+        for (let j = i + 1; j <= Math.min(agg1h.length - 1, i + LOOK_FWD); j++) {
+            if (side === "BULL") {
+                if (agg1h[j].close > bestClose) {
+                    bestClose = agg1h[j].close;
+                    bestIdx = j;
+                }
+            } else {
+                if (agg1h[j].close < bestClose) {
+                    bestClose = agg1h[j].close;
+                    bestIdx = j;
+                }
+            }
+        }
+        if (bestIdx < 0) continue;
+
+        const disp = Math.abs(pctMove(base.close, bestClose));
+        if (disp < DISP_PCT) continue;
+
+        const bos = side === "BULL" ? bestClose > preHigh : bestClose < preLow;
+
+        // wick-based zone + body edge (tighter than full candle)
+        const zone =
+            side === "BULL"
+                ? clampZone({ low: base.low, high: bodyHigh(base) })
+                : clampZone({ low: bodyLow(base), high: base.high });
+
+        return {
+            tf: "1h",
+            side,
+            zone,
+            origin: { t: base.t, index: i },
+            strength: {
+                displacement_pct: Number(disp.toFixed(3)),
+                bos,
+                retest_count: countRetests(agg1h, zone, 80),
+            },
+            note:
+                side === "BULL"
+                    ? "1H Bullish OB (last red candle before bullish displacement)"
+                    : "1H Bearish OB (last green candle before bearish displacement)",
+        };
+    }
+    return null;
+}
+
+/** Touch OB on 5m (price overlaps zone) */
+function touchedZone5m(raw5m: Candle[], zone: { low: number; high: number }, lookback = 120) {
+    const tail = raw5m.slice(-lookback);
+    for (let k = tail.length - 1; k >= 0; k--) {
+        const c = tail[k];
+        const overlap = c.low <= zone.high && c.high >= zone.low;
+        if (overlap) return { ok: true, idx: raw5m.length - lookback + k, t: c.t };
+    }
+    return { ok: false, idx: null as any, t: null as any };
+}
+
+/**
+ * Sweep relative to OB
+ * - Bull setup: sweep DOWN through zone.low then close back >= zone.low (or inside)
+ * - Bear setup: sweep UP through zone.high then close back <= zone.high (or inside)
+ */
+function findSweepAtOB(raw5m: Candle[], zone: { low: number; high: number }, side: Side, lookback = 60) {
+    const tail = raw5m.slice(-lookback);
+    for (let k = tail.length - 1; k >= 0; k--) {
+        const c = tail[k];
+        if (side === "BULL") {
+            const swept = c.low < zone.low;
+            const closedBack = c.close >= zone.low;
+            if (swept && closedBack) {
+                const idx = raw5m.length - lookback + k;
+                return { seen: true, idx, t: c.t, price: c.low, side: "DOWN" as const };
+            }
+        } else {
+            const swept = c.high > zone.high;
+            const closedBack = c.close <= zone.high;
+            if (swept && closedBack) {
+                const idx = raw5m.length - lookback + k;
+                return { seen: true, idx, t: c.t, price: c.high, side: "UP" as const };
+            }
+        }
+    }
+    return { seen: false, idx: null as any, t: null as any, price: null as any, side: null as any };
+}
+
+/** Reclaim rule (default): close back in zone AND close beyond mid */
+function checkReclaim(c: Candle, zone: { low: number; high: number }, side: Side) {
+    const mid = midOf(zone);
+    const inZ = inZone(c.close, zone);
+    if (side === "BULL") return inZ && c.close > mid;
+    return inZ && c.close < mid;
+}
+
+/**
+ * CHOCH heuristic (simple & production-safe):
+ * - After sweep idx:
+ *   - define "structure" = max high (bull) / min low (bear) of N candles before sweep
+ *   - CHOCH occurs when close breaks above/below that structure
+ */
+function findChoch(raw5m: Candle[], sweepIdx: number, side: Side, preN = 10, postN = 36) {
+    if (sweepIdx == null || sweepIdx < 5)
+        return { ok: false, idx: null as any, t: null as any, dir: null as any, level: null as any };
+
+    const pre = raw5m.slice(Math.max(0, sweepIdx - preN), sweepIdx);
+    if (!pre.length)
+        return { ok: false, idx: null as any, t: null as any, dir: null as any, level: null as any };
+
+    const level = side === "BULL" ? Math.max(...pre.map((c) => c.high)) : Math.min(...pre.map((c) => c.low));
+
+    const post = raw5m.slice(sweepIdx + 1, Math.min(raw5m.length, sweepIdx + 1 + postN));
+    for (let i = 0; i < post.length; i++) {
+        const c = post[i];
+        const broke = side === "BULL" ? c.close > level : c.close < level;
+
+        if (broke) {
+            const idx = sweepIdx + 1 + i;
+            return {
+                ok: true,
+                idx,
+                t: c.t,
+                dir: side === "BULL" ? ("UP" as const) : ("DOWN" as const),
+                level,
+            };
+        }
+    }
+
+    return { ok: false, idx: null as any, t: null as any, dir: null as any, level };
+}
+
+/**
+ * Build 5m OB after CHOCH:
+ * - Bull: last bearish candle before the choch impulse candle
+ * - Bear: last bullish candle before the choch impulse candle
+ */
+function buildM5ObAfterChoch(raw5m: Candle[], chochIdx: number, side: Side): OrderBlock | null {
+    if (chochIdx == null || chochIdx < 3) return null;
+
+    const impulse = raw5m[chochIdx];
+    // search back a few candles for the "last opposite candle"
+    const back = raw5m.slice(Math.max(0, chochIdx - 8), chochIdx);
+    for (let i = back.length - 1; i >= 0; i--) {
+        const c = back[i];
+        if (side === "BULL" ? isBear(c) : isBull(c)) {
+            const idx = Math.max(0, chochIdx - 8) + i;
+
+            const zone =
+                side === "BULL"
+                    ? clampZone({ low: c.low, high: bodyHigh(c) })
+                    : clampZone({ low: bodyLow(c), high: c.high });
+
+            const disp = Math.abs(pctMove(c.close, impulse.close));
+            return {
+                tf: "5m",
+                side,
+                zone,
+                origin: { t: c.t, index: idx },
+                strength: {
+                    displacement_pct: Number(disp.toFixed(3)),
+                    bos: true,
+                    retest_count: countRetests(raw5m, zone, 120),
+                },
+                note: side === "BULL" ? "5m Bullish OB (post-CHOCH confirm block)" : "5m Bearish OB (post-CHOCH confirm block)",
+            };
+        }
+    }
+    return null;
+}
+
+/** Map decision -> bias */
+function biasFromDecision(decision: any): Bias {
+    const d = String(decision?.levels?.trend?.dir ?? "").toUpperCase();
+    const mm = String(decision?.market_mode ?? "").toUpperCase();
+    if (d === "UP" || mm.includes("TREND_UP") || mm.includes("LONG")) return "LONG";
+    if (d === "DOWN" || mm.includes("TREND_DOWN") || mm.includes("SHORT")) return "SHORT";
+    if (mm.includes("GRID") || mm.includes("RANGE")) return "RANGE";
+    return "UNKNOWN";
+}
+
+/** Main builder */
+function buildObGate(params: {
+    decision: any;
+    raw5m: Candle[];
+    agg1h: Candle[];
+    last5m: Candle | null;
+    last1h: Candle | null;
+}): OBGate {
+    const { decision, raw5m, agg1h, last5m } = params;
+
+    const bias_1h = biasFromDecision(decision);
+    const side: Side = bias_1h === "LONG" ? "BULL" : bias_1h === "SHORT" ? "BEAR" : "BULL";
+
+    const h1_ob = findOrderBlock1H(agg1h, side);
+    if (!h1_ob || !last5m) {
+        return {
+            bias_1h,
+            h1_ob: h1_ob ?? null,
+            m5_ob_confirm: null,
+            touch: { ok: false, why: !h1_ob ? "no_1h_ob_found" : "no_last5m" },
+            sweep: { seen: false, side: null, t: null, price: null, idx: null },
+            reclaim: { ok: false, rule: "close back in zone & beyond mid", t: null, idx: null },
+            choch: { ok: false, dir: null, t: null, idx: null },
+            entry: { status: "WAIT", entry_zone: null, sl: null, tp1: null, why: "waiting_for_h1_ob_or_price" },
+        };
+    }
+
+    const touch = touchedZone5m(raw5m, h1_ob.zone, 160);
+    const sweep = findSweepAtOB(raw5m, h1_ob.zone, side, 80);
+
+    // reclaim: search after sweep (or last candles if sweep not found)
+    let reclaimOk = false;
+    let reclaimIdx: number | null = null;
+    let reclaimT: number | null = null;
+
+    const reclaimRule = "close back in zone AND beyond mid";
+    if (sweep.seen && sweep.idx != null) {
+        const after = raw5m.slice(sweep.idx, Math.min(raw5m.length, sweep.idx + 24));
+        for (let i = 0; i < after.length; i++) {
+            if (checkReclaim(after[i], h1_ob.zone, side)) {
+                reclaimOk = true;
+                reclaimIdx = sweep.idx + i;
+                reclaimT = after[i].t;
+                break;
+            }
+        }
+    } else {
+        // if no sweep yet: allow reclaim only if already in zone strongly (mid rule)
+        reclaimOk = checkReclaim(last5m, h1_ob.zone, side);
+        reclaimIdx = reclaimOk ? raw5m.length - 1 : null;
+        reclaimT = reclaimOk ? last5m.t : null;
+    }
+
+    // choch requires sweep
+    const choch =
+        sweep.seen && sweep.idx != null
+            ? findChoch(raw5m, sweep.idx, side, 10, 48)
+            : { ok: false, idx: null as any, t: null as any, dir: null as any, level: null as any };
+
+    const m5_ob_confirm = choch.ok && choch.idx != null ? buildM5ObAfterChoch(raw5m, choch.idx, side) : null;
+
+    // SL / TP1
+    const z = m5_ob_confirm?.zone ?? null;
+    const sweepExtreme = sweep.price ?? null;
+
+    const zoneSpan = z ? Math.max(1, z.high - z.low) : 1;
+    const slBuffer = Math.max(5, zoneSpan * 0.25);
+
+    let sl: number | null = null;
+    if (bias_1h === "LONG") {
+        sl = sweepExtreme != null ? sweepExtreme - slBuffer : z ? z.low - slBuffer : null;
+    } else if (bias_1h === "SHORT") {
+        sl = sweepExtreme != null ? sweepExtreme + slBuffer : z ? z.high + slBuffer : null;
+    }
+
+    const tp1 =
+        (typeof decision?.levels?.trend?.targets?.t1 === "number" ? decision.levels.trend.targets.t1 : null) ??
+        (typeof decision?.levels?.smc?.swing_high_1h === "number" ? decision.levels.smc.swing_high_1h : null) ??
+        (typeof decision?.levels?.smc?.swing_low_1h === "number" ? decision.levels.smc.swing_low_1h : null) ??
+        null;
+
+    // READY conditions
+    const ready = touch.ok && sweep.seen && reclaimOk && choch.ok && !!m5_ob_confirm?.zone;
+
+    const invalid =
+        bias_1h === "LONG"
+            ? decision?.levels?.trend?.invalidation != null && last5m.close < decision.levels.trend.invalidation
+            : bias_1h === "SHORT"
+                ? decision?.levels?.trend?.invalidation != null && last5m.close > decision.levels.trend.invalidation
+                : false;
+
+    const entryStatus: OBGate["entry"]["status"] = invalid ? "INVALID" : ready ? "READY" : "WAIT";
+
+    const why = invalid
+        ? "invalidated_by_trend_invalidation"
+        : ready
+            ? "touch+sweep+reclaim+choch+5m_ob_ready"
+            : [
+                !touch.ok ? "wait_touch_1h_ob" : null,
+                !sweep.seen ? "wait_sweep_at_ob" : null,
+                !reclaimOk ? "wait_reclaim_midrule" : null,
+                !choch.ok ? "wait_choch" : null,
+                !m5_ob_confirm ? "wait_5m_ob" : null,
+            ]
+                .filter(Boolean)
+                .join(" | ");
+
+    return {
+        bias_1h,
+        h1_ob,
+        m5_ob_confirm,
+
+        touch: { ok: touch.ok, why: touch.ok ? "price_overlaps_1h_ob" : "not_touched_recently" },
+        sweep: { seen: sweep.seen, side: sweep.side ?? null, t: sweep.t ?? null, price: sweep.price ?? null, idx: sweep.idx ?? null },
+        reclaim: { ok: reclaimOk, rule: reclaimRule, t: reclaimT, idx: reclaimIdx },
+        choch: { ok: choch.ok, dir: choch.dir ?? null, t: choch.t ?? null, idx: choch.idx ?? null },
+
+        entry: {
+            status: entryStatus,
+            entry_zone: z ? { low: z.low, high: z.high } : null,
+            sl,
+            tp1,
+            why,
+        },
+    };
+}
+
+/** ===================================================================== */
+
+export async function GET() {
+    const runtime = await resolveRuntimeDir();
+    const dataDir = runtime.dir;
+
+    // ✅ เลือกที่เก็บ log หลัก (root dataDir)
+    const LOG_DIR = dataDir;
+
+    // ✅ ใช้ public ที่ root ของ Next project
+    const PUBLIC_DATA_DIR = runtime.mirrorDir;
+    const MIRROR_PLAN_STATUS_TO_PUBLIC = true;
+    const MIRROR_LOGS_TO_PUBLIC = true; // ✅ mirror .jsonl ไป public ด้วย
+    const MIRROR_PLAN_HISTORY_TO_PUBLIC = true;
+
+    await ensureDir(LOG_DIR);
+    await ensureDir(PUBLIC_DATA_DIR);
+
+    const PATHS = {
+        state: path.join(LOG_DIR, "plan_status_state.json"),
+        log: path.join(LOG_DIR, "plan_status_log.jsonl"),
+        history: path.join(LOG_DIR, "plan_history.jsonl"),
+        status: path.join(LOG_DIR, "plan_status.json"),
+
+        statusPublic: path.join(PUBLIC_DATA_DIR, "plan_status.json"),
+
+        // ✅ ใช้ชื่อมาตรฐาน: logPublic / historyPublic (อย่าใช้ planLogPublic ให้คนงง)
+        logPublic: path.join(PUBLIC_DATA_DIR, "plan_status_log.jsonl"),
+        historyPublic: path.join(PUBLIC_DATA_DIR, "plan_history.jsonl"),
+    };
+
+    async function mirrorFileIfMissingOrEmpty(src?: string, dst?: string) {
+        // ✅ guard กัน undefined (กันพังแบบที่คุณเจอ)
+        if (!src || !dst) return;
+
+        const srcSz = await fileSize(src);
+        if (!srcSz || srcSz <= 0) return;
+
+        const dstSz = await fileSize(dst);
+        if (dstSz && dstSz > 0) return;
+
+        await ensureDir(path.dirname(dst));
+        try {
+            await fs.copyFile(src, dst);
+        } catch {
+            // ignore lock/race
+        }
+    }
+
+    async function touchFile(p: string) {
+        try {
+            await ensureDir(path.dirname(p));
+            if (!(await fileExists(p))) await fs.writeFile(p, "", "utf8");
+        } catch {
+            // ignore
+        }
+    }
+
+    await touchFile(PATHS.log);
+    await touchFile(PATHS.history);
+    await touchFile(PATHS.logPublic);
+    await touchFile(PATHS.historyPublic);
+
+    // ✅ bootstrap: ถ้า public ว่าง แต่ root มีข้อมูล → copy 1 ครั้ง
+    if (MIRROR_LOGS_TO_PUBLIC) {
+        await mirrorFileIfMissingOrEmpty(PATHS.log, PATHS.logPublic);
+        await mirrorFileIfMissingOrEmpty(PATHS.history, PATHS.historyPublic);
+    }
+
     const volPath = path.join(dataDir, "volatility_baseline_cache.json");
     const klinesPath = path.join(dataDir, "klines.json");
 
     const derivHistPath = path.join(dataDir, "derivatives_history_cache.json");
     const oiHistPath = path.join(dataDir, "oi_history_cache.json"); // fallback
 
-    const logPath = path.join(dataDir, "plan_status_log.jsonl");
-    const statePath = path.join(dataDir, "plan_status_state.json");
+    const marketSnapshotRead = await readRuntimeJson<any>("market_snapshot.json", dataDir, PUBLIC_DATA_DIR);
+    const decisionRead = await readRuntimeJson<any>("latest_decision.json", dataDir, PUBLIC_DATA_DIR);
+    const sourceInfo = buildSourceInfo(dataDir, PUBLIC_DATA_DIR, [marketSnapshotRead, decisionRead]);
 
-    // --- Decision (fatal if missing) ---
-    const decisionRead = await readJsonSafe<any>(decisionPath);
-    if (!decisionRead.ok) {
-        return NextResponse.json({ ok: false, error: `latest_decision.json:${decisionRead.reason}`, dir: dataDir }, { status: 500 });
-    }
-    const decision = decisionRead.value;
+    const decision = decisionRead.ok ? decisionRead.value : fallbackDecision();
     const modeLock = normalizeModeLock(decision);
+
+    // ✅ declare once
+    const sym = "BTC-USDT";
+
+    // --- candles source (READ ONCE — ห้ามประกาศซ้ำ) ---
+    const storeRead = marketSnapshotRead.ok
+        ? { ok: true as const, value: marketSnapshotRead.value }
+        : (await fileExists(volPath)) ? await readJsonSafe<any>(volPath) : await readJsonSafe<any>(klinesPath);
+    const store = storeRead.ok ? storeRead.value : null;
+
+    const snapshot5m = normalizeSnapshotCandles(store?.market_data?.klines?.["5M"]?.candles);
+    const snapshot1h = normalizeSnapshotCandles(store?.market_data?.klines?.["1H"]?.candles);
+    const raw5m: Candle[] = snapshot5m.length ? snapshot5m : store?.symbols?.[sym]?.raw_5m?.series ?? [];
+    const agg1h: Candle[] = snapshot1h.length ? snapshot1h : store?.symbols?.[sym]?.agg_1h?.series ?? [];
+
+    const sourceUpdatedAt =
+        toMs(toNumber(store?.meta?.generated_at) ?? null) ??
+        toMs(toNumber(store?.symbols?.[sym]?.raw_5m?.last_sample_time) ?? null);
+
+    const last5m = last(raw5m);
+    const last1h = last(agg1h);
+
+    // ---------------- Liquidity Magnet (from candles we already have) ----------------
+    const planDir =
+        decision?.levels?.trend?.dir === "UP"
+            ? "UP"
+            : decision?.levels?.trend?.dir === "DOWN"
+                ? "DOWN"
+                : String(decision?.market_mode ?? "").toUpperCase().includes("RANGE")
+                    ? "RANGE"
+                    : null;
+
+    const magnet5m = computeLiquidityMagnetFromCandles("5m", raw5m, planDir, { lookBack: 300, bins: 50 });
+    const magnet1h = computeLiquidityMagnetFromCandles("1h", agg1h, planDir, { lookBack: 300, bins: 50 });
+
+    const magnetSummaryTH =
+        magnet5m.alignment === "DIVERGENCE" || magnet1h.alignment === "DIVERGENCE"
+            ? "⚠️ แม่เหล็กราคา ‘สวนแผน’ อย่างน้อย 1 TF → แนะนำ WAIT/ยืนยันก่อน"
+            : magnet5m.alignment === "ALIGNED" || magnet1h.alignment === "ALIGNED"
+                ? "✅ แม่เหล็กราคา ‘ไปทางเดียวกับแผน’ อย่างน้อย 1 TF"
+                : "⏸️ แม่เหล็กยังไม่ชัด → รอคอนเฟิร์ม / อย่าพึ่งเดา";
 
     // --- load previous state ---
     let prevStateObj: any = null;
     let prevState: string | null = null;
     let prevModeLock: "NO_TRADE" | "GRID" | "TREND" | null = null;
 
-    if (await fileExists(statePath)) {
-        const stRead = await readJsonSafe<any>(statePath);
+    if (await fileExists(PATHS.state)) {
+        const stRead = await readJsonSafe<any>(PATHS.state);
         if (stRead.ok) {
             prevStateObj = stRead.value ?? null;
             prevState = stRead.value?.plan_state ?? null;
@@ -567,18 +1370,7 @@ export async function GET() {
     }
     const modeChanged = prevModeLock !== null && prevModeLock !== modeLock;
 
-    // --- candles source ---
-    const storeRead = (await fileExists(volPath)) ? await readJsonSafe<any>(volPath) : await readJsonSafe<any>(klinesPath);
-    const store = storeRead.ok ? storeRead.value : null;
-
-    const sym = "BTC-USDT";
-    const raw5m: Candle[] = store?.symbols?.[sym]?.raw_5m?.series ?? [];
-    const agg1h: Candle[] = store?.symbols?.[sym]?.agg_1h?.series ?? [];
-    const sourceUpdatedAt = toMs(toNumber(store?.symbols?.[sym]?.raw_5m?.last_sample_time) ?? null);
-
-    const last5m = last(raw5m);
-    const last1h = last(agg1h);
-
+    // -------- GRID sweep pipeline base --------
     const gridUpper = decision?.parameters_for_grid_or_trend?.grid_upper ?? 88380;
     const gridLower = decision?.parameters_for_grid_or_trend?.grid_lower ?? 86800;
 
@@ -682,14 +1474,14 @@ export async function GET() {
         file: oiFallbackUsed ? "oi_history_cache.json" : derivPrimaryFile,
         keypath: oiFallbackUsed ? "symbols[BTC-USDT].samples/*" : "symbols[BTC-USDT].openInterest/*",
         updated_at: derivUpdatedAtMs,
-        freshness: derivFresh,
+        freshness: cloneFresh(derivFresh), // ✅ clone
     };
 
     const fundingSource: SeriesSource = {
         file: derivPrimaryFile,
         keypath: "symbols[BTC-USDT].funding/*",
         updated_at: derivUpdatedAtMs,
-        freshness: derivFresh,
+        freshness: cloneFresh(derivFresh), // ✅ clone
     };
 
     const oiMeta = buildSeriesMeta({
@@ -708,9 +1500,7 @@ export async function GET() {
         minPointsForOK: 3,
     });
 
-    const oiAtSweep = sweep?.event?.t
-        ? nearestValueAt(derivBundle.oi5, sweep.event.t) ?? nearestValueAt(derivBundle.oi15, sweep.event.t)
-        : null;
+    const oiAtSweep = sweep?.event?.t ? nearestValueAt(derivBundle.oi5, sweep.event.t) ?? nearestValueAt(derivBundle.oi15, sweep.event.t) : null;
 
     // reason override แบบ “มาตรฐาน” เพิ่มเติม (ถ้าอ่านไฟล์พัง)
     const oiReasonExtra = !oiMeta.reason ? (oiFallbackUsed && oiFallbackReason ? `fallback_file:${oiFallbackReason}` : null) : null;
@@ -772,6 +1562,262 @@ export async function GET() {
         if (b > a && c > b) return { ok: true, why: `OI เพิ่ม 2 จุดติด: ${fmt(a, 0)} → ${fmt(b, 0)} → ${fmt(c, 0)}` };
         return { ok: false, why: `OI ยังไม่เพิ่มต่อเนื่อง: ${fmt(a, 0)} → ${fmt(b, 0)} → ${fmt(c, 0)}` };
     }
+    // ---------------- NEW: buildTrendDownPlanStatus ----------------
+    function buildTrendDownPlanStatus(params: {
+        decision: any;
+        raw5m: Candle[];
+        last5m: Candle | null;
+        last1h: Candle | null;
+        oi5: Point[];
+        prevStateObj: any;
+    }) {
+        const { decision, raw5m, last5m, last1h, oi5, prevStateObj } = params;
+
+        // --- read previous TREND state (mirror UP) ---
+        const prevConfirmTs =
+            clampNum(prevStateObj?.plan_status_state?.state?.confirm_ts) ??
+            clampNum(prevStateObj?.state?.confirm_ts);
+
+        const entry1Done = Boolean(
+            prevStateObj?.plan_status_state?.state?.entry_1_done ?? prevStateObj?.state?.entry_1_done
+        );
+        const entry2Done = Boolean(
+            prevStateObj?.plan_status_state?.state?.entry_2_done ?? prevStateObj?.state?.entry_2_done
+        );
+
+        // ---------- helpers ----------
+        // const clampNum = (x: any): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
+
+        function pivotHighs(c: Candle[], left = 2, right = 2) {
+            const out: { idx: number; high: number }[] = [];
+            for (let i = left; i < c.length - right; i++) {
+                const h = c[i]?.high;
+                if (typeof h !== "number") continue;
+                let ok = true;
+                for (let j = i - left; j <= i + right; j++) {
+                    if (j === i) continue;
+                    const hj = c[j]?.high;
+                    if (typeof hj === "number" && hj >= h) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) out.push({ idx: i, high: h });
+            }
+            return out;
+        }
+
+        // ---------- decision parsing (mirror UP but inverted) ----------
+        const pb = decision?.levels?.trend?.pullback_zone;
+        const pbLo = Array.isArray(pb) ? clampNum(pb[0]) : null;
+        const pbHi = Array.isArray(pb) ? clampNum(pb[1]) : null;
+
+        const zoneLow = pbLo !== null && pbHi !== null ? Math.min(pbLo, pbHi) : null;
+        const zoneHigh = pbLo !== null && pbHi !== null ? Math.max(pbLo, pbHi) : null;
+
+        const confirmLine =
+            clampNum(decision?.parameters_for_grid_or_trend?.trend_entry) ??
+            clampNum(decision?.levels?.trend?.confirm_line) ??
+            (zoneLow !== null && zoneHigh !== null ? (zoneLow + zoneHigh) / 2 : null);
+
+        const invalidation = clampNum(decision?.levels?.trend?.invalidation) ?? clampNum(decision?.parameters_for_grid_or_trend?.trend_sl);
+        const tp1 = clampNum(decision?.levels?.trend?.targets?.t1) ?? clampNum(decision?.parameters_for_grid_or_trend?.trend_tp);
+
+        const lastClose5m = last5m?.close ?? null;
+        const lastHigh5m = last5m?.high ?? null;
+        const lastLow5m = last5m?.low ?? null;
+
+        const inZone =
+            typeof lastClose5m === "number" &&
+            typeof zoneLow === "number" &&
+            typeof zoneHigh === "number" &&
+            lastClose5m >= zoneLow &&
+            lastClose5m <= zoneHigh;
+
+        const outZone =
+            !inZone && typeof lastClose5m === "number" && typeof zoneLow === "number" && typeof zoneHigh === "number";
+
+        // ✅ DOWN confirm = 5m close BELOW confirmLine
+        const confirm5m =
+            typeof lastClose5m === "number" && typeof confirmLine === "number" ? lastClose5m < confirmLine : false;
+        // --- latch confirm_ts once (first time) ---
+        let confirmTs = prevConfirmTs ?? null;
+        if (!confirmTs && inZone && confirm5m && last5m?.t != null) {
+            confirmTs = last5m.t;
+        }
+
+        // ✅ LH confirm (simple pivot): last pivot high < prev pivot high
+        // ✅ LH must be evaluated AFTER confirm_ts
+        const afterConfirm5m =
+            confirmTs != null
+                ? raw5m.filter((c) => (toMs(c.t) ?? c.t) >= confirmTs!)
+                : [];
+
+        const pivH = pivotHighs(afterConfirm5m.length ? afterConfirm5m : raw5m, 2, 2);
+        const last2 = pivH.length >= 2 ? pivH.slice(-2) : null;
+        const lhOk = !!last2 && last2[1].high < last2[0].high;
+
+        // ✅ OI rule (mirror UP): ต้อง “เริ่มลด” หลัง confirm
+        // ✅ OI must decrease AFTER confirm_ts (need ≥ 3 points)
+        const oiAfter =
+            confirmTs != null
+                ? (oi5 ?? []).filter((p) => (toMs(p.t) ?? p.t) >= confirmTs!).slice(-3)
+                : [];
+
+        const oiOk =
+            oiAfter.length >= 3
+                ? oiAfter[2].v < oiAfter[1].v && oiAfter[1].v < oiAfter[0].v
+                : false;
+
+        // ✅ invalidation for DOWN: price > invalidation = แผนพัง
+        const invalidated =
+            typeof lastClose5m === "number" && typeof invalidation === "number" ? lastClose5m > invalidation : false;
+
+        // ✅ TP1 hit for DOWN: low <= tp1
+        const tp1Hit =
+            typeof tp1 === "number" && typeof lastLow5m === "number" ? lastLow5m <= tp1 : false;
+
+        // ---------- state machine (keep naming style close to UP) ----------
+        let code = "TREND_DOWN_WAIT_ZONE";
+        let headline = "📉 TREND_DOWN — รอราคาเด้งเข้าโซนก่อนค่อย Short";
+        let directionHint = "PULLBACK_THEN_CONFIRM";
+
+        if (invalidated) {
+            code = "TREND_DOWN_INVALIDATED";
+            headline = "🛑 TREND_DOWN invalidated — ห้ามฝืน Short";
+        } else if (!inZone) {
+            code = "TREND_DOWN_WAIT_ZONE";
+            headline = `📉 รอเด้งเข้าโซน ${zoneLow?.toFixed(2) ?? "—"}–${zoneHigh?.toFixed(2) ?? "—"} (ห้ามไล่)`;
+        } else if (!confirm5m) {
+            code = "TREND_DOWN_WAIT_5M_CONFIRM";
+            headline = `📉 เข้าโซนแล้ว — รอ 5m ปิดต่ำกว่า ${confirmLine?.toFixed(2) ?? "—"}`;
+        } else if (!lhOk) {
+            code = "TREND_DOWN_WAIT_LH";
+            headline = "📉 5m confirm แล้ว — รอทำ Lower High (LH) ให้ชัดก่อนเข้า";
+        } else if (!oiOk) {
+            code = "TREND_DOWN_WAIT_OI";
+            headline = "📉 ผ่าน LH แล้ว — รอ OI เริ่มลด (กันโดน squeeze)";
+        } else if (tp1Hit) {
+            code = "TREND_DOWN_TP1_HIT";
+            headline = "🎯 แตะ TP1 แล้ว — ทยอยปิด + เลื่อน SL";
+        } else {
+            code = "TREND_DOWN_READY";
+            headline = "✅ พร้อม Short (CONFIRM) — เข้าแบบไม่ไล่";
+        }
+
+        // ---------- steps (formatเดียวกับ UP ของคุณ) ----------
+        type StepStatus = "WAITING" | "PASS" | "WARN" | "FAIL" | "DONE";
+
+        const steps: any[] = [];
+
+        steps.push({
+            id: "trend_wait_zone",
+            title: `รอราคาเข้าโซน ${zoneLow?.toFixed(2) ?? "—"}–${zoneHigh?.toFixed(2) ?? "—"}`,
+            status: inZone ? "PASS" : "WAITING",
+            why: inZone ? "เข้าโซนแล้ว" : `ราคา ${lastClose5m ?? "—"} ยังไม่เข้าโซน`,
+            data: { lastClose5m, zoneLow, zoneHigh },
+        });
+
+        steps.push({
+            id: "trend_5m_confirm_close",
+            title: `รอ 5m ปิดต่ำกว่า ${confirmLine?.toFixed(2) ?? "—"}`,
+            status: confirm5m ? "PASS" : inZone ? "WAITING" : "WAITING",
+            why: confirm5m ? `5m close=${lastClose5m} < ${confirmLine}` : `รอ close ต่ำกว่า confirm_line`,
+            data: { confirmLine },
+        });
+
+        steps.push({
+            id: "trend_5m_lh",
+            title: "ต้องเห็น 5m ทำ Lower High (LH)",
+            status: confirm5m ? (lhOk ? "PASS" : "WAITING") : "WAITING",
+            why: lhOk ? "LH confirmed: pivot high ล่าสุดต่ำกว่าก่อนหน้า" : "รอ LH",
+        });
+
+        steps.push({
+            id: "trend_oi_confirm",
+            title: "เช็ก OI: หลัง confirm ต้องเริ่มลด",
+            status: confirm5m ? (oiOk ? "PASS" : "WAITING") : "WAITING",
+            why: oiOk ? "OI ลดต่อเนื่อง 2 จุด" : "OI ยังไม่ลดต่อเนื่อง",
+        });
+
+        steps.push({
+            id: "trend_entry_1",
+            title: "เข้าไม้ 1 (Probe เล็ก)",
+            status: entry1Done
+                ? "DONE"
+                : code === "TREND_DOWN_READY" || code === "TREND_DOWN_TP1_HIT"
+                    ? "PASS"
+                    : "WAITING",
+            why: entry1Done
+                ? "ทำเครื่องหมายว่าเข้าไม้ 1 แล้ว"
+                : code === "TREND_DOWN_READY"
+                    ? "เงื่อนไขพร้อม — เข้าไม้ 1 ได้"
+                    : "ยังไม่ครบเงื่อนไข",
+            data: { entry1Done, canEnter1: code === "TREND_DOWN_READY" },
+        });
+
+
+        steps.push({
+            id: "trend_hard_sl",
+            title: `Hard SL: สูงกว่า ${invalidation?.toFixed(2) ?? "—"} = แผนพัง`,
+            status: invalidated ? "FAIL" : "PASS",
+            why: invalidated ? "ทะลุ invalidation" : "ยังไม่ถึงจุดแผนพัง",
+        });
+
+        steps.push({
+            id: "trend_tp1",
+            title: `TP1 = ${tp1?.toFixed(2) ?? "—"} (แตะแล้วทยอยปิด + เลื่อน SL)`,
+            status: tp1Hit ? "PASS" : "WAITING",
+            why: tp1Hit ? `แตะ TP1 แล้ว (5m low=${lastLow5m})` : "ยังไม่แตะ TP1",
+        });
+
+        return {
+            generated_at: new Date().toISOString(),
+            age_sec: 0,
+            price: { close_5m: lastClose5m ?? null, close_1h: last1h?.close ?? null },
+            plan: {
+                market_regime: decision?.market_regime ?? decision?.regime ?? "TREND",
+                market_mode: decision?.market_mode ?? "TREND_DOWN",
+                trend: {
+                    pullback_zone: zoneLow !== null && zoneHigh !== null ? { low: zoneLow, high: zoneHigh } : null,
+                    confirm_line: confirmLine,
+                    invalidation,
+                    tp1,
+                    swing_high_1h: clampNum(decision?.levels?.smc?.swing_high_1h),
+                    swing_low_1h: clampNum(decision?.levels?.smc?.swing_low_1h),
+                    eq_1h: clampNum(decision?.levels?.smc?.eq_1h),
+                    liquidity_note: decision?.levels?.smc?.liquidity_note ?? null,
+                },
+                risk_warning: decision?.risk_warning ?? [],
+                confidence: clampNum(decision?.confidence) ?? null,
+            },
+            state: {
+                code,
+                headline,
+                direction_hint: directionHint,
+                confidence: clampNum(decision?.confidence) ?? null,
+                step_set: "TREND_DOWN_STEPSET",
+                confirm_ts: confirmTs,
+                entry_1_done: entry1Done,
+                entry_2_done: entry2Done,
+            },
+
+            signals: {
+                trend_in_zone: inZone ? "IN_ZONE" : outZone ? "OUT_ZONE" : "UNKNOWN",
+                trend_confirm_5m: confirm5m ? "CONFIRMED" : "WAIT",
+                trend_lh_5m: lhOk ? "LH_OK" : "WAIT",
+                trend_oi: oiOk ? "OK" : "WAIT",
+                trend_tp1: tp1Hit ? "HIT" : "WAIT",
+                trend_invalidation: invalidated ? "INVALID" : "OK",
+            },
+            next_actions: [
+                !inZone ? "รอราคาเด้งเข้าโซนก่อน (ห้ามไล่)" : "เข้าโซนแล้ว → รอ 5m ปิดต่ำกว่า confirm_line แล้วค่อยเข้า",
+            ],
+            steps,
+            event_log: [],
+        };
+    }
+
 
     function buildTrendUpPlanStatus(params: { decision: any; raw5m: Candle[]; last5m: Candle | null; last1h: Candle | null; oi5: Point[]; prevStateObj: any }) {
         const { decision, raw5m, last5m, last1h, oi5, prevStateObj } = params;
@@ -784,7 +1830,6 @@ export async function GET() {
         const confirmLine = clampNum(decision?.parameters_for_grid_or_trend?.trend_entry) ?? clampNum(zoneHigh);
 
         const invalidation = clampNum(trendL?.invalidation) ?? clampNum(decision?.parameters_for_grid_or_trend?.trend_sl);
-
         const tp1 = clampNum(trendL?.targets?.t1) ?? clampNum(decision?.parameters_for_grid_or_trend?.trend_tp);
 
         const lastClose5m = last5m?.close ?? null;
@@ -845,12 +1890,12 @@ export async function GET() {
             };
         }
 
-        const inZone = lastClose5m! >= zoneLow! && lastClose5m! <= zoneHigh!;
+        const inZoneNow = lastClose5m! >= zoneLow! && lastClose5m! <= zoneHigh!;
         steps.push({
             id: "trend_wait_zone",
             title: `รอราคาเข้าโซน ${fmt(zoneLow, 0)}–${fmt(zoneHigh, 0)}`,
-            status: inZone ? "PASS" : "WAITING",
-            why: inZone ? `ราคา ${fmt(lastClose5m, 0)} อยู่ในโซนแล้ว` : `ราคา ${fmt(lastClose5m, 0)} ยังไม่เข้าโซน`,
+            status: inZoneNow ? "PASS" : "WAITING",
+            why: inZoneNow ? `ราคา ${fmt(lastClose5m, 0)} อยู่ในโซนแล้ว` : `ราคา ${fmt(lastClose5m, 0)} ยังไม่เข้าโซน`,
             data: { lastClose5m, zoneLow, zoneHigh },
         });
 
@@ -858,7 +1903,7 @@ export async function GET() {
         let confirmTs = prevConfirmTs ?? null;
 
         // ล็อก confirm เมื่อ "เข้าโซน" และ "5m ปิดเหนือ confirm"
-        if (!confirmTs && inZone && closeAbove && lastTime5m != null) {
+        if (!confirmTs && inZoneNow && closeAbove && lastTime5m != null) {
             confirmTs = lastTime5m;
         }
 
@@ -879,12 +1924,7 @@ export async function GET() {
             hlOk = hl.ok;
             hlWhy = hl.why;
         }
-        steps.push({
-            id: "trend_5m_hl",
-            title: "ต้องเห็น 5m ทำ Higher Low (HL)",
-            status: hlOk ? "PASS" : "WAITING",
-            why: hlWhy,
-        });
+        steps.push({ id: "trend_5m_hl", title: "ต้องเห็น 5m ทำ Higher Low (HL)", status: hlOk ? "PASS" : "WAITING", why: hlWhy });
 
         // OI
         let oiOk = false;
@@ -894,18 +1934,13 @@ export async function GET() {
             oiOk = r.ok;
             oiWhy = r.why;
         }
-        steps.push({
-            id: "trend_oi_confirm",
-            title: "เช็ก OI: หลัง confirm ต้องเริ่มเพิ่ม",
-            status: oiOk ? "PASS" : "WAITING",
-            why: oiWhy,
-        });
+        steps.push({ id: "trend_oi_confirm", title: "เช็ก OI: หลัง confirm ต้องเริ่มเพิ่ม", status: oiOk ? "PASS" : "WAITING", why: oiWhy });
 
-        const canEnter1 = inZone && closeAbove && hlOk && oiOk;
+        const canEnter1 = inZoneNow && closeAbove && hlOk && oiOk;
         steps.push({
             id: "trend_entry_1",
             title: "เข้าไม้ 1 (Probe เล็ก)",
-            status: entry1Done ? "DONE" : canEnter1 ? "WAITING" : "WAITING",
+            status: entry1Done ? "DONE" : canEnter1 ? "PASS" : "WAITING",
             why: entry1Done ? "ทำเครื่องหมายว่าเข้าไม้ 1 แล้ว" : canEnter1 ? "เงื่อนไขพร้อม — ให้เข้าไม้ 1" : "ยังไม่ครบเงื่อนไข",
             data: { entry1Done, canEnter1 },
         });
@@ -948,18 +1983,16 @@ export async function GET() {
         } else if (confirmTs != null && closeAbove) {
             code = "TREND_CONFIRMED_WAIT_HL_OI";
             headline = "ผ่าน 5m confirm แล้ว — รอ HL + OI";
-        } else if (inZone) {
+        } else if (inZoneNow) {
             code = "TREND_IN_ZONE_WAIT_CONFIRM";
             headline = "ราคาเข้าโซนแล้ว — รอ 5m ปิดเหนือโซน";
         }
 
         // next_actions
         if (hardFail) {
-            next_actions.push("หยุดขาดทุนตามแผน (Hard SL)");
-            next_actions.push("รอ snapshot ใหม่เพื่อ re-evaluate");
-        } else if (!inZone) {
-            next_actions.push(`รอราคาเข้าพื้นที่ซื้อ ${fmt(zoneLow, 0)}–${fmt(zoneHigh, 0)}`);
-            next_actions.push("ห้าม FOMO ไล่ราคา");
+            next_actions.push("หยุดขาดทุนตามแผน (Hard SL)", "รอ snapshot ใหม่เพื่อ re-evaluate");
+        } else if (!inZoneNow) {
+            next_actions.push(`รอราคาเข้าพื้นที่ซื้อ ${fmt(zoneLow, 0)}–${fmt(zoneHigh, 0)}`, "ห้าม FOMO ไล่ราคา");
         } else if (!closeAbove) {
             next_actions.push(`รอ 5m ปิดเหนือ ${fmt(confirmLine, 0)} ก่อน`);
         } else if (!hlOk) {
@@ -1007,7 +2040,7 @@ export async function GET() {
                 entry_2_done: entry2Done,
             },
             signals: {
-                trend_in_zone: inZone ? "IN_ZONE" : "OUT_ZONE",
+                trend_in_zone: inZoneNow ? "IN_ZONE" : "OUT_ZONE",
                 trend_confirm_5m: closeAbove ? "CONFIRMED" : "WAIT",
                 trend_hl_5m: hlOk ? "HL_OK" : "WAIT",
                 trend_oi: oiOk ? "OK" : "WAIT",
@@ -1021,15 +2054,12 @@ export async function GET() {
     }
 
     // ---------------- plan_status_state (engine steps) ----------------
-
     type EngineStepStatus = "WAITING" | "PASS" | "WARN" | "FAIL" | "DONE";
 
     type PlanStatusState = {
         generated_at: string;
         age_sec: number | null;
-
         price: { close_5m: number | null; close_1h: number | null };
-
         plan: {
             market_regime: string;
             market_mode: string;
@@ -1037,22 +2067,8 @@ export async function GET() {
             grid?: { lower: number; upper: number; count: number | null };
             [k: string]: any;
         };
-
-        state: {
-            code: string;
-            headline: string;
-            direction_hint: string;
-            confidence: number | null;
-            [k: string]: any;
-        };
-
-        signals?: {
-            sweep_5m?: string;
-            rejection_15m?: string;
-            breakout_1h?: string;
-            [k: string]: any;
-        };
-
+        state: { code: string; headline: string; direction_hint: string; confidence: number | null;[k: string]: any };
+        signals?: { sweep_5m?: string; rejection_15m?: string; breakout_1h?: string;[k: string]: any };
         next_actions: string[];
         steps: Array<{ id: string; title: string; status: EngineStepStatus; why?: string; data?: any }>;
         [k: string]: any;
@@ -1078,7 +2094,6 @@ export async function GET() {
         if (s.includes("FAKEOUT_1H_CONFIRMED")) return "PASS";
         if (s.includes("BREAKOUT_1H_CONFIRMED")) return "FAIL";
         if (s.includes("NO_1H_DATA")) return "WAITING";
-        if (s.includes("UNDECIDED")) return "WARN";
         return "WARN";
     }
 
@@ -1110,10 +2125,7 @@ export async function GET() {
         }
 
         if (s.includes("WAIT_1H_CONFIRM")) {
-            return [
-                "รอ 1H ปิดยืนยันว่าเป็น fakeout (กลับเข้า range) หรือ breakout (ยืนเหนือโซนบน)",
-                "ถ้า 1H ยืนเหนือ → ลด/พัก grid และให้ agent สรุปใหม่",
-            ];
+            return ["รอ 1H ปิดยืนยันว่าเป็น fakeout (กลับเข้า range) หรือ breakout (ยืนเหนือโซนบน)", "ถ้า 1H ยืนเหนือ → ลด/พัก grid และให้ agent สรุปใหม่"];
         }
 
         if (s.includes("BREAKOUT_CONFIRMED") || s.includes("SWITCH_MODE")) {
@@ -1132,26 +2144,32 @@ export async function GET() {
     }
 
     const generatedAtISO = new Date().toISOString();
-    const ageSec = sourceUpdatedAt ? Math.max(0, Math.floor((Date.now() - (toMs(sourceUpdatedAt) ?? Date.now())) / 1000)) : null;
+    const ageSec =
+        sourceUpdatedAt != null
+            ? Math.max(0, Math.floor((Date.now() - (toMs(sourceUpdatedAt) ?? Date.now())) / 1000))
+            : null;
 
-    const decisionMode = String(decision?.market_mode ?? "").toUpperCase();
+    const decisionMode = String(decision?.market_mode ?? decision?.regime ?? "").toUpperCase();
 
     // ✅ ใช้ตัวเดียวทั้งไฟล์ ห้ามประกาศซ้ำ
     let planStatusState: PlanStatusState;
 
-    if (decisionMode === "TREND_UP" || modeLock === "TREND") {
-        planStatusState = buildTrendUpPlanStatus({
-            decision,
-            raw5m,
-            last5m,
-            last1h,
-            oi5: derivBundle.oi5,
-            prevStateObj,
-        }) as PlanStatusState;
+    // ✅ TREND step set: เลือก UP/DOWN ตาม decision จริง (ไม่ใช่ตาม mode_lock อย่างเดียว)
+    const trendDir = String(decision?.levels?.trend?.dir ?? "").toUpperCase();
+    const mm = String(decision?.market_mode ?? "").toUpperCase();
 
-        planState = String(planStatusState?.state?.code ?? planState);
-        explainTH = String(planStatusState?.state?.headline ?? explainTH);
-    } else {
+    const isTrendDecision = mm.includes("TREND");
+    const isDown = trendDir === "DOWN" || mm.includes("TREND_DOWN") || mm.includes("SHORT");
+    const isUp = trendDir === "UP" || mm.includes("TREND_UP") || mm.includes("LONG");
+
+    if (modeLock === "TREND" || isTrendDecision) {
+        planStatusState = isDown
+            ? buildTrendDownPlanStatus({ decision, raw5m, last5m, last1h, oi5: derivBundle.oi5, prevStateObj })
+            : buildTrendUpPlanStatus({ decision, raw5m, last5m, last1h, oi5: derivBundle.oi5, prevStateObj });
+    }
+
+
+    else {
         let planSteps: PlanStatusState["steps"] = [];
 
         if (modeLock === "NO_TRADE") {
@@ -1170,7 +2188,11 @@ export async function GET() {
         }
 
         const stepSetForGrid =
-            modeLock === "NO_TRADE" ? "MODE_LOCKED_NO_TRADE" : planState === "BREAKOUT_CONFIRMED_SWITCH_MODE" ? "BREAKOUT_SWITCH_MODE" : "GRID_SWEEP_PIPELINE";
+            modeLock === "NO_TRADE"
+                ? "MODE_LOCKED_NO_TRADE"
+                : planState === "BREAKOUT_CONFIRMED_SWITCH_MODE"
+                    ? "BREAKOUT_SWITCH_MODE"
+                    : "GRID_SWEEP_PIPELINE";
 
         planStatusState = {
             generated_at: generatedAtISO,
@@ -1178,8 +2200,9 @@ export async function GET() {
             price: { close_5m: last5m?.close ?? null, close_1h: last1h?.close ?? null },
             plan: {
                 market_regime: decision?.market_regime ?? decision?.regime ?? "UNKNOWN",
-                market_mode: decision?.market_mode ?? "UNKNOWN",
+                market_mode: decision?.market_mode ?? decision?.market_mode ?? "UNKNOWN",
                 sweep_zone_up: { low: sweepZoneLow, high: sweepZoneHigh },
+                sweep_target: { side: "UP", zone: [sweepZoneLow, sweepZoneHigh] },
                 grid: { lower: gridLower, upper: gridUpper, count: decision?.parameters_for_grid_or_trend?.grid_count ?? null },
             },
             state: {
@@ -1195,82 +2218,538 @@ export async function GET() {
         };
     }
 
-    // ---------------- Persist + Logs ----------------
-    const shouldWriteState = prevState !== planState || prevModeLock !== modeLock;
+    // ---------------- OB Gate (1H -> 5m) + OB Trade (Mode A) ----------------
 
-    const nextStateObj = {
-        ...(prevStateObj ?? {}),
-        plan_state: planState,
-        decision_mode_lock: modeLock,
-        t: Date.now(),
-        ...(planStatusState ? { plan_status_state: planStatusState } : {}),
-    };
+    // ✅ helper: append plan log (PATHS.log) + mirror to public (optional)
+    async function appendPlanLog(obj: any) {
+        await appendJsonl(PATHS.log, obj);
+        if (MIRROR_LOGS_TO_PUBLIC) await appendJsonl(PATHS.logPublic, obj);
+    }
 
-    if (shouldWriteState) {
-        await fs.writeFile(statePath, JSON.stringify(nextStateObj, null, 2), "utf8");
+    async function appendHistory(obj: any) {
+        await appendJsonl(PATHS.history, obj);
+        if (MIRROR_PLAN_HISTORY_TO_PUBLIC) await appendJsonl(PATHS.historyPublic, obj);
+    }
 
-        if (prevModeLock !== modeLock) {
-            await appendJsonl(logPath, {
-                t: Date.now(),
+    async function appendBothLogs(obj: any) {
+        await appendHistory(obj);
+        await appendPlanLog(obj);
+    }
+
+    // type-guard กัน state เก่า (legacy) ที่ shape ไม่ตรง OBTrade
+    function isOBTrade(x: any): x is OBTrade {
+        return !!x && typeof x === "object" && typeof x.active === "boolean" && "trade_id" in x;
+    }
+    function isTrendTrade(x: any): x is TrendTrade {
+        return !!x && typeof x === "object" && typeof x.active === "boolean" && "trade_id" in x && "side" in x;
+    }
+
+    const prevObTrade: OBTrade | null = isOBTrade(prevStateObj?.ob_trade) ? (prevStateObj.ob_trade as OBTrade) : null;
+    const prevTrendTrade: TrendTrade | null = isTrendTrade(prevStateObj?.trend_trade) ? (prevStateObj.trend_trade as TrendTrade) : null;
+
+    // ✅ ประกาศ ob_trade แค่ครั้งเดียว
+    let ob_trade: OBTrade =
+        prevObTrade ?? {
+            active: false,
+            trade_id: null,
+            symbol: sym,
+            bias: null,
+            opened_t: null,
+            closed_t: null,
+            entry_price: null,
+            entry_zone: null,
+            sl: null,
+            tp1: null,
+            result: null,
+            exit_price: null,
+            r_multiple: null,
+            open_reason: null,
+            close_reason: null,
+        };
+
+    // ✅ trend_trade (paper trade) for winrate
+    let trend_trade: TrendTrade =
+        prevTrendTrade ?? {
+            active: false,
+            trade_id: null,
+            symbol: sym,
+            side: null,
+            opened_t: null,
+            closed_t: null,
+            entry_price: null,
+            sl: null,
+            tp1: null,
+            result: null,
+            exit_price: null,
+            r_multiple: null,
+            open_reason: null,
+            close_reason: null,
+        };
+
+    const ob_gate = buildObGate({ decision, raw5m, agg1h, last5m, last1h });
+
+    const prevEntryStatus = norm(prevStateObj?.ob_gate?.entry?.status);
+    const curEntryStatus = norm(ob_gate?.entry?.status);
+
+    // Edge detect: เปลี่ยนเป็น READY ในรอบนี้เท่านั้น
+    const becameReady = prevEntryStatus !== "READY" && curEntryStatus === "READY";
+
+    // --- OPEN trade when OB becomes READY (Mode A) ---
+    if (becameReady) {
+        const entry = ob_gate?.entry ?? null;
+
+        // กันการเปิดซ้ำ
+        if (!ob_trade.active) {
+            const bias = ob_gate?.bias_1h === "LONG" ? "LONG" : ob_gate?.bias_1h === "SHORT" ? "SHORT" : null;
+
+            // Mode A: entry_price ใช้ close ตอน READY (ถ้าไม่มี fallback เป็น mid zone)
+            const entryZone = entry?.entry_zone ?? null;
+            const entryPrice = last5m?.close ?? midZone(entryZone);
+
+            ob_trade = {
+                ...ob_trade,
+                active: true,
+                trade_id: makeTradeId("OB"),
                 symbol: sym,
-                type: "MODE_SWITCH",
-                from: prevState,
-                to: planState,
-                from_mode: prevModeLock,
-                to_mode: modeLock,
-                to_plan_state: planState,
-                price: { close_5m: last5m?.close ?? null },
-                deriv: {
-                    oi5_dir: oiMeta.trend_5m.dir,
-                    oi5_pct: Number(oiMeta.trend_5m.pct.toFixed(3)),
-                    fund5_dir: fundingMeta.trend_5m.dir,
-                    fund5_pct: Number(fundingMeta.trend_5m.pct.toFixed(3)),
-                    crowd: crowdTrap.crowd,
-                    trapped: crowdTrap.trapped,
-                },
-                explain_th: `เปลี่ยนโหมด ${String(prevModeLock ?? "—")} → ${String(modeLock)}`,
-            });
-        }
+                bias,
+                opened_t: Date.now(),
+                closed_t: null,
+                entry_price: entryPrice ?? null,
+                entry_zone: entryZone,
+                sl: entry?.sl ?? null,
+                tp1: entry?.tp1 ?? null,
+                result: null,
+                exit_price: null,
+                r_multiple: null,
+                open_reason: "MODE_A_OPEN_ON_READY",
+                close_reason: null,
+            };
 
-        if (prevState !== planState) {
-            await appendJsonl(logPath, {
+            await appendBothLogs({
                 t: Date.now(),
+                type: "OB_TRADE_OPEN",
                 symbol: sym,
-                type: "STATE_CHANGE",
-                from: prevState,
-                to: planState,
+                trade_id: ob_trade.trade_id,
+                bias: ob_trade.bias,
+                entry_price: ob_trade.entry_price,
+                entry_zone: ob_trade.entry_zone,
+                sl: ob_trade.sl,
+                tp1: ob_trade.tp1,
+                source_updated_at: sourceUpdatedAt ?? null,
+                price: { close_5m: last5m?.close ?? null, close_1h: last1h?.close ?? null },
+                plan_state: planState,
                 mode_lock: modeLock,
-                price: { close_5m: last5m?.close ?? null },
-                sweep: sweep.event ?? null,
-                deriv: {
-                    oi5_dir: oiMeta.trend_5m.dir,
-                    oi5_pct: Number(oiMeta.trend_5m.pct.toFixed(3)),
-                    fund5_dir: fundingMeta.trend_5m.dir,
-                    fund5_pct: Number(fundingMeta.trend_5m.pct.toFixed(3)),
-                    crowd: crowdTrap.crowd,
-                    trapped: crowdTrap.trapped,
-                },
-                explain_th: explainTH,
+                explain_th: `🟢 เปิดเทรด (Mode A) เพราะ OB Gate READY • ${ob_trade.bias ?? "UNKNOWN"}`,
             });
-        }
-    } else {
-        if (planStatusState) {
-            await fs.writeFile(statePath, JSON.stringify(nextStateObj, null, 2), "utf8");
         }
     }
+
+    // --- CLOSE trade when TP/SL hit (poll-safe) ---
+    if (ob_trade.active && ob_trade.bias && last5m) {
+        const hit = resolveTpSlHit({
+            bias: ob_trade.bias,
+            candle: last5m,
+            tp1: ob_trade.tp1,
+            sl: ob_trade.sl,
+            prefer: "SL_FIRST", // conservative
+        });
+
+        if (hit.hit && hit.exit != null) {
+            const result = hit.hit === "TP1" ? "WIN" : "LOSS";
+            const rm = rMultiple({ bias: ob_trade.bias, entry: ob_trade.entry_price, sl: ob_trade.sl, exit: hit.exit });
+
+            ob_trade = {
+                ...ob_trade,
+                active: false,
+                closed_t: Date.now(),
+                exit_price: hit.exit,
+                result,
+                r_multiple: rm,
+                close_reason: hit.hit === "TP1" ? "TP1_HIT" : "STOP_HIT",
+            };
+
+            await appendBothLogs({
+                t: Date.now(),
+                type: hit.hit === "TP1" ? "OB_TP1_HIT" : "OB_STOP_HIT",
+                symbol: sym,
+                trade_id: ob_trade.trade_id,
+                bias: ob_trade.bias,
+                entry_price: ob_trade.entry_price,
+                exit_price: ob_trade.exit_price,
+                sl: ob_trade.sl,
+                tp1: ob_trade.tp1,
+                result: ob_trade.result,
+                r_multiple: ob_trade.r_multiple,
+                candle: { t: last5m.t, o: last5m.open, h: last5m.high, l: last5m.low, c: last5m.close },
+                source_updated_at: sourceUpdatedAt ?? null,
+                plan_state: planState,
+                mode_lock: modeLock,
+                explain_th: hit.hit === "TP1" ? `🏁 TP1 hit → WIN • R=${ob_trade.r_multiple ?? "—"}` : `🛑 SL hit → LOSS • R=${ob_trade.r_multiple ?? "—"}`,
+            });
+        }
+    }
+
+    // ---------------- TREND paper-trade events ----------------
+    // const mm = String(decision?.market_mode ?? "").toUpperCase();
+    const isTrendModeNow = mm.includes("TREND") || modeLock === "TREND";
+
+    // ✅ hard-close if we LEAVE trend mode (so it won't get stuck active forever)
+    if (!isTrendModeNow && trend_trade.active && last5m) {
+        trend_trade = {
+            ...trend_trade,
+            active: false,
+            closed_t: Date.now(),
+            exit_price: last5m.close,
+            close_reason: "MODE_SWITCH",
+        };
+
+        await appendBothLogs({
+            t: Date.now(),
+            type: "TREND_FORCE_CLOSE_MODE_SWITCH",
+            symbol: sym,
+            trade_id: trend_trade.trade_id,
+            side: trend_trade.side,
+            entry_price: trend_trade.entry_price,
+            exit_price: trend_trade.exit_price,
+            source_updated_at: sourceUpdatedAt ?? null,
+            price: { close_5m: last5m?.close ?? null, close_1h: last1h?.close ?? null },
+            plan_state: planState,
+            mode_lock: modeLock,
+            explain_th: `🧯 ปิด TREND paper-trade เพราะออกจากโหมด TREND (MODE_SWITCH)`,
+        });
+    }
+
+
+    if (isTrendModeNow && last5m) {
+        const code = String(planStatusState?.state?.code ?? "");
+        const trendPlan = (planStatusState as any)?.plan?.trend ?? {};
+        const trendSl = typeof trendPlan?.invalidation === "number" ? trendPlan.invalidation : null;
+        const trendTp1 = typeof trendPlan?.tp1 === "number" ? trendPlan.tp1 : null;
+
+        const planMarketMode = String((planStatusState as any)?.plan?.market_mode ?? mm).toUpperCase();
+
+        const isDownNow =
+            planMarketMode.includes("TREND_DOWN") ||
+            planMarketMode.includes("SHORT") ||
+            String(decision?.levels?.trend?.dir ?? "").toUpperCase() === "DOWN";
+
+        const openOnReady =
+            code === "TREND_READY_TO_ENTER" || // UP
+            code === "TREND_DOWN_READY";       // DOWN
+
+        // OPEN on READY (paper trade)
+        if (openOnReady && !trend_trade.active) {
+            trend_trade = {
+                ...trend_trade,
+                active: true,
+                trade_id: makeTradeId("TREND"),
+                symbol: sym,
+                side: isDownNow ? "SHORT" : "LONG",
+                opened_t: Date.now(),
+                closed_t: null,
+                entry_price: last5m.close,
+                sl: trendSl,
+                tp1: trendTp1,
+                result: null,
+                exit_price: null,
+                r_multiple: null,
+                open_reason: isDownNow ? "OPEN_ON_TREND_DOWN_READY" : "OPEN_ON_TREND_READY",
+                close_reason: null,
+            };
+
+            await appendBothLogs({
+                t: Date.now(),
+                type: "TREND_TRADE_OPEN",
+                symbol: sym,
+                trade_id: trend_trade.trade_id,
+                side: trend_trade.side,
+                entry_price: trend_trade.entry_price,
+                sl: trend_trade.sl,
+                tp1: trend_trade.tp1,
+                source_updated_at: sourceUpdatedAt ?? null,
+                price: { close_5m: last5m?.close ?? null, close_1h: last1h?.close ?? null },
+                plan_state: planState,
+                mode_lock: modeLock,
+                explain_th: `🟦 เปิด TREND paper-trade เพราะ state=${code} (${isDownNow ? "SHORT" : "LONG"})`,
+
+            });
+        }
+
+        // CLOSE on TP/SL (poll-safe)
+        if (trend_trade.active && trend_trade.side && (trend_trade.sl != null || trend_trade.tp1 != null)) {
+            const hit = resolveTpSlHit({
+                bias: trend_trade.side,
+                candle: last5m,
+                tp1: trend_trade.tp1,
+                sl: trend_trade.sl,
+                prefer: "SL_FIRST",
+            });
+
+            if (hit.hit && hit.exit != null) {
+                const result = hit.hit === "TP1" ? "WIN" : "LOSS";
+                const rm = rMultiple({ bias: trend_trade.side, entry: trend_trade.entry_price, sl: trend_trade.sl, exit: hit.exit });
+
+                trend_trade = {
+                    ...trend_trade,
+                    active: false,
+                    closed_t: Date.now(),
+                    exit_price: hit.exit,
+                    result,
+                    r_multiple: rm,
+                    close_reason: hit.hit === "TP1" ? "TP1_HIT" : "STOP_HIT",
+                };
+
+                await appendBothLogs({
+                    t: Date.now(),
+                    type: hit.hit === "TP1" ? "TREND_TP1_HIT" : "TREND_STOP_HIT",
+                    symbol: sym,
+                    trade_id: trend_trade.trade_id,
+                    side: trend_trade.side,
+                    entry_price: trend_trade.entry_price,
+                    exit_price: trend_trade.exit_price,
+                    sl: trend_trade.sl,
+                    tp1: trend_trade.tp1,
+                    result: trend_trade.result,
+                    r_multiple: trend_trade.r_multiple,
+                    candle: { t: last5m.t, o: last5m.open, h: last5m.high, l: last5m.low, c: last5m.close },
+                    source_updated_at: sourceUpdatedAt ?? null,
+                    plan_state: planState,
+                    mode_lock: modeLock,
+                    explain_th: hit.hit === "TP1" ? `🏁 TREND TP1 hit → WIN • R=${trend_trade.r_multiple ?? "—"}` : `🛑 TREND SL hit → LOSS • R=${trend_trade.r_multiple ?? "—"}`,
+                });
+            }
+
+            // hard-close if mode lock leaves trend (optional safe)
+            const mm2 = String(decision?.market_mode ?? "").toUpperCase();
+            const stillTrend = mm2.includes("TREND") || modeLock === "TREND";
+            if (!stillTrend && trend_trade.active) {
+                trend_trade = { ...trend_trade, active: false, closed_t: Date.now(), close_reason: "MODE_SWITCH" };
+            }
+
+        }
+    }
+
+    // ✅ unify timestamps
+    const now = Date.now();
+
+    // ✅ safe pct formatter (กัน null/NaN)
+    const pct3 = (v: any) =>
+        typeof v === "number" && Number.isFinite(v) ? Number(v.toFixed(3)) : null;
+
+    // ---------------- Persist + Logs (one-pass, ordered) ----------------
+
+    // ✅ change detectors (ใช้ prevObTrade/prevTrendTrade ตัวเดิมที่ประกาศไว้แล้วด้านบน)
+    const obChanged =
+        !prevObTrade ||
+        prevObTrade.active !== ob_trade.active ||
+        prevObTrade.trade_id !== ob_trade.trade_id ||
+        prevObTrade.result !== ob_trade.result ||
+        prevObTrade.closed_t !== ob_trade.closed_t ||
+        prevObTrade.entry_price !== ob_trade.entry_price ||
+        prevObTrade.exit_price !== ob_trade.exit_price;
+
+    const trendChanged =
+        !prevTrendTrade ||
+        prevTrendTrade.active !== trend_trade.active ||
+        prevTrendTrade.trade_id !== trend_trade.trade_id ||
+        prevTrendTrade.result !== trend_trade.result ||
+        prevTrendTrade.closed_t !== trend_trade.closed_t ||
+        prevTrendTrade.entry_price !== trend_trade.entry_price ||
+        prevTrendTrade.exit_price !== trend_trade.exit_price;
+
+    const gateChanged =
+        norm(prevStateObj?.ob_gate?.entry?.status) !== norm(ob_gate?.entry?.status);
+
+    const shouldLog =
+        prevState !== planState ||
+        prevModeLock !== modeLock ||
+        obChanged ||
+        trendChanged ||
+        gateChanged;
+
+
+    // ✅ use now everywhere
+    const nextStateObj = {
+        t: now,
+        updated_at: now,
+        source_updated_at: sourceUpdatedAt ?? null,
+        symbol: sym,
+        data_dir: dataDir,
+        decision_mode_lock: modeLock,
+        plan_state: planState,
+        state: (planStatusState as any)?.state ?? null,
+        plan_status_state: planStatusState,
+        ob_gate,
+        ob_trade,
+        trend_trade,
+        price: { close_5m: last5m?.close ?? null, close_1h: last1h?.close ?? null },
+    };
+
+    const planStatusForDisk = {
+        ok: true,
+        t: now,
+        updated_at: now,
+        source_updated_at: sourceUpdatedAt ?? null,
+        data_dir: dataDir,
+        sourceInfo,
+        symbol: sym,
+        mode_lock: { value: modeLock, changed: modeChanged },
+        plan_state: planState,
+        price: { close_5m: last5m?.close ?? null, close_1h: last1h?.close ?? null },
+        ob_gate,
+        ob_trade,
+        trend_trade,
+
+        // ... liquidity_magnet เหมือนเดิม แต่ถ้าอยากชัวร์ให้ใส่ ?. ด้วยก็ได้ ...
+
+        derivatives: {
+            updated_at: derivUpdatedAtMs,
+            freshness: cloneFresh(derivFresh),
+            oi: {
+                status: oiMeta.status,
+                has_data: oiMeta.has_data,
+                reason: oiMeta.reason ?? oiReasonExtra,
+                source: oiMeta.source,
+                integrity: { s5: oiMeta.integrity.s5, s15: oiMeta.integrity.s15 },
+                now: oiMeta.now,
+                at_sweep: oiAtSweep,
+                trend_5m: { dir: oiMeta.trend_5m.dir, pct: oiMeta.trend_5m.pct },
+                trend_15m: { dir: oiMeta.trend_15m.dir, pct: oiMeta.trend_15m.pct },
+            },
+            funding: {
+                status: fundingMeta.status,
+                has_data: fundingMeta.has_data,
+                reason: fundingMeta.reason ?? fundingReasonExtra,
+                source: fundingMeta.source,
+                integrity: { s5: fundingMeta.integrity.s5, s15: fundingMeta.integrity.s15 },
+                now: fundingMeta.now,
+                trend_5m: { dir: fundingMeta.trend_5m.dir, pct: fundingMeta.trend_5m.pct },
+                trend_15m: { dir: fundingMeta.trend_15m.dir, pct: fundingMeta.trend_15m.pct },
+            },
+            crowd: {
+                side: crowdTrap.crowd,
+                trapped: crowdTrap.trapped,
+                crowd_th: crowdTrap.crowdTH,
+                trapped_th: crowdTrap.trappedTH,
+                note: crowdTrap.note,
+            },
+        },
+
+        plan_status_state: planStatusState,
+
+        debug: {
+            sweep_event: sweep.event,
+            rejection_score: rej15.score,
+            rejection_why: rej15.why,
+            confirm_why: conf1h.why,
+            deriv_primary: { file: derivPrimaryFile, reason: derivPrimaryReason },
+            oi_fallback: { used: oiFallbackUsed, reason: oiFallbackReason },
+            // 👇 จะเติม persist_error ทีหลังถ้าเกิด
+        },
+
+        explain_th: explainTH,
+    };
+
+    // ✅ persist เฉพาะตอนมี snapshot ใหม่ หรือมีอะไรเปลี่ยนจริง + first run
+    const prevSrc = prevStateObj?.source_updated_at ?? null;
+    const curSrc = sourceUpdatedAt ?? null;
+    const shouldPersist = !prevStateObj || prevSrc !== curSrc || shouldLog;
+
+    let persistError: string | null = null;
+
+    if (shouldPersist) {
+        try {
+            await writeJsonAtomic(PATHS.state, nextStateObj);
+            await writeJsonAtomic(PATHS.status, planStatusForDisk);
+            if (MIRROR_PLAN_STATUS_TO_PUBLIC) {
+                await writeJsonAtomic(PATHS.statusPublic, planStatusForDisk);
+            }
+        } catch (e: any) {
+            persistError = String(e?.message ?? e);
+        }
+    }
+
+    // ✅ append logs best-effort
+    if (shouldLog) {
+        try {
+            if (prevModeLock !== modeLock) {
+                await appendPlanLog({
+                    t: now,
+                    symbol: sym,
+                    type: "MODE_SWITCH",
+                    from_mode: prevModeLock,
+                    to_mode: modeLock,
+                    to_plan_state: planState,
+                    price: { close_5m: last5m?.close ?? null },
+                    explain_th: `เปลี่ยนโหมด ${String(prevModeLock ?? "—")} → ${String(modeLock)}`,
+                });
+            }
+
+            if (prevState !== planState) {
+                await appendPlanLog({
+                    t: now,
+                    symbol: sym,
+                    type: "STATE_CHANGE",
+                    from: prevState,
+                    to: planState,
+                    mode_lock: modeLock,
+                    price: { close_5m: last5m?.close ?? null },
+                    sweep: sweep.event ?? null,
+                    deriv: {
+                        oi5_dir: oiMeta.trend_5m.dir,
+                        oi5_pct: pct3(oiMeta.trend_5m.pct),
+                        fund5_dir: fundingMeta.trend_5m.dir,
+                        fund5_pct: pct3(fundingMeta.trend_5m.pct),
+                        crowd: crowdTrap.crowd,
+                        trapped: crowdTrap.trapped,
+                    },
+                    explain_th: explainTH,
+                });
+            }
+
+            if (becameReady) {
+                await appendPlanLog({
+                    t: now,
+                    symbol: sym,
+                    type: "OB_GATE_READY",
+                    entry: ob_gate?.entry ?? null,
+                    price: { close_5m: last5m?.close ?? null },
+                });
+            }
+        } catch (e) {
+            // swallow (best-effort)
+        }
+    }
+
+    // ✅ if persist failed, surface in debug (optional)
+    if (persistError) {
+        (planStatusForDisk as any).debug.persist_error = persistError;
+    }
+
 
     // ---------------- Response ----------------
     return NextResponse.json({
         ok: true,
         data_dir: dataDir,
         symbol: sym,
+        sourceInfo,
 
         updated_at: Date.now(),
         source_updated_at: sourceUpdatedAt ?? null,
 
         mode_lock: { value: modeLock, changed: modeChanged },
-
         price: { close_5m: last5m?.close ?? null, close_1h: last1h?.close ?? null },
+
+        ob_gate,
+        ob_trade,
+        trend_trade,
+
+        liquidity_magnet: {
+            m5: magnet5m,
+            h1: magnet1h,
+            two_liner: [magnet5m.twoLiner[0], magnet5m.twoLiner[1], magnet1h.twoLiner[0], magnet1h.twoLiner[1]],
+            summary_th: magnetSummaryTH,
+        },
 
         plan: {
             market_regime: decision?.market_regime ?? decision?.regime ?? "UNKNOWN",
@@ -1283,7 +2762,7 @@ export async function GET() {
 
         derivatives: {
             updated_at: derivUpdatedAtMs,
-            freshness: derivFresh,
+            freshness: cloneFresh(derivFresh),
 
             oi: {
                 status: oiMeta.status,
@@ -1308,20 +2787,27 @@ export async function GET() {
                 trend_15m: { dir: fundingMeta.trend_15m.dir, pct: fundingMeta.trend_15m.pct },
             },
 
-            crowd: { side: crowdTrap.crowd, trapped: crowdTrap.trapped, crowd_th: crowdTrap.crowdTH, trapped_th: crowdTrap.trappedTH, note: crowdTrap.note },
+            crowd: {
+                side: crowdTrap.crowd,
+                trapped: crowdTrap.trapped,
+                crowd_th: crowdTrap.crowdTH,
+                trapped_th: crowdTrap.trappedTH,
+                note: crowdTrap.note,
+            },
         },
 
-        states: { sweep_5m: sweep.state, rejection_15m: rej15.state, confirm_1h: conf1h.state, plan_state: planState },
+        states: {
+            sweep_5m: sweep.state,
+            rejection_15m: rej15.state,
+            confirm_1h: conf1h.state,
+            plan_state: planState,
+        },
 
         plan_status_state: planStatusState,
 
         debug: {
-            sweep_event: sweep.event,
-            rejection_score: rej15.score,
-            rejection_why: rej15.why,
-            confirm_why: conf1h.why,
-            deriv_primary: { file: derivPrimaryFile, reason: derivPrimaryReason },
-            oi_fallback: { used: oiFallbackUsed, reason: oiFallbackReason },
+            persisted: { state: PATHS.state, plan_status: PATHS.status, mirror_public: MIRROR_PLAN_STATUS_TO_PUBLIC ? PATHS.statusPublic : null },
+            mirror_history: MIRROR_PLAN_HISTORY_TO_PUBLIC ? PATHS.historyPublic : null,
         },
 
         explain_th: explainTH,

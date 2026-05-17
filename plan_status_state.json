@@ -1,34 +1,46 @@
 {
-  "plan_state": "FAKEOUT_CONFIRMED_RANGE_PLAY",
+  "t": 1767268605253,
+  "updated_at": 1767268605253,
+  "source_updated_at": 1767268485818,
+  "symbol": "BTC-USDT",
+  "data_dir": "C:\\bingx-agent",
   "decision_mode_lock": "GRID",
-  "t": 1766550749530,
+  "plan_state": "FAKEOUT_CONFIRMED_RANGE_PLAY",
+  "state": {
+    "code": "FAKEOUT_CONFIRMED_RANGE_PLAY",
+    "headline": "1H ยืนยันกลับเข้า range → โหมดเล่นในกรอบมีน้ำหนัก",
+    "direction_hint": "RANGE_PLAY",
+    "confidence": 0.49,
+    "step_set": "GRID_SWEEP_PIPELINE"
+  },
   "plan_status_state": {
-    "generated_at": "2025-12-24T04:32:29.530Z",
-    "age_sec": 268,
+    "generated_at": "2026-01-01T11:56:45.252Z",
+    "age_sec": 119,
     "price": {
-      "close_5m": 87314.9,
-      "close_1h": 87314.9
+      "close_5m": 87942,
+      "close_1h": 87942
     },
     "plan": {
       "market_regime": "UNKNOWN",
-      "market_mode": "RANGE",
+      "market_mode": "GRID_NEUTRAL",
       "sweep_zone_up": {
         "low": 88350,
-        "high": 88380
+        "high": 90363
+      },
+      "sweep_target": {
+        "side": "UP",
+        "zone": [
+          88350,
+          90363
+        ]
       },
       "grid": {
-        "lower": 86800,
-        "upper": 88380,
-        "count": null
+        "lower": 86619,
+        "upper": 90363,
+        "count": 12
       }
     },
-    "state": {
-      "code": "FAKEOUT_CONFIRMED_RANGE_PLAY",
-      "headline": "1H ยืนยันกลับเข้า range → โหมดเล่นในกรอบมีน้ำหนัก",
-      "direction_hint": "RANGE_PLAY",
-      "confidence": 0.45,
-      "step_set": "GRID_SWEEP_PIPELINE"
-    },
+    "state": "[Circular]",
     "signals": {
       "sweep_5m": "WAIT_SWEEP_UP",
       "rejection_15m": "REJECTION_15M_PENDING",
@@ -40,7 +52,7 @@
     "steps": [
       {
         "id": "SWEEP_5M",
-        "title": "5m Sweep โซนบน 88350–88380",
+        "title": "5m Sweep โซนบน 88350–90363",
         "status": "WAITING",
         "why": "WAIT_SWEEP_UP"
       },
@@ -48,7 +60,7 @@
         "id": "REJECTION_15M",
         "title": "15m Rejection (ปิดกลับใต้โซน)",
         "status": "WAITING",
-        "why": "swept=false, closedBackIn=true, closedBelowLow=true, bearishClose=true, wickDominant=false"
+        "why": "swept=false, closedBackIn=true, closedBelowLow=true, bearishClose=false, wickDominant=false"
       },
       {
         "id": "CONFIRM_1H",
@@ -57,5 +69,114 @@
         "why": "1H close กลับเข้าในกรอบชัดเจน"
       }
     ]
+  },
+  "ob_gate": {
+    "bias_1h": "RANGE",
+    "h1_ob": {
+      "tf": "1h",
+      "side": "BULL",
+      "zone": {
+        "low": 87569.8,
+        "high": 87691.6
+      },
+      "origin": {
+        "t": 1767222000000,
+        "index": 12
+      },
+      "strength": {
+        "displacement_pct": 0.359,
+        "bos": false,
+        "retest_count": 14
+      },
+      "note": "1H Bullish OB (last red candle before bullish displacement)"
+    },
+    "m5_ob_confirm": {
+      "tf": "5m",
+      "side": "BULL",
+      "zone": {
+        "low": 87570.9,
+        "high": 87634.3
+      },
+      "origin": {
+        "t": 1767254100000,
+        "index": 240
+      },
+      "strength": {
+        "displacement_pct": 0.203,
+        "bos": true,
+        "retest_count": 39
+      },
+      "note": "5m Bullish OB (post-CHOCH confirm block)"
+    },
+    "touch": {
+      "ok": true,
+      "why": "price_overlaps_1h_ob"
+    },
+    "sweep": {
+      "seen": true,
+      "side": "DOWN",
+      "t": 1767253500000,
+      "price": 87568.7,
+      "idx": 238
+    },
+    "reclaim": {
+      "ok": true,
+      "rule": "close back in zone AND beyond mid",
+      "t": 1767253800000,
+      "idx": 239
+    },
+    "choch": {
+      "ok": true,
+      "dir": "UP",
+      "t": 1767254700000,
+      "idx": 242
+    },
+    "entry": {
+      "status": "READY",
+      "entry_zone": {
+        "low": 87570.9,
+        "high": 87634.3
+      },
+      "sl": null,
+      "tp1": 90362.5,
+      "why": "touch+sweep+reclaim+choch+5m_ob_ready"
+    }
+  },
+  "ob_trade": {
+    "active": true,
+    "trade_id": "OB_1767249814913_FDFB21",
+    "symbol": "BTC-USDT",
+    "bias": null,
+    "opened_t": 1767249814913,
+    "closed_t": null,
+    "entry_price": 87634,
+    "entry_zone": "[Circular]",
+    "sl": null,
+    "tp1": 90362.5,
+    "result": null,
+    "exit_price": null,
+    "r_multiple": null,
+    "open_reason": "MODE_A_OPEN_ON_READY",
+    "close_reason": null
+  },
+  "trend_trade": {
+    "active": false,
+    "trade_id": null,
+    "symbol": "BTC-USDT",
+    "side": null,
+    "opened_t": null,
+    "closed_t": null,
+    "entry_price": null,
+    "sl": null,
+    "tp1": null,
+    "result": null,
+    "exit_price": null,
+    "r_multiple": null,
+    "open_reason": null,
+    "close_reason": null
+  },
+  "price": {
+    "close_5m": 87942,
+    "close_1h": 87942
   }
 }

@@ -1,3 +1,4 @@
+// dashboard/components/plan-steps/buildSteps.ts
 import type {
     BuildStepsResult,
     PlanStatus,
@@ -10,20 +11,20 @@ import type {
 
 import { pickStepSet } from "./pickStepSet";
 
+import { buildObGateStepSet } from "./sets/obGateStepSet";
 import { buildGridSweepPipeline } from "./sets/gridSweepPipeline";
 import { buildBreakoutSwitchMode } from "./sets/breakoutSwitchMode";
 import { buildModeLockedNoTrade } from "./sets/modeLockedNoTrade";
 import { buildModeLockedTrend } from "./sets/modeLockedTrend";
 import { buildTrendUpStepSet } from "./sets/modeLockedTrendUp";
-
+import { buildTrendDownStepSet } from "./sets/trendDownStepSet";
 
 /** map status จาก backend -> UI */
 function mapEngineToUIStatus(s: EngineStepStatus): StepStatus {
-  if (s === "PASS" || s === "DONE") return "CONFIRMED";
-  if (s === "WAITING" || s === "WARN") return "WAITING";
-  return "FAILED";
+    if (s === "PASS" || s === "DONE") return "CONFIRMED";
+    if (s === "WAITING" || s === "WARN") return "WAITING";
+    return "FAILED";
 }
-
 
 function badgeFromEngine(s: EngineStepStatus) {
     if (s === "PASS") return "PASS";
@@ -33,7 +34,9 @@ function badgeFromEngine(s: EngineStepStatus) {
     return "WAIT";
 }
 
-function activeStepFromEngine(steps: Array<{ id: string; status: EngineStepStatus }>): string | null {
+function activeStepFromEngine(
+    steps: Array<{ id: string; status: EngineStepStatus }>
+): string | null {
     const w = steps.find((x) => x.status === "WAITING" || x.status === "WARN");
     if (w) return w.id;
     const f = steps.find((x) => x.status === "FAIL");
@@ -73,28 +76,40 @@ export function buildSteps(data: PlanStatus): BuildStepsResult {
     // 2) fallback sets
     const key = pickStepSet(data);
 
-    if (key === "BREAKOUT_SWITCH_MODE") {
-        const { title, steps } = buildBreakoutSwitchMode(data);
-        return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
+    switch (key) {
+        case "TREND_DOWN_STEPSET": {
+            const { title, steps } = buildTrendDownStepSet(data);
+            return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
+        }
+
+        case "TREND_UP_STEPSET": {
+            const { title, steps } = buildTrendUpStepSet(data);
+            return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
+        }
+
+        case "OB_GATE_STEPSET": {
+            const { title, steps } = buildObGateStepSet(data);
+            return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
+        }
+
+        case "BREAKOUT_SWITCH_MODE": {
+            const { title, steps } = buildBreakoutSwitchMode(data);
+            return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
+        }
+
+        case "MODE_LOCKED_NO_TRADE": {
+            const { title, steps } = buildModeLockedNoTrade(data);
+            return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
+        }
+
+        case "MODE_LOCKED_TREND": {
+            const { title, steps } = buildModeLockedTrend(data);
+            return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
+        }
+
+        default: {
+            const { title, steps } = buildGridSweepPipeline(data);
+            return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
+        }
     }
-
-    if (key === "MODE_LOCKED_NO_TRADE") {
-        const { title, steps } = buildModeLockedNoTrade(data);
-        return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
-    }
-
-    if (key === "MODE_LOCKED_TREND") {
-        const { title, steps } = buildModeLockedTrend(data);
-        return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
-    }
-
-    if (key === "TREND_UP_STEPSET") {
-        const { title, steps } = buildTrendUpStepSet(data);
-        return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
-    }
-
-
-    // default GRID
-    const { title, steps } = buildGridSweepPipeline(data);
-    return { key, title, steps, activeStepId: activeStepIdFrom(steps) };
 }

@@ -8,7 +8,12 @@ import { buildSteps as buildStepsUI } from "@/components/plan-steps/buildSteps";
 import type { LogItem, PlanStatus, StepSetKey, StepStatus } from "@/components/plan-steps/types";
 
 // ✅ ใช้แค่ type ให้พอ (กัน eslint unused)
+import { buildDecisionTwoLiner } from "@/components/plan-steps/timelineHelpers";
 import type { DerivDir } from "@/components/plan-steps/timelineHelpers";
+
+import { apiUrl } from "@/lib/apiBase";
+import { resolvePlanView } from "@/lib/resolvePlanView";
+
 
 const POLL_MS = 10_000;
 
@@ -26,6 +31,18 @@ const PRICE_PCT_MIN = 0.02;
 function fmt(n: number | null | undefined) {
     if (n === null || n === undefined || Number.isNaN(n)) return "—";
     return n.toLocaleString();
+}
+
+function fmt1(n: number | null | undefined) {
+    if (n === null || n === undefined || Number.isNaN(n)) return "—";
+    return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(n);
+}
+
+function fmtZone(z?: [number, number] | null) {
+    if (!z || typeof z[0] !== "number" || typeof z[1] !== "number") return "—";
+    const lo = Math.min(z[0], z[1]);
+    const hi = Math.max(z[0], z[1]);
+    return `${fmt1(lo)}–${fmt1(hi)}`;
 }
 
 function toMs(ts: number | null | undefined): number | null {
@@ -49,7 +66,8 @@ function stateBadgeTone(to: string) {
     if (s.includes("FAKEOUT") || s.includes("RANGE_PLAY") || s.includes("CONFIRMED"))
         return "bg-emerald-500/15 text-emerald-200 border-emerald-500/30";
     if (s.includes("BREAKOUT")) return "bg-sky-500/15 text-sky-200 border-sky-500/30";
-    if (s.includes("NO_TRADE") || s.includes("LOCKED")) return "bg-neutral-500/15 text-neutral-200 border-neutral-500/30";
+    if (s.includes("NO_TRADE") || s.includes("LOCKED"))
+        return "bg-neutral-500/15 text-neutral-200 border-neutral-500/30";
     return "bg-neutral-800 text-neutral-300 border-neutral-700";
 }
 
@@ -133,7 +151,8 @@ function oneLineSummary(e: LogItem) {
     if (to.includes("WAIT_15M_REJECTION")) return "กวาดบนแล้ว — รอ 15m ปิดยืนยัน rejection";
     if (to.includes("WAIT_1H_CONFIRM")) return "15m ผ่านแล้ว — รอ 1H ยืนยัน fakeout/breakout";
     if (to.includes("FAKEOUT_CONFIRMED") || to.includes("RANGE_PLAY")) return "ยืนยัน fakeout — กลับไปเล่นในกรอบ";
-    if (to.includes("BREAKOUT_CONFIRMED") || to.includes("SWITCH_MODE")) return "ยืนยัน breakout — ต้องเปลี่ยนโหมด (หยุดกริด/ปรับแผน)";
+    if (to.includes("BREAKOUT_CONFIRMED") || to.includes("SWITCH_MODE"))
+        return "ยืนยัน breakout — ต้องเปลี่ยนโหมด (หยุดกริด/ปรับแผน)";
     if (to.includes("NO_TRADE")) return "ล็อก NO_TRADE — งดเทรดตามบทวิเคราะห์";
     if (to.includes("TREND")) return "ล็อก TREND — พักกริด รอแผนเทรนด์";
     return `สถานะเปลี่ยน → ${e.to}`;
@@ -190,7 +209,13 @@ function reasonChipFromEvent(e: LogItem) {
 function isImportantEvent(e: LogItem) {
     const to = String(e.to ?? "").toUpperCase();
     const trapped = normalizeTrapped(e.deriv?.trapped);
-    return isModeSwitch(e) || (trapped && trapped !== "NONE") || to.includes("BREAKOUT") || to.includes("NO_TRADE") || to.includes("LOCKED");
+    return (
+        isModeSwitch(e) ||
+        (trapped && trapped !== "NONE") ||
+        to.includes("BREAKOUT") ||
+        to.includes("NO_TRADE") ||
+        to.includes("LOCKED")
+    );
 }
 
 function findLatestImportantEvent(items: LogItem[]) {
@@ -262,6 +287,7 @@ function significantPct(pct: unknown) {
     if (typeof pct !== "number" || Number.isNaN(pct)) return false;
     return Math.abs(pct) >= DERIV_PCT_MIN;
 }
+
 function pctDir(pct: number | null, deadzone = 0.05): DerivDir {
     if (typeof pct !== "number" || Number.isNaN(pct)) return "UNKNOWN";
     if (pct > deadzone) return "UP";
@@ -270,7 +296,6 @@ function pctDir(pct: number | null, deadzone = 0.05): DerivDir {
 }
 
 function emojiForCombo(p: DerivDir, oi: DerivDir) {
-    // quick vibe
     if (p === "UP" && oi === "UP") return "🚀";
     if (p === "UP" && oi === "DOWN") return "🪝";
     if (p === "DOWN" && oi === "UP") return "🧨";
@@ -280,82 +305,22 @@ function emojiForCombo(p: DerivDir, oi: DerivDir) {
     return "•";
 }
 
-function buildPriceVsOiTwoLiner(args: {
-    pricePct: number | null;
-    oiPct: number | null;
-    fundingPct: number | null;
-
-    priceDir: DerivDir;
-    oiDir: DerivDir;
-    fundingDir: DerivDir;
-
-    // optional: ใช้ทำคำพูดให้คมขึ้น
-    planState?: string;
-}) {
-    const { pricePct, oiPct, fundingPct, priceDir, oiDir, fundingDir, planState } = args;
-
-    const dirTH = (d: DerivDir) =>
-        d === "UP" ? "ขึ้น" : d === "DOWN" ? "ลง" : d === "FLAT" ? "ทรงตัว" : "ยังไม่ชัด";
-
-    const pctTH = (p: number | null) =>
-        typeof p === "number" ? `${p >= 0 ? "+" : ""}${p.toFixed(2)}%` : "—";
-
-    const emo = emojiForCombo(priceDir, oiDir);
-
-    // line 1 = facts
-    const line1 = `${emo} Price(5m): ${dirTH(priceDir)} ${pctTH(pricePct)}  |  OI(5m): ${dirTH(oiDir)} ${pctTH(
-        oiPct
-    )}`;
-
-    // line 2 = meaning (SMC-ish, crowd/positioning)
-    let meaning = "สัญญาณยังไม่แน่น — รอแท่งยืนยันอีกนิด";
-
-    // 1) ราคา↑ + OI↑ = impulse continuation (แต่ระวังแออัด)
-    if (priceDir === "UP" && oiDir === "UP") {
-        if (fundingDir === "UP") meaning = "แรงขึ้น + คนเติมสัญญา → ไปต่อได้ แต่ Funding เอียง = ระวัง “แออัดแล้วโดนบีบ”";
-        else if (fundingDir === "DOWN") meaning = "แรงขึ้นแต่ Funding เอียงลง → อาจเป็น squeeze ฝั่ง Short (ขึ้นไว ระวังไส้ไหล)";
-        else meaning = "แรงขึ้น + คนเติมสัญญา → โมเมนตัมจริง (รอจังหวะย่อค่อยตาม)";
-    }
-
-    // 2) ราคา↑ + OI↓ = short covering / unwind (ขึ้นแต่คนปิดโพสิชัน)
-    if (priceDir === "UP" && oiDir === "DOWN") {
-        meaning = "ราคาขึ้นแต่ OI ลด → มักเป็น “ปิดช็อต/ถอนของ” มากกว่าเติมแรงใหม่ (ระวังขึ้นแล้วหมดแรง)";
-    }
-
-    // 3) ราคา↓ + OI↑ = aggressive positioning (ถ้า funding + = longs trapped, funding - = shorts in control)
-    if (priceDir === "DOWN" && oiDir === "UP") {
-        if (fundingDir === "UP") meaning = "ลงแต่คนเติมสัญญา + Funding บวก → เสี่ยง “Long ติดบน/โดนไล่ลง”";
-        else if (fundingDir === "DOWN") meaning = "ลง + คนเติมสัญญา + Funding ลบ → ฝั่ง Short คุมเกม (ระวังไหลต่อ)";
-        else meaning = "ลงแต่ OI เพิ่ม → มีคนกำลังกดโพสิชันเพิ่ม (ระวังโดนลากต่อหรือเกิด squeeze กลับ)";
-    }
-
-    // 4) ราคา↓ + OI↓ = liquidation / unwind (มักเกิดช่วงล้างของ)
-    if (priceDir === "DOWN" && oiDir === "DOWN") {
-        meaning = "ลงพร้อม OI ลด → ตลาดกำลัง “ล้างของ/ปิดโพสิชัน” (บางทีใกล้จบแรงขาย แต่ต้องรอ confirm)";
-    }
-
-    // 5) ราคาแบน แต่ OI↑/↓
-    if (priceDir === "FLAT" && oiDir === "UP") meaning = "ราคาไม่ไปแต่ OI เพิ่ม → คนแอบสะสมโพสิชัน (ระวังโดนลากหลอกทั้งสองฝั่ง)";
-    if (priceDir === "FLAT" && oiDir === "DOWN") meaning = "ราคาไม่ไปแต่ OI ลด → ตลาดเริ่มเบาบาง/ถอนตัว รอสัญญาณใหม่";
-
-    // เติม hint ตาม planState เล็กน้อย (ไม่เยิ่นเย้อ)
-    const ps = String(planState ?? "").toUpperCase();
-    if (ps.includes("WAIT") && (priceDir === "UP" && oiDir === "UP")) {
-        meaning += " • แต่ถ้ายังอยู่โหมดรอ ให้รอเข้าโซน/แท่งยืนยันก่อนค่อยทำ";
-    }
-    if (ps.includes("INVALID") || ps.includes("STOP")) {
-        meaning = "แผนพัง/ใกล้พัง — อย่าฝืน อ่านรอบใหม่จาก snapshot";
-    }
-
-    const line2 = `อ่านว่า: ${meaning}`;
-
-    return { line1, line2 };
-}
 
 /** ----------------- Notice row ----------------- */
 
 function modeNoticeFrom(stepSet: StepSetKey, planState: string) {
     const ps = String(planState ?? "").toUpperCase();
+
+    if (stepSet === "TREND_DOWN_STEPSET") {
+        return {
+            show: true as const,
+            icon: "📉",
+            tone: "border-rose-500/30 bg-rose-500/10 text-rose-50",
+            title: "TREND_DOWN plan steps",
+            detail: "รอ pullback → 5m confirm → LH/breakdown → แล้วค่อย Short (ไม่ไล่แดง)",
+        };
+    }
+
 
     if (stepSet === "TREND_UP_STEPSET") {
         return {
@@ -419,7 +384,9 @@ function TimelineRow({ x, showCrowd }: { x: LogItem; showCrowd?: boolean }) {
 
     return (
         <div className="flex gap-3">
-            <div className="mt-1 h-7 w-7 shrink-0 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm">{icon}</div>
+            <div className="mt-1 h-7 w-7 shrink-0 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm">
+                {icon}
+            </div>
 
             <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
@@ -433,14 +400,16 @@ function TimelineRow({ x, showCrowd }: { x: LogItem; showCrowd?: boolean }) {
                     <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-neutral-300">{progress}</span>
 
                     {x.price?.close_5m !== undefined && (
-                        <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-neutral-300">
-                            close5m: {fmt(x.price.close_5m)}
-                        </span>
+                        <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-neutral-300">close5m: {fmt(x.price.close_5m)}</span>
                     )}
 
                     {showSmart && (
                         <>
-                            {reasonChip && <span className={`rounded-full border px-2 py-0.5 ${reasonChip.tone}`}>{reasonChip.icon} {reasonChip.label}</span>}
+                            {reasonChip && (
+                                <span className={`rounded-full border px-2 py-0.5 ${reasonChip.tone}`}>
+                                    {reasonChip.icon} {reasonChip.label}
+                                </span>
+                            )}
 
                             {isModeSwitch(x) && (
                                 <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-sky-200">
@@ -463,9 +432,7 @@ function TimelineRow({ x, showCrowd }: { x: LogItem; showCrowd?: boolean }) {
                             )}
 
                             {showCrowd && x.deriv?.crowd && (
-                                <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-neutral-300">
-                                    crowd: {x.deriv.crowd}
-                                </span>
+                                <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-neutral-300">crowd: {x.deriv.crowd}</span>
                             )}
                         </>
                     )}
@@ -539,7 +506,7 @@ function priceDirFromPct(pct: number | null): DerivDir {
     return "FLAT";
 }
 
-export default function PlanTrackerCard() {
+export default function PlanTrackerCard({ variant = "FULL" }: { variant?: "FULL" | "CORE" }) {
     const [data, setData] = useState<PlanStatus | null>(null);
     const [logs, setLogs] = useState<LogItem[]>([]);
     const [err, setErr] = useState<string | null>(null);
@@ -555,70 +522,87 @@ export default function PlanTrackerCard() {
     const [price5mDir, setPrice5mDir] = useState<DerivDir>("UNKNOWN");
     const [price5mPct, setPrice5mPct] = useState<number | null>(null);
 
+    // ✅ OB READY -> show alert only briefly when it *just became* READY
+    const prevObReadyRef = useRef<boolean>(false);
+    const [obReadyAt, setObReadyAt] = useState<number | null>(null);
+
     // tick for realtime ages
     useEffect(() => {
         const id = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(id);
     }, []);
 
+    async function fetchWithFallback(path: string) {
+        const url = apiUrl(path);
+
+        try {
+            return await fetch(url, { cache: "no-store" });
+        } catch (e) {
+            // ✅ ถ้า apiUrl พาไปตาย → fallback เป็น same-origin ทันที
+            // (ช่วยเคส NEXT_PUBLIC_API_BASE ชี้ผิด / http-https ชนกัน / url แปลก)
+            if (url !== path) {
+                return await fetch(path, { cache: "no-store" });
+            }
+            throw e;
+        }
+    }
+
+
     async function load() {
-        const res = await fetch("/api/plan-status", { cache: "no-store" });
-        if (!res.ok) throw new Error(`plan-status http ${res.status}`);
+        try {
+            const res = await fetchWithFallback("/api/plan-status");
+            if (!res.ok) throw new Error(`plan-status http ${res.status}`);
 
-        const j = (await res.json()) as PlanStatus;
-        if (!j.ok) throw new Error("plan-status not ok");
+            const j = (await res.json()) as PlanStatus;
+            if (!j.ok) throw new Error("plan-status not ok");
 
-        setPageFetchedAt(Date.now());
+            setPageFetchedAt(Date.now());
 
-        // candle interval sec
-        const nextCandleAt = toMs(j.source_updated_at) ?? null;
-        const prevCandleAt = prevSourceUpdatedAtRef.current;
-        if (nextCandleAt && prevCandleAt && nextCandleAt !== prevCandleAt) {
-            setCandleIntervalSec(Math.max(0, Math.floor((nextCandleAt - prevCandleAt) / 1000)));
-        }
-        prevSourceUpdatedAtRef.current = nextCandleAt;
+            // candle interval sec
+            const nextCandleAt = toMs((j as any).source_updated_at) ?? null;
+            const prevCandleAt = prevSourceUpdatedAtRef.current;
+            if (nextCandleAt && prevCandleAt && nextCandleAt !== prevCandleAt) {
+                setCandleIntervalSec(Math.max(0, Math.floor((nextCandleAt - prevCandleAt) / 1000)));
+            }
+            prevSourceUpdatedAtRef.current = nextCandleAt;
 
-        // ✅ price 5m dir (compare prev close)
-        const close5m = typeof j.price?.close_5m === "number" ? j.price.close_5m : null;
-        const prev = prevClose5mRef.current;
+            // price 5m dir
+            const close5m = typeof j.price?.close_5m === "number" ? j.price.close_5m : null;
+            const prev = prevClose5mRef.current;
 
-        if (close5m !== null && prev !== null) {
-            const base = Math.abs(prev) < 1e-9 ? 1 : prev;
-            const pct = ((close5m - prev) / base) * 100;
-            setPrice5mPct(pct);
-            setPrice5mDir(priceDirFromPct(pct));
-        } else {
-            setPrice5mPct(null);
-            setPrice5mDir("UNKNOWN");
-        }
-        prevClose5mRef.current = close5m;
-        // ✅ NEW: compute Price(5m) direction vs previous poll
-        const closeNow = typeof j?.price?.close_5m === "number" ? j.price.close_5m : null;
-        const closePrev = prevClose5mRef.current;
-
-        if (closeNow !== null) {
-            if (typeof closePrev === "number" && closePrev !== 0) {
-                const pct = ((closeNow - closePrev) / closePrev) * 100;
+            if (close5m !== null && typeof prev === "number" && prev !== 0) {
+                const pct = ((close5m - prev) / prev) * 100;
                 setPrice5mPct(pct);
-                setPrice5mDir(pctDir(pct)); // ใช้ deadzone กันแกว่ง
+                setPrice5mDir(priceDirFromPct(pct));
             } else {
                 setPrice5mPct(null);
                 setPrice5mDir("UNKNOWN");
             }
-            prevClose5mRef.current = closeNow;
-        }
+            prevClose5mRef.current = close5m;
 
-        setData(j);
+            setData(j);
+
+            // ✅ สำเร็จแล้วต้องเคลียร์ error (สำคัญมาก)
+            setErr(null);
+        } catch (e: any) {
+            setErr(e?.message ?? "failed to load");
+            throw e;
+        }
     }
 
+
     async function loadLogs() {
-        const res = await fetch("/api/plan-log?limit=80", { cache: "no-store" });
-        if (!res.ok) return;
+        try {
+            const res = await fetchWithFallback("/api/plan-log?limit=80");
+            if (!res.ok) return;
 
-        const j = await res.json();
-        if (!j?.ok) return;
+            const j = await res.json();
+            if (!j?.ok) return;
 
-        setLogs((j.items ?? []) as LogItem[]);
+            setLogs((j.items ?? []) as LogItem[]);
+        } catch {
+            // เงียบได้ แต่ไม่จำเป็นต้องทำให้ทั้งการ์ดล่ม
+        }
     }
 
     // initial + poll
@@ -627,7 +611,7 @@ export default function PlanTrackerCard() {
             try {
                 setErr(null);
                 await load();
-                await loadLogs();
+                if (variant === "FULL") await loadLogs();
             } catch (e: any) {
                 setErr(e?.message ?? "failed to load");
             }
@@ -636,11 +620,14 @@ export default function PlanTrackerCard() {
         const id = setInterval(async () => {
             try {
                 await load();
-                await loadLogs();
-            } catch {
-                // ignore poll errors
+                if (variant === "FULL") await loadLogs();
+                // ✅ ถ้ากลับมาสำเร็จแล้ว err จะถูกเคลียร์ใน load()
+            } catch (e: any) {
+                // ✅ ให้มันแสดง error ได้ ถ้าตายจริง
+                setErr((prev) => prev ?? (e?.message ?? "failed to load"));
             }
         }, POLL_MS);
+
 
         return () => clearInterval(id);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -659,10 +646,10 @@ export default function PlanTrackerCard() {
     }, [latestImportant, importantAgeSec]);
 
     const candleAgeSec = useMemo(() => {
-        const t = toMs(data?.source_updated_at ?? null);
+        const t = toMs((data as any)?.source_updated_at ?? null);
         if (!t) return null;
         return Math.max(0, Math.floor((now - t) / 1000));
-    }, [now, data?.source_updated_at]);
+    }, [now, data]);
 
     const pageAgeSec = useMemo(() => {
         if (!pageFetchedAt) return null;
@@ -686,103 +673,191 @@ export default function PlanTrackerCard() {
     }, [timelineGroups]);
 
     const modeLock = useMemo(() => {
-        return data?.mode_lock?.value ?? "GRID";
-    }, [data?.mode_lock?.value]);
+        return (data as any)?.mode_lock?.value ?? "GRID";
+    }, [data]);
 
     // ✅ build steps from single source of truth
     const built = useMemo(() => {
         return data ? buildStepsUI(data) : null;
     }, [data]);
 
-    const stepSet = (built?.key ?? "GRID_SWEEP_PIPELINE") as StepSetKey;
+    const stepSet = ((built?.key ?? "GRID_SWEEP_PIPELINE") as StepSetKey) ?? "GRID_SWEEP_PIPELINE";
 
     const notice = useMemo(() => {
-        return modeNoticeFrom(stepSet, data?.states?.plan_state ?? "");
-    }, [stepSet, data?.states?.plan_state]);
+        return modeNoticeFrom(stepSet, (data as any)?.states?.plan_state ?? "");
+    }, [stepSet, data]);
 
-    if (err) {
-        return <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 text-rose-200">โหลด Plan Tracker ไม่ได้: {err}</div>;
-    }
+    // ✅ OB Gate meta (single source)
+    const obGateMeta = useMemo(() => {
 
-    if (!data || !built) {
-        return <div className="rounded-2xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-300">กำลังโหลด Plan Tracker…</div>;
-    }
+        const ob =
+            (data as any)?.ob_gate ??
+            (data as any)?.planStatus?.ob_gate ??
+            (data as any)?.plan?.ob_gate ??
+            null;
 
-    const d = data.derivatives;
-    const [zLow, zHigh] = data.plan.sweep_target.zone;
-    const zoneText = `${zLow}–${zHigh}`;
+        const entry = ob?.entry ?? null;
+        const statusRaw = String(entry?.status ?? "").trim().toUpperCase();
+        const isReady = statusRaw === "READY" || statusRaw === "CONFIRMED";
 
-    // ✅ Quick read (ภาษาไทยอ่านง่าย)
-    const priceVsOi = (() => {
+        const label = String(entry?.label_th ?? "").trim() || (isReady ? "พร้อมยิง" : "");
+
+        const entryZone = entry?.entry_zone as [number, number] | undefined;
+        const sl = typeof entry?.sl === "number" ? (entry.sl as number) : null;
+        const tp1 = typeof entry?.tp1 === "number" ? (entry.tp1 as number) : null;
+        const why = typeof entry?.why === "string" ? (entry.why as string) : "";
+
+        return {
+            hasOb: !!ob,
+            statusRaw,
+            isReady,
+            label,
+            entryZone,
+            sl,
+            tp1,
+            why,
+        };
+    }, [data]);
+
+    const obRaw = useMemo(() => {
+        return (
+            (data as any)?.ob_gate ??
+            (data as any)?.planStatus?.ob_gate ??
+            (data as any)?.plan?.ob_gate ??
+            null
+        );
+    }, [data]);
+
+
+    // ✅ OB READY timer
+    useEffect(() => {
+        const prev = prevObReadyRef.current;
+        const nowReady = obGateMeta.isReady;
+
+        if (nowReady && !prev) setObReadyAt(Date.now());
+        if (!nowReady && prev) setObReadyAt(null);
+
+        prevObReadyRef.current = nowReady;
+    }, [obGateMeta.isReady]);
+
+    const obReadyAgeSec = useMemo(() => {
+        if (!obReadyAt) return null;
+        return Math.max(0, Math.floor((now - obReadyAt) / 1000));
+    }, [now, obReadyAt]);
+
+    const showObReadyAlert = useMemo(() => {
+        if (!obGateMeta.isReady || obReadyAgeSec === null) return false;
+        return obReadyAgeSec <= IMPORTANT_EVENT_WINDOW_SEC;
+    }, [obGateMeta.isReady, obReadyAgeSec]);
+
+    const planView = useMemo(() => resolvePlanView(data), [data]);
+
+
+    // ✅ Derived (safe) values used in render
+    const d = (data as any)?.derivatives;
+    const sweepZone = planView?.sweep_target?.zone as [number, number] | undefined;
+
+    const zoneText = sweepZone ? `${sweepZone[0]}–${sweepZone[1]}` : "—";
+
+    const priceVsOi = useMemo(() => {
         const oiPct = typeof d?.oi?.trend_5m?.pct === "number" ? d.oi.trend_5m.pct : null;
         const fPct = typeof d?.funding?.trend_5m?.pct === "number" ? d.funding.trend_5m.pct : null;
 
         const oiDir = asDerivDir(d?.oi?.trend_5m?.dir ?? pctDir(oiPct));
         const fDir = asDerivDir(d?.funding?.trend_5m?.dir ?? pctDir(fPct));
 
-        const hasAny =
-            price5mDir !== "UNKNOWN" || oiDir !== "UNKNOWN" || typeof oiPct === "number" || typeof price5mPct === "number";
+        const hasAny = price5mDir !== "UNKNOWN" || oiDir !== "UNKNOWN" || fDir !== "UNKNOWN";
         if (!hasAny) return null;
 
-        return buildPriceVsOiTwoLiner({
-            pricePct: price5mPct,
-            oiPct,
-            fundingPct: fPct,
-            priceDir: price5mDir,
-            oiDir,
-            fundingDir: fDir,
-            planState: data?.states?.plan_state,
+        const crowdingRaw =
+            (d as any)?.crowd?.side ??
+            (d as any)?.crowd?.crowd ??
+            (d as any)?.crowd?.crowding ??
+            undefined;
+
+        const crowding = crowdingRaw ? String(crowdingRaw).toUpperCase() : undefined;
+
+        return buildDecisionTwoLiner({
+            price5mDir,
+            oi5mDir: oiDir,
+            funding5mDir: fDir,
+            crowding,
+            freshnessAgeSec: d?.freshness?.ageSec ?? null,
+            obGate: obRaw,
+            modeLock,
         });
-    })();
+    }, [d, obRaw, modeLock, price5mDir]);
+
+
+
+    // ✅ renders (after ALL hooks)
+    if (err) {
+        return (
+            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 text-rose-200">
+                โหลด Plan Tracker ไม่ได้: {err}
+            </div>
+        );
+    }
+
+    if (!data || !built) {
+        return (
+            <div className="rounded-2xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-300">
+                กำลังโหลด Plan Tracker…
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-3">
             {/* Top: Market card */}
-            <div className="relative">
-                <MarketStatusCard
-                    regime={data.plan.market_regime}
-                    marketMode={data.plan.market_mode}
-                    confidence={data.plan.confidence ?? undefined}
-                    updatedAt={data.updated_at}
-                    riskWarnings={data.plan.risk_warning ?? []}
-                />
+            {variant === "FULL" && (
+                <div className="relative">
+                    <MarketStatusCard
+                        regime={planView.market_regime}
+                        marketMode={planView.market_mode}
+                        confidence={planView.confidence}
+                        updatedAt={(data as any).updated_at}
+                        riskWarnings={planView.risk_warning}
+                    />
 
-                {showRegimeAlert && latestImportant && (
-                    <div className="absolute left-4 right-4 top-4 z-30">
-                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100">
-                            <div className="flex items-start justify-between gap-2">
-                                <div className="text-xs font-semibold">⚡ {alertTextFromEventShort(latestImportant)}</div>
-                                {importantAgeSec !== null && <div className="text-[11px] text-amber-200/70">{importantAgeSec}s ago</div>}
+                    {showRegimeAlert && latestImportant && (
+                        <div className="absolute left-4 right-4 top-4 z-30">
+                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="text-xs font-semibold">⚡ {alertTextFromEventShort(latestImportant)}</div>
+                                    {importantAgeSec !== null && <div className="text-[11px] text-amber-200/70">{importantAgeSec}s ago</div>}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                <InfoButton title="Market Regime แสดงอะไร?">
-                    <div>บล็อคนี้คือ “ป้ายหน้าด่าน” ของตลาด ณ ตอนนี้</div>
-                    <ul className="list-disc pl-4 space-y-1">
-                        <li>
-                            <b>Market Regime</b> = ตลาดอยู่โหมดไหน (RANGE / TREND / ฯลฯ)
-                        </li>
-                        <li>
-                            <b>Strategy</b> = กลยุทธ์หลักที่ระบบแนะนำ (เช่น GRID_NEUTRAL)
-                        </li>
-                        <li>
-                            <b>FRESH</b> = สถานะความสดของสรุป (ช่วยกันหลงเวลา)
-                        </li>
-                    </ul>
-                    <div>ถ้ามีเหตุการณ์แรง ๆ ระบบจะขึ้นเตือนซ้อนบริเวณนี้เพื่อให้เห็นทันที</div>
-                </InfoButton>
-            </div>
+                    <InfoButton title="Market Regime แสดงอะไร?">
+                        <div>บล็อคนี้คือ “ป้ายหน้าด่าน” ของตลาด ณ ตอนนี้</div>
+                        <ul className="list-disc pl-4 space-y-1">
+                            <li>
+                                <b>Market Regime</b> = ตลาดอยู่โหมดไหน (RANGE / TREND / ฯลฯ)
+                            </li>
+                            <li>
+                                <b>Strategy</b> = กลยุทธ์หลักที่ระบบแนะนำ (เช่น GRID_NEUTRAL)
+                            </li>
+                            <li>
+                                <b>FRESH</b> = สถานะความสดของสรุป (ช่วยกันหลงเวลา)
+                            </li>
+                        </ul>
+                        <div>ถ้ามีเหตุการณ์แรง ๆ ระบบจะขึ้นเตือนซ้อนบริเวณนี้เพื่อให้เห็นทันที</div>
+                    </InfoButton>
+                </div>
+            )}
 
-            <div className="rounded-2xl bg-neutral-900 p-5">
+            <div className="rounded-2xl bg-neutral-900 p-5 min-w-0 overflow-hidden">
                 {/* Header row */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="text-sm text-neutral-300">
                         <div className="text-neutral-400 text-xs">BTC ล่าสุด</div>
                         <div className="mt-1 font-semibold">
-                            Close(5m): <span className="text-neutral-100">{fmt(data.price.close_5m)}</span> <span className="text-neutral-500">|</span> Close(1H):{" "}
-                            <span className="text-neutral-100">{fmt(data.price.close_1h)}</span>
+                            Close(5m): <span className="text-neutral-100">{fmt((data as any).price.close_5m)}</span>{" "}
+                            <span className="text-neutral-500">|</span> Close(1H):{" "}
+                            <span className="text-neutral-100">{fmt((data as any).price.close_1h)}</span>
                         </div>
 
                         <div className="mt-1 text-xs text-neutral-500">
@@ -805,7 +880,10 @@ export default function PlanTrackerCard() {
                         </div>
 
                         <div className="mt-0.5">
-                            <span className="text-neutral-400" title="อิงจาก source_updated_at (collector) = เวลาที่ชุดแท่ง/ข้อมูลตลาดถูกเก็บล่าสุด">
+                            <span
+                                className="text-neutral-400"
+                                title="อิงจาก source_updated_at (collector) = เวลาที่ชุดแท่ง/ข้อมูลตลาดถูกเก็บล่าสุด"
+                            >
                                 Candle Fresh:
                             </span>{" "}
                             <span className="text-neutral-200">{candleAgeSec === null ? "—" : `${candleAgeSec}s`}</span>
@@ -818,7 +896,9 @@ export default function PlanTrackerCard() {
                 {notice.show && (
                     <div className={`mt-3 rounded-xl border px-4 py-3 ${notice.tone}`}>
                         <div className="flex items-start gap-3">
-                            <div className="mt-0.5 h-7 w-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">{notice.icon}</div>
+                            <div className="mt-0.5 h-7 w-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                                {notice.icon}
+                            </div>
                             <div className="min-w-0">
                                 <div className="text-sm font-semibold">{notice.title}</div>
                                 <div className="mt-0.5 text-xs text-white/75">{notice.detail}</div>
@@ -830,13 +910,41 @@ export default function PlanTrackerCard() {
                 )}
 
                 {/* Steps */}
-                <div className="mt-4 rounded-xl bg-neutral-950/60 p-4 relative">
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm text-neutral-200 font-semibold">{built.title}</div>
-                        <div className="text-xs text-neutral-500">state: {data.states.plan_state}</div>
+                <div className="mt-4 rounded-xl bg-neutral-950/60 p-4 relative min-w-0 overflow-hidden">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                            <div className="text-sm text-neutral-200 font-semibold truncate max-w-[min(520px,70vw)]">{built.title}</div>
+
+                            {obGateMeta.isReady && (
+                                <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-200">
+                                    🔥 {obGateMeta.label || "พร้อมยิง"}
+                                </span>
+                            )}
+                        </div>
+
+                        {showObReadyAlert && (
+                            <div className="mt-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-emerald-50">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="text-xs font-semibold">✅ OB Gate READY — {obGateMeta.label || "พร้อมยิง"}</div>
+                                    {typeof obReadyAgeSec === "number" && (
+                                        <div className="text-[11px] text-emerald-200/70">{obReadyAgeSec}s ago</div>
+                                    )}
+                                </div>
+
+                                <div className="mt-1 text-xs text-emerald-100/90">
+                                    Entry: {fmtZone(obGateMeta.entryZone)} · SL: {fmt1(obGateMeta.sl ?? undefined)} · TP1: {fmt1(obGateMeta.tp1 ?? undefined)}
+                                </div>
+
+                                {obGateMeta.why ? <div className="mt-1 text-[11px] text-emerald-100/70">{obGateMeta.why}</div> : null}
+                            </div>
+                        )}
+
+                        <div className="text-xs text-neutral-500 max-w-full sm:max-w-[260px] truncate sm:text-right">
+                            state: {(data as any).states.plan_state}
+                        </div>
                     </div>
 
-                    <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-3">
+                    <div className="mt-3 grid gap-2 grid-cols-1 md:grid-cols-2 xl:grid-cols-2">
                         {built.steps.map((s) => {
                             const isActive = built.activeStepId === s.id;
                             const t = stepTone(s.status, isActive);
@@ -848,7 +956,8 @@ export default function PlanTrackerCard() {
                                             <div className={`mt-1 h-3 w-3 rounded-full ${t.dot}`} />
                                             <div className="min-w-0">
                                                 <div className={`text-sm font-semibold ${t.title}`}>{s.title}</div>
-                                                <div className="mt-0.5 text-xs text-neutral-400">{s.detail}</div>
+                                                <div className="mt-0.5 text-xs text-neutral-400 break-words whitespace-pre-wrap">{s.detail}</div>
+
                                                 {s.why && <div className="mt-1 text-[11px] text-neutral-500">state: {s.why}</div>}
                                             </div>
                                         </div>
@@ -861,7 +970,8 @@ export default function PlanTrackerCard() {
 
                     <div className="mt-3 text-sm text-neutral-300">
                         <div className="text-neutral-400 text-xs">Explain</div>
-                        <div className="mt-1">{data.explain_th}</div>
+                        <div className="mt-1 break-words whitespace-pre-wrap">{(data as any).explain_th}</div>
+
                         {stepSet === "GRID_SWEEP_PIPELINE" && <div className="mt-1 text-xs text-neutral-500">Sweep target: {zoneText}</div>}
                     </div>
 
@@ -878,7 +988,9 @@ export default function PlanTrackerCard() {
                                 <b>1H Confirm</b> = 1H ต้องยืนยันว่า “fakeout” หรือ “breakout” จริง
                             </li>
                         </ul>
-                        <div>สถานะจะเป็น <b>LOCKED → WAITING → CONFIRMED</b> แบบ gated เพื่อกัน “ย้อนแย้ง”</div>
+                        <div>
+                            สถานะจะเป็น <b>LOCKED → WAITING → CONFIRMED</b> แบบ gated เพื่อกัน “ย้อนแย้ง”
+                        </div>
                     </InfoButton>
                 </div>
 
@@ -934,15 +1046,22 @@ export default function PlanTrackerCard() {
 
                     {priceVsOi && (
                         <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                            <div className="text-xs text-neutral-400">สรุปเร็ว</div>
-                            <div className="mt-1 text-sm text-neutral-100">{priceVsOi.line1}</div>
-                            <div className="mt-1 text-sm text-neutral-100">{priceVsOi.line2}</div>
-                            {/* <div className="mt-1 text-xs text-neutral-400">{priceVsOi.meaning}</div> */}
+                            <div className="text-xs text-neutral-400">คำตัดสิน</div>
+
+                            <div className="mt-1 text-sm text-neutral-100 flex items-center gap-2">
+                                <span className="text-lg">{emojiForCombo(price5mDir, asDerivDir(d?.oi?.trend_5m?.dir))}</span>
+                                <span>{priceVsOi.line1}</span>
+                            </div>
+
+                            {priceVsOi.line2 && <div className="mt-1 text-sm text-neutral-100">{priceVsOi.line2}</div>}
                         </div>
                     )}
 
+
                     <InfoButton title="Derivatives (OI / Funding) แปลว่าอะไร?">
-                        <div>บล็อคนี้คือ “เครื่องจับชีพจรของฝูงชน” ว่าคนกำลังแห่เข้า/ออกตลาด และเริ่มมีฝั่งไหนกำลังโดนบีบหรือยัง</div>
+                        <div>
+                            บล็อคนี้คือ “เครื่องจับชีพจรของฝูงชน” ว่าคนกำลังแห่เข้า/ออกตลาด และเริ่มมีฝั่งไหนกำลังโดนบีบหรือยัง
+                        </div>
                         <ul className="list-disc pl-4 space-y-1">
                             <li>
                                 <b>OI (Open Interest)</b> = จำนวนสัญญาที่ค้างอยู่ในตลาด
@@ -970,84 +1089,86 @@ export default function PlanTrackerCard() {
                 </div>
 
                 {/* Timeline */}
-                <div className="mt-4 rounded-xl bg-neutral-950/60 p-4 relative">
-                    <div className="flex items-center justify-between">
-                        <div className="text-sm text-neutral-200 font-semibold">Timeline</div>
-                        <div className="text-xs text-neutral-500">{logs?.length ? `${logs.length} events` : "no events"}</div>
-                    </div>
-
-                    {/* TODAY */}
-                    <div className="mt-3">
+                {variant === "FULL" && (
+                    <div className="mt-4 rounded-xl bg-neutral-950/60 p-4 relative">
                         <div className="flex items-center justify-between">
-                            <div className="text-xs text-neutral-400">Today</div>
-                            <div className="text-xs text-neutral-500">{todayGroup?.items?.length ? `${todayGroup.items.length} events` : "no events"}</div>
+                            <div className="text-sm text-neutral-200 font-semibold">Timeline</div>
+                            <div className="text-xs text-neutral-500">{logs?.length ? `${logs.length} events` : "no events"}</div>
                         </div>
 
-                        {!todayGroup || todayGroup.items.length === 0 ? (
-                            <div className="mt-2 text-sm text-neutral-400">วันนี้ยังไม่มีเหตุการณ์เปลี่ยนสถานะ</div>
-                        ) : (
-                            <>
-                                <div className="mt-3">
-                                    <TimelineList items={todayGroup.items} maxH="max-h-72" showCrowd />
-                                </div>
+                        {/* TODAY */}
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between">
+                                <div className="text-xs text-neutral-400">Today</div>
+                                <div className="text-xs text-neutral-500">{todayGroup?.items?.length ? `${todayGroup.items.length} events` : "no events"}</div>
+                            </div>
 
-                                <details className="mt-2">
-                                    <summary className="cursor-pointer text-xs text-neutral-400 hover:text-neutral-200">ดูรายละเอียด (debug)</summary>
-                                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                        <span className="rounded-full border border-neutral-700 px-3 py-1 text-neutral-300">5m: {data.states.sweep_5m}</span>
-                                        <span className="rounded-full border border-neutral-700 px-3 py-1 text-neutral-300">15m: {data.states.rejection_15m}</span>
-                                        <span className="rounded-full border border-neutral-700 px-3 py-1 text-neutral-300">1h: {data.states.confirm_1h}</span>
-                                    </div>
-                                </details>
-                            </>
-                        )}
-                    </div>
-
-                    {/* HISTORY */}
-                    <div className="mt-4 border-t border-white/10 pt-4">
-                        <div className="text-xs text-neutral-400">History (tap to expand)</div>
-
-                        <div className="mt-2 max-h-64 overflow-auto pr-1 space-y-3">
-                            {nonTodayGroups.map((g) => (
-                                <details key={g.key} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                                    <summary className="cursor-pointer select-none text-sm text-neutral-200 flex items-center justify-between">
-                                        <span className="font-semibold">{g.label}</span>
-                                        <span className="text-xs text-neutral-500">{g.items.length} events</span>
-                                    </summary>
-
+                            {!todayGroup || todayGroup.items.length === 0 ? (
+                                <div className="mt-2 text-sm text-neutral-400">วันนี้ยังไม่มีเหตุการณ์เปลี่ยนสถานะ</div>
+                            ) : (
+                                <>
                                     <div className="mt-3">
-                                        <TimelineList items={g.items} maxH="max-h-72" />
+                                        <TimelineList items={todayGroup.items} maxH="max-h-72" showCrowd />
                                     </div>
-                                </details>
-                            ))}
 
-                            {nonTodayGroups.length === 0 && <div className="text-sm text-neutral-400">ยังไม่มีประวัติวันก่อนหน้า</div>}
+                                    <details className="mt-2">
+                                        <summary className="cursor-pointer text-xs text-neutral-400 hover:text-neutral-200">ดูรายละเอียด (debug)</summary>
+                                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                            <span className="rounded-full border border-neutral-700 px-3 py-1 text-neutral-300">5m: {(data as any).states.sweep_5m}</span>
+                                            <span className="rounded-full border border-neutral-700 px-3 py-1 text-neutral-300">15m: {(data as any).states.rejection_15m}</span>
+                                            <span className="rounded-full border border-neutral-700 px-3 py-1 text-neutral-300">1h: {(data as any).states.confirm_1h}</span>
+                                        </div>
+                                    </details>
+                                </>
+                            )}
                         </div>
-                    </div>
 
-                    <div className="mt-4 text-[11px] text-neutral-500">
-                        ทิป: badge จะโผล่เฉพาะ “ตอนมันมีความหมายจริง ๆ” (ติดดอย/ติดช็อต หรือเปลี่ยนโหมด) — ที่เหลือปล่อยให้ตาได้หายใจ 😮‍💨
-                    </div>
+                        {/* HISTORY */}
+                        <div className="mt-4 border-t border-white/10 pt-4">
+                            <div className="text-xs text-neutral-400">History (tap to expand)</div>
 
-                    <InfoButton title="Timeline บอกอะไร?">
-                        <div>บล็อคนี้คือ “บันทึกเหตุการณ์ของระบบ” ว่า state เปลี่ยนจากอะไรไปอะไร ตามเวลา</div>
-                        <ul className="list-disc pl-4 space-y-1">
-                            <li>
-                                <b>Today</b> = เหตุการณ์วันนี้แบบไลฟ์
-                            </li>
-                            <li>
-                                <b>History</b> = ย้อนหลังแยกเป็นรายวัน (กดขยาย)
-                            </li>
-                            <li>
-                                <b>Smart badges</b> = โชว์เฉพาะตอนสำคัญ (เช่น trapped ≠ NONE หรือมี mode switch)
-                            </li>
-                            <li>
-                                <b>Reason chip</b> = สรุปเหตุผลสั้น ๆ เป็นภาษาไทย
-                            </li>
-                        </ul>
-                        <div>Timeline ช่วยตอบคำถามว่า “ทำไมระบบถึงคิดแบบนี้” แบบดูย้อนหลังได้</div>
-                    </InfoButton>
-                </div>
+                            <div className="mt-2 max-h-64 overflow-auto pr-1 space-y-3">
+                                {nonTodayGroups.map((g) => (
+                                    <details key={g.key} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                                        <summary className="cursor-pointer select-none text-sm text-neutral-200 flex items-center justify-between">
+                                            <span className="font-semibold">{g.label}</span>
+                                            <span className="text-xs text-neutral-500">{g.items.length} events</span>
+                                        </summary>
+
+                                        <div className="mt-3">
+                                            <TimelineList items={g.items} maxH="max-h-72" />
+                                        </div>
+                                    </details>
+                                ))}
+
+                                {nonTodayGroups.length === 0 && <div className="text-sm text-neutral-400">ยังไม่มีประวัติวันก่อนหน้า</div>}
+                            </div>
+                        </div>
+
+                        <div className="mt-4 text-[11px] text-neutral-500">
+                            ทิป: badge จะโผล่เฉพาะ “ตอนมันมีความหมายจริง ๆ” (ติดดอย/ติดช็อต หรือเปลี่ยนโหมด) — ที่เหลือปล่อยให้ตาได้หายใจ 😮‍💨
+                        </div>
+
+                        <InfoButton title="Timeline บอกอะไร?">
+                            <div>บล็อคนี้คือ “บันทึกเหตุการณ์ของระบบ” ว่า state เปลี่ยนจากอะไรไปอะไร ตามเวลา</div>
+                            <ul className="list-disc pl-4 space-y-1">
+                                <li>
+                                    <b>Today</b> = เหตุการณ์วันนี้แบบไลฟ์
+                                </li>
+                                <li>
+                                    <b>History</b> = ย้อนหลังแยกเป็นรายวัน (กดขยาย)
+                                </li>
+                                <li>
+                                    <b>Smart badges</b> = โชว์เฉพาะตอนสำคัญ (เช่น trapped ≠ NONE หรือมี mode switch)
+                                </li>
+                                <li>
+                                    <b>Reason chip</b> = สรุปเหตุผลสั้น ๆ เป็นภาษาไทย
+                                </li>
+                            </ul>
+                            <div>Timeline ช่วยตอบคำถามว่า “ทำไมระบบถึงคิดแบบนี้” แบบดูย้อนหลังได้</div>
+                        </InfoButton>
+                    </div>
+                )}
             </div>
         </div>
     );

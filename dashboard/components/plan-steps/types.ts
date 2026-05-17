@@ -12,7 +12,10 @@ export type StepSetKey =
     | "BREAKOUT_SWITCH_MODE"
     | "MODE_LOCKED_NO_TRADE"
     | "MODE_LOCKED_TREND"
-    | "TREND_UP_STEPSET";
+    | "OB_GATE_STEPSET"
+    | "TREND_UP_STEPSET"
+    | "TREND_DOWN_STEPSET";
+
 
 // UI step item
 export type StepUI = {
@@ -92,8 +95,8 @@ export type PlanStatus = {
         oi: {
             now: number | null;
             at_sweep: number | null;
-            trend_5m: { dir: string; pct: number };
-            trend_15m: { dir: string; pct: number };
+            trend_5m: { dir: string | null; pct: number | null };
+            trend_15m: { dir: string | null; pct: number | null };
 
             has_data?: boolean;
             status?: string;
@@ -105,8 +108,8 @@ export type PlanStatus = {
 
         funding: {
             now: number | null;
-            trend_5m: { dir: string; pct: number };
-            trend_15m: { dir: string; pct: number };
+            trend_5m: { dir: string | null; pct: number | null };
+            trend_15m: { dir: string | null; pct: number | null };
 
             has_data?: boolean;
             status?: string;

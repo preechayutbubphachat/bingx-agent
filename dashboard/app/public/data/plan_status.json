@@ -1,39 +1,308 @@
 {
-  "generated_at": "2025-12-20T00:00:00.000Z",
-  "age_sec": 0,
-
+  "ok": true,
+  "t": 1766632593279,
+  "updated_at": 1766632593279,
+  "source_updated_at": 1766632408280,
+  "data_dir": "C:\\bingx-agent",
+  "symbol": "BTC-USDT",
+  "mode_lock": {
+    "value": "NO_TRADE",
+    "changed": false
+  },
+  "plan_state": "NO_TRADE_LOCKED",
   "price": {
-    "close_5m": 0,
-    "close_1h": 0
+    "close_5m": 87792.2,
+    "close_1h": 87792.2
   },
-
-  "plan": {
-    "market_regime": "RANGE",
-    "market_mode": "GRID_NEUTRAL",
-    "sweep_zone_up": { "low": 88350, "high": 88380 },
-    "grid": { "lower": 86800, "upper": 88380, "count": 6 }
+  "ob_gate": {
+    "bias_1h": "UNKNOWN",
+    "h1_ob": {
+      "tf": "1h",
+      "side": "BULL",
+      "zone": {
+        "low": 87485.9,
+        "high": 87525.9
+      },
+      "origin": {
+        "t": 1766606400000,
+        "index": 17
+      },
+      "strength": {
+        "displacement_pct": 0.504,
+        "bos": true,
+        "retest_count": 7
+      },
+      "note": "1H Bullish OB (last red candle before bullish displacement)"
+    },
+    "m5_ob_confirm": {
+      "tf": "5m",
+      "side": "BULL",
+      "zone": {
+        "low": 87528.2,
+        "high": 87667.6
+      },
+      "origin": {
+        "t": 1766628000000,
+        "index": 273
+      },
+      "strength": {
+        "displacement_pct": 0.157,
+        "bos": true,
+        "retest_count": 60
+      },
+      "note": "5m Bullish OB (post-CHOCH confirm block)"
+    },
+    "touch": {
+      "ok": true,
+      "why": "price_overlaps_1h_ob"
+    },
+    "sweep": {
+      "seen": true,
+      "side": "DOWN",
+      "t": 1766624100000,
+      "price": 87485,
+      "idx": 260
+    },
+    "reclaim": {
+      "ok": false,
+      "rule": "close back in zone AND beyond mid",
+      "t": null,
+      "idx": null
+    },
+    "choch": {
+      "ok": true,
+      "dir": "UP",
+      "t": 1766628900000,
+      "idx": 276
+    },
+    "entry": {
+      "status": "WAIT",
+      "entry_zone": {
+        "low": 87528.2,
+        "high": 87667.6
+      },
+      "sl": null,
+      "tp1": 88022.5,
+      "why": "wait_reclaim_midrule"
+    }
   },
-
-  "state": {
-    "code": "PLAN_WAIT_SWEEP_UP",
-    "headline": "รอ sweep ด้านบน 88350–88380",
-    "direction_hint": "UPPER_SWEEP_THEN_REJECT",
-    "confidence": 0.72
+  "ob_trade": {
+    "active": false,
+    "trade_id": null,
+    "symbol": "BTC-USDT",
+    "bias": null,
+    "opened_t": null,
+    "closed_t": null,
+    "entry_price": null,
+    "entry_zone": null,
+    "sl": null,
+    "tp1": null,
+    "result": null,
+    "exit_price": null,
+    "r_multiple": null,
+    "open_reason": null,
+    "close_reason": null
   },
-
-  "signals": {
-    "sweep_5m": "NO_SWEEP",
-    "rejection_15m": "UNKNOWN",
-    "breakout_1h": "UNKNOWN"
+  "liquidity_magnet": {
+    "m5": {
+      "tf": "5m",
+      "lastClose": null,
+      "poc": null,
+      "bias": "NEUTRAL",
+      "target": null,
+      "magnetsAbove": [],
+      "magnetsBelow": [],
+      "planDir": null,
+      "alignment": "UNKNOWN",
+      "note": "not enough candles (0/50)",
+      "twoLiner": [
+        "Flow(5m): bias=NEUTRAL | target=— | POC=—",
+        "Plan: — | Alignment: UNKNOWN"
+      ],
+      "debug": {
+        "pivotCount": 0,
+        "activePivotCount": 0,
+        "bins": 50,
+        "lookBack": 300
+      }
+    },
+    "h1": {
+      "tf": "1h",
+      "lastClose": null,
+      "poc": null,
+      "bias": "NEUTRAL",
+      "target": null,
+      "magnetsAbove": [],
+      "magnetsBelow": [],
+      "planDir": null,
+      "alignment": "UNKNOWN",
+      "note": "not enough candles (0/50)",
+      "twoLiner": [
+        "Flow(1h): bias=NEUTRAL | target=— | POC=—",
+        "Plan: — | Alignment: UNKNOWN"
+      ],
+      "debug": {
+        "pivotCount": 0,
+        "activePivotCount": 0,
+        "bins": 50,
+        "lookBack": 300
+      }
+    },
+    "two_liner": [
+      "Flow(5m): bias=NEUTRAL | target=— | POC=—",
+      "Plan: — | Alignment: UNKNOWN",
+      "Flow(1h): bias=NEUTRAL | target=— | POC=—",
+      "Plan: — | Alignment: UNKNOWN"
+    ],
+    "summary_th": "⏸️ แม่เหล็กยังไม่ชัด → รอคอนเฟิร์ม / อย่าพึ่งเดา"
   },
-
-  "next_actions": [
-    "รอ 15m ปิดยืนยัน rejection ใต้ 88350",
-    "ถ้า 1H ปิดกลับใต้ supply → false break confirmed",
-    "ถ้า 1H ยืนเหนือ 88500 → ระวัง breakout, ลด/พัก grid"
-  ],
-
-  "event_log": [
-    { "t": "2025-12-20T00:00:00.000Z", "event": "PLAN_SET", "note": "Waiting sweep-up zone" }
-  ]
+  "derivatives": {
+    "updated_at": 1766632413153,
+    "freshness": {
+      "tag": "FRESH",
+      "ageSec": 180
+    },
+    "oi": {
+      "status": "OK",
+      "has_data": true,
+      "reason": null,
+      "source": {
+        "file": "derivatives_history_cache.json",
+        "keypath": "symbols[BTC-USDT].openInterest/*",
+        "updated_at": 1766632413153,
+        "freshness": {
+          "tag": "FRESH",
+          "ageSec": 180
+        }
+      },
+      "integrity": {
+        "s5": {
+          "count": 72,
+          "spanSec": 21300,
+          "maxGapSec": 300,
+          "monotonic": true
+        },
+        "s15": {
+          "count": 79,
+          "spanSec": 85500,
+          "maxGapSec": 16200,
+          "monotonic": true
+        }
+      },
+      "now": 1202085614.9,
+      "at_sweep": null,
+      "trend_5m": {
+        "dir": "DOWN",
+        "pct": -0.8692643781481447
+      },
+      "trend_15m": {
+        "dir": "DOWN",
+        "pct": -0.9617299501451577
+      }
+    },
+    "funding": {
+      "status": "OK",
+      "has_data": true,
+      "reason": null,
+      "source": {
+        "file": "derivatives_history_cache.json",
+        "keypath": "symbols[BTC-USDT].funding/*",
+        "updated_at": 1766632413153,
+        "freshness": {
+          "tag": "FRESH",
+          "ageSec": 180
+        }
+      },
+      "integrity": {
+        "s5": {
+          "count": 72,
+          "spanSec": 21300,
+          "maxGapSec": 300,
+          "monotonic": true
+        },
+        "s15": {
+          "count": 79,
+          "spanSec": 85500,
+          "maxGapSec": 16200,
+          "monotonic": true
+        }
+      },
+      "now": 0.0000944,
+      "trend_5m": {
+        "dir": "DOWN",
+        "pct": -5.6000000000000005
+      },
+      "trend_15m": {
+        "dir": "UP",
+        "pct": 24.210526315789473
+      }
+    },
+    "crowd": {
+      "side": "LONGS",
+      "trapped": "NONE",
+      "crowd_th": "ฝั่ง Long หนา",
+      "trapped_th": "ยังไม่เห็นสัญญาณคนติดชัด",
+      "note": "Funding(now)=0.000094 | OI 5m=DOWN (-0.87%) | Funding 5m=DOWN (-5.60%)"
+    }
+  },
+  "plan_status_state": {
+    "generated_at": "2025-12-25T03:16:33.278Z",
+    "age_sec": 184,
+    "price": {
+      "close_5m": 87792.2,
+      "close_1h": 87792.2
+    },
+    "plan": {
+      "market_regime": "UNKNOWN",
+      "market_mode": "NO_TRADE",
+      "sweep_zone_up": {
+        "low": 88350,
+        "high": 88380
+      },
+      "grid": {
+        "lower": 86800,
+        "upper": 88380,
+        "count": null
+      }
+    },
+    "state": {
+      "code": "NO_TRADE_LOCKED",
+      "headline": "🔒 ล็อก NO_TRADE ตามบทวิเคราะห์ → งดเทรด",
+      "direction_hint": "NO_TRADE",
+      "confidence": 0.35,
+      "step_set": "MODE_LOCKED_NO_TRADE"
+    },
+    "signals": {
+      "sweep_5m": "WAIT_SWEEP_UP",
+      "rejection_15m": "REJECTION_15M_PENDING",
+      "breakout_1h": "FAKEOUT_1H_CONFIRMED"
+    },
+    "next_actions": [
+      "งดเทรดตามบทวิเคราะห์",
+      "รอ snapshot ใหม่แล้วค่อย re-evaluate"
+    ],
+    "steps": [
+      {
+        "id": "LOCK",
+        "title": "NO_TRADE locked",
+        "status": "DONE",
+        "why": "decision mode_lock = NO_TRADE"
+      }
+    ]
+  },
+  "debug": {
+    "sweep_event": null,
+    "rejection_score": 3,
+    "rejection_why": "swept=false, closedBackIn=true, closedBelowLow=true, bearishClose=true, wickDominant=false",
+    "confirm_why": "1H close กลับเข้าในกรอบชัดเจน",
+    "deriv_primary": {
+      "file": "derivatives_history_cache.json",
+      "reason": null
+    },
+    "oi_fallback": {
+      "used": false,
+      "reason": null
+    }
+  },
+  "explain_th": "🔒 ล็อก NO_TRADE ตามบทวิเคราะห์ → งดเทรด"
 }

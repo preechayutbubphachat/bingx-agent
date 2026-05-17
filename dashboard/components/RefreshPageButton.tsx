@@ -25,11 +25,7 @@ export default function RefreshPageButton() {
       title="รีเฟรชหน้าเพื่อดึงข้อมูลล่าสุด"
     >
       {isPending ? "กำลังรีเฟรช…" : "↻ รีเฟรช"}
-      {lastClickedAt && !isPending ? (
-        <span className="ml-2 text-xs text-neutral-400">
-          ({Math.max(0, Math.floor((Date.now() - lastClickedAt) / 1000))}s)
-        </span>
-      ) : null}
+      {lastClickedAt && !isPending ? <span className="ml-2 text-xs text-neutral-400">(updated)</span> : null}
     </button>
   );
 }

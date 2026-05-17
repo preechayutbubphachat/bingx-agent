@@ -16,7 +16,6 @@ export function tfProgressFromPlanState(ps: string) {
     if (s.includes("NO_TRADE") || s.includes("LOCKED")) return "ครบ: —";
     return "ครบ: —";
 }
-
 export function eventIcon(e: LogItem) {
     const type = String(e.type ?? "").toUpperCase();
     const to = String(e.to ?? "").toUpperCase();
@@ -226,4 +225,90 @@ export function buildDerivativesTwoLiner(input: {
     const line2 = `แผน/ระวัง: ${core.action}${risk ? ` — ${risk}` : ""}${stale}`;
 
     return { line1, line2 };
+}
+
+// ✅ NEW: Decision 2-liner (ตัดสิน + ผูก OB Gate)
+export function buildDecisionTwoLiner(args: {
+    price5mDir: DerivDir;
+    oi5mDir: DerivDir;
+    funding5mDir: DerivDir;
+
+    crowding?: string;
+    freshnessAgeSec?: number | null;
+
+    obGate?: any;
+    modeLock?: string;
+}) {
+    const base = buildDerivativesTwoLiner({
+        price5mDir: args.price5mDir,
+        oi5mDir: args.oi5mDir,
+        funding5mDir: args.funding5mDir,
+        crowding: args.crowding,
+        freshnessAgeSec: args.freshnessAgeSec,
+    });
+
+    const mode = String(args.modeLock ?? "").toUpperCase();
+
+    const ob = args.obGate ?? null;
+    const s = String(ob?.entry?.status ?? "").trim().toUpperCase();
+    const ready = s === "READY" || s === "CONFIRMED";
+
+    // gates: รองรับทั้ง boolean และ {ok:boolean}
+    const g = ob?.gates ?? ob ?? null;
+    const touch = !!(g?.touch?.ok ?? g?.touch ?? false);
+    const sweep = !!(g?.sweep?.ok ?? g?.sweep ?? false);
+    const reclaim = !!(g?.reclaim?.ok ?? g?.reclaim ?? false);
+    const choch = !!(g?.choch?.ok ?? g?.choch ?? false);
+
+    let gateNeed = "";
+    if (g) {
+        if (!touch) gateNeed = "รอ Touch";
+        else if (!sweep) gateNeed = "รอ Sweep";
+        else if (!reclaim) gateNeed = "รอ Reclaim";
+        else if (!choch) gateNeed = "รอ CHoCH";
+        else gateNeed = "Gate ครบ";
+    }
+
+    // --- ตัดสิน ---
+    if (mode.includes("NO_TRADE")) {
+        return {
+            line1: `คำตัดสิน: 🔒 NO_TRADE`,
+            line2: gateNeed ? `ปลดล็อกเมื่อ: ${gateNeed} แล้วค่อย re-evaluate` : base.line2,
+            debug: base,
+        };
+    }
+
+    // ถ้ามี gate แต่ยังไม่ครบ -> ยังไม่เข้า
+    if (gateNeed && gateNeed !== "Gate ครบ") {
+        return {
+            line1: `คำตัดสิน: ⏳ ยังไม่เข้า — ${gateNeed}`,
+            line2: `ประกอบการตัดสินใจ: ${base.line2}`,
+            debug: base,
+        };
+    }
+
+    // Gate ครบ หรือไม่มี gate info: ถ้า READY ให้ไฟเขียว
+    if (ready) {
+        return {
+            line1: `คำตัดสิน: ✅ เข้าได้ (OB READY) — “ห้ามไล่”`,
+            line2: `เช็คก่อนกด: ${base.line2}`,
+            debug: base,
+        };
+    }
+
+    // ยังไม่ READY แต่ gate ครบ -> ให้ไฟเขียวแบบมีเงื่อนไข
+    if (gateNeed === "Gate ครบ") {
+        return {
+            line1: `คำตัดสิน: ✅ เข้าได้ “เมื่อแท่งยืนยัน”`,
+            line2: `เช็คก่อนกด: ${base.line2}`,
+            debug: base,
+        };
+    }
+
+    // fallback
+    return {
+        line1: `คำตัดสิน: 🕵️ รอความชัด`,
+        line2: base.line2,
+        debug: base,
+    };
 }

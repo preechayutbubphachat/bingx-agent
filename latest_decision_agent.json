@@ -1,0 +1,74 @@
+{
+  "schema_version": "agent_like_v1",
+  "generated_at": "2025-12-29T22:41:04.157Z",
+  "symbol": "BTC-USDT",
+  "market_mode": "GRID_NEUTRAL",
+  "confidence": 0.47,
+  "regime": null,
+  "levels": {
+    "trend": {
+      "dir": null,
+      "pullback_zone": null,
+      "invalidation": null,
+      "trigger_rule": "ตอนนี้ยังไม่เข้าเงื่อนไข TREND_UP/TREND_DOWN ชัดเจน → เล่นกรอบ/รอ sweep-then-confirm แทน",
+      "targets": {
+        "t1": null,
+        "t2": null
+      },
+      "entry": {
+        "type": "CONFIRM",
+        "hint": "โหมดกรอบ: รอแตะขอบกรอบแล้วให้ 5m ยืนยันกลับเข้ากรอบก่อนเข้า"
+      }
+    },
+    "smc": {
+      "swing_high_1h": 90362.5,
+      "swing_low_1h": 86367,
+      "eq_1h": 88364.75,
+      "liquidity_note": "สนามหลัก 86367–90363; EQ≈88365 คือจุดปะทะ; ระวัง sweep ใต้/เหนือกรอบก่อนเลือกทาง"
+    }
+  },
+  "risk_overlay": {
+    "crypto_news_risk": "SKIPPED",
+    "has_hot_news": false,
+    "macro_risk": "UNKNOWN",
+    "events": [],
+    "headlines": [],
+    "notes": [
+      "news skipped (--no-news)"
+    ]
+  },
+  "derivatives": {
+    "oi": {
+      "status": "OK",
+      "has_data": true,
+      "reason": "",
+      "source": "snapshot",
+      "integrity": "GOOD",
+      "now": 1513887438.7,
+      "trend_5m": "UP",
+      "trend_15m": "UP",
+      "crowd": "CROWDED_LONG",
+      "trapped": "NONE"
+    },
+    "funding": {
+      "status": "OK",
+      "has_data": true,
+      "reason": "",
+      "source": "snapshot",
+      "integrity": "GOOD",
+      "now": 0.0001,
+      "trend_5m": "FLAT",
+      "trend_15m": "FLAT"
+    }
+  },
+  "reason": {
+    "one_liner": "GRID_NEUTRAL | conf=0.47 | Price: last_close≈87275 (ใต้ EQ) | news=SKIPPED",
+    "bullets": [
+      "1H slope≈-0.67%, ATR_1H=549.5781241826554, BBW_1H=0.049563042215093334, vol_state=NORMAL",
+      "SMC: swing_low≈86367, swing_high≈90363, EQ≈88365",
+      "ตอนนี้ยังไม่เข้าเงื่อนไข TREND_UP/TREND_DOWN ชัดเจน → เล่นกรอบ/รอ sweep-then-confirm แทน",
+      "false breakout risk high | crowding=CROWDED_LONG | news skipped (--no-news)"
+    ]
+  },
+  "extras": {}
+}

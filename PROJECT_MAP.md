@@ -12,13 +12,135 @@
 
 ---
 
+## 0.1) Project Status
+
+> อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
+
+### Current Stage
+**Phase M-0F — Git Main Release + Plesk Deployment Evidence Verification** ✅ Git main release complete, Plesk verification pending, 2026-05-26
+
+### Next Stage
+**Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending Plesk evidence, endpoint checks, paper fill evidence, and `EXCHANGE_MANUAL_APPROVAL=approved`)
+
+### Source of Truth (Runtime)
+| ไฟล์ | บทบาท | Authority |
+|------|--------|-----------|
+| `<PROJECT_ROOT>/latest_decision.json` | ผลวิเคราะห์ STEP01 ล่าสุด | **ROOT — authoritative** |
+| `<PROJECT_ROOT>/market_snapshot.json` | Market snapshot ล่าสุด | **ROOT — authoritative** |
+| `dashboard/app/public/data/*.json` | Mirror เพื่อแสดงผล/cache | display-only, not authoritative |
+
+> `<PROJECT_ROOT>` กำหนดโดย `BINGX_AGENT_DIR=<PROJECT_ROOT>` — production server: `httpdocs/` | local Windows: path โปรเจคจริง | ห้าม hard-code `C:\bingx-agent`
+
+### Phase M-0F Done
+- [x] Build fix verified on `main`.
+- [x] `lightweight-charts` dependency present in `dashboard/package.json` and `dashboard/package-lock.json`.
+- [x] `dashboard/package.json` build script uses `node ./node_modules/next/dist/bin/next build`.
+- [x] `dashboard/package.json` `prebuild` runs `scripts/clean-public-build-artifacts.cjs`.
+- [x] `dashboard/next.config.js` sets `turbopack.root` to `dashboard/`.
+- [x] `npm install` EXIT:0.
+- [x] `npm run build` EXIT:0.
+- [x] `npx tsc --noEmit --incremental false` EXIT:0.
+- [x] Git main release commit prepared for `origin/main`.
+- [x] Plesk pull/build/verify instruction added below.
+
+### Phase M-0F In Progress
+- Plesk deployment evidence verification.
+- Manual endpoint checks.
+- `/public` visual check.
+- Paper fill quality evidence.
+- Approval checklist review.
+
+### Phase M-0F Blocked / Pending
+- Plesk `git pull` pending.
+- Plesk `npm install` pending.
+- Plesk `npm run build` pending.
+- Manual endpoint checks pending:
+  - `/api/operator-evidence`
+  - `/api/m0b-preflight`
+  - `/api/health`
+  - `/api/paper-performance`
+  - `/api/exchange-readiness`
+- `/public` visual check pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation remains BLOCKED.
+
+### Phase M-0F — Git Main Release + Plesk Deployment Evidence Checklist
+
+- [x] local/repo npm run build EXIT:0
+- [x] Git remote origin = `https://github.com/preechayutbubphachat/bingx-agent.git`
+- [x] branch = main
+- [x] git pull origin main --rebase completed
+- [x] commit created
+- [x] push origin main completed
+- [x] no .env/.env.local committed
+- [x] no node_modules committed
+- [x] no .next committed
+- [x] no secrets committed
+- [ ] Plesk git pull pending/done
+- [ ] Plesk npm install pending/done
+- [ ] Plesk npm run build pending/done
+- [ ] /api/operator-evidence manual check pending/done
+- [ ] /api/m0b-preflight manual check pending/done
+- [ ] /api/health manual check pending/done
+- [ ] /api/paper-performance manual check pending/done
+- [ ] /public visual check pending/done
+- [x] Phase M-0B remains BLOCKED
+
+### Phase M-0F Next
+1. On Plesk:
+   ```bash
+   cd /var/www/vhosts/ob-gate.com/httpdocs
+   git pull origin main
+   cd dashboard
+   npm install
+   npm run build
+   ```
+2. Verify `/public` dashboard.
+3. Verify endpoints:
+   - `/api/operator-evidence`
+   - `/api/m0b-preflight`
+   - `/api/health`
+   - `/api/paper-performance`
+   - `/api/exchange-readiness`
+4. Collect paper fills with `averageFillPrice`.
+5. Complete approval checklist.
+6. Only then set `EXCHANGE_MANUAL_APPROVAL=approved`.
+7. Only then start Phase M-0B read-only exchange API implementation.
+
+### 2026-05-26 — Phase M-0F Git Main Release + Plesk Deployment Evidence Verification
+- Updated:
+  - `PROJECT_MAP.md`
+- Validated:
+  - `npm install`
+  - `npm run build`
+  - `npx tsc --noEmit --incremental false`
+  - `git push origin main`
+- Pending:
+  - Plesk `git pull`
+  - Plesk `npm install`
+  - Plesk `npm run build`
+  - endpoint checks
+  - `/public` visual check
+  - paper fills with `averageFillPrice`
+  - `EXCHANGE_MANUAL_APPROVAL=approved`
+- Safety:
+  - no live trading
+  - no order placement
+  - no exchange network calls
+  - no secrets exposed
+
+---
+
 ## 1) Source of Truth (ข้อมูลจริงของระบบอยู่ที่ไหน)
 
 **ระบบถือว่าไฟล์ที่ root เป็น “ความจริง” (authoritative):**
-- `C:\bingx-agent\market_snapshot.json`  
+- `<PROJECT_ROOT>/market_snapshot.json`
   → snapshot ตลาดล่าสุด (OHLC / orderbook / derivatives / session / volatility)
-- `C:\bingx-agent\latest_decision.json`  
+- `<PROJECT_ROOT>/latest_decision.json`
   → ผลวิเคราะห์ STEP01 ล่าสุด (market_mode / risk_warning / reason / levels / parameters / summary)
+
+> `<PROJECT_ROOT>` กำหนดโดย `BINGX_AGENT_DIR`; ห้าม hard-code เป็น `C:\bingx-agent`
 
 **Dashboard/API ของ Next.js ต้องอ่านจาก 2 ไฟล์นี้เป็นหลัก**
 - ถ้ามีไฟล์ซ้ำใน `dashboard/app/public/data/` ให้ถือว่าเป็น **mirror/สำเนาเพื่อโชว์** เท่านั้น (ไม่ใช่แหล่งจริง)

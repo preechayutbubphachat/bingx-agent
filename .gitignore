@@ -1,9 +1,12 @@
 node_modules
 .env
+.env.local
 .env.*
 dist
 build
 .next
+dashboard/.next
+dashboard/node_modules
 coverage
 .DS_Store
 npm-debug.log*

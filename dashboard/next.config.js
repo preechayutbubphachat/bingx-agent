@@ -11,6 +11,9 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["react", "react-dom"],
   },
+  turbopack: {
+    root: __dirname,
+  },
 };
 
 module.exports = nextConfig;

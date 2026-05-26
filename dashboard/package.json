@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/clean-public-build-artifacts.cjs",
-    "build": "node scripts/clean-public-build-artifacts.cjs && next build",
+    "build": "node ./node_modules/next/dist/bin/next build",
     "start": "next start -p 3001",
     "lint": "eslint"
   },

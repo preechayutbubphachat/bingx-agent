@@ -187,27 +187,79 @@ function buildH1(ob: any): GateH1 {
 }
 
 function buildM5(ob: any): GateM5 {
-    const m5Raw = pick(ob, ["m5_ob_confirm", "m5.confirm", "confirm_5m", "m5_confirm", "lt_confirm"]) ?? null;
-    if (!m5Raw) {
-        return { status: "MISSING", status_th: "ไม่มีข้อมูล 5m confirm", note_th: undefined, note: undefined, raw: null };
-    }
+  const m5Raw =
+    pick(ob, ["m5_ob_confirm", "m5.confirm", "confirm_5m", "m5_confirm", "lt_confirm"]) ?? null;
 
-    const zone =
-        normalizeZone(pick(m5Raw, ["zone", "ob_zone", "range", "price_zone"])) ?? null;
+  // ✅ ถ้า backend บอกชัดว่า 5m feed หายจริง
+  const missingFlag = pick(ob, ["m5_data_missing", "m5_missing", "m5_feed_missing", "missing_5m"]);
+  const feedStatus = String(pick(ob, ["m5_data_status", "m5_feed_status"]) ?? "").toUpperCase();
 
-    const status =
-        asStr(pick(m5Raw, ["status", "state"])) ??
-        (zone ? "READY" : "UNKNOWN");
+  const feedMissing =
+    missingFlag === true ||
+    String(missingFlag ?? "").toLowerCase() === "true" ||
+    feedStatus === "MISSING";
 
-    const status_th =
-        asStr(pick(m5Raw, ["status_th", "state_th"])) ??
-        (zone ? "มี confirm 5m แล้ว" : asStr(status) ?? "—");
+  if (feedMissing) {
+    return {
+      status: "MISSING",
+      status_th: "5m data ไม่มา (feed missing)",
+      note_th: "ตรวจการดึงข้อมูล 5m / cron / cycle",
+      raw: { m5Raw, missingFlag, feedStatus },
+    };
+  }
 
-    const note_th = asStr(pick(m5Raw, ["note_th", "reason_th", "why_th", "desc_th"]));
-    const note = asStr(pick(m5Raw, ["note", "reason", "why", "desc"]));
+  // ✅ null/undefined = ยังไม่เกิดสัญญาณ confirm (ไม่ใช่ data หาย)
+  if (m5Raw === null || m5Raw === undefined) {
+    return {
+      status: "WAIT",
+      status_th: "รอ 5m confirm",
+      note_th: "มีข้อมูลราคา 5m แล้ว แต่ยังไม่พบเงื่อนไขยืนยัน",
+      raw: { m5Raw },
+    };
+  }
 
-    return { status, status_th, note_th, note, raw: m5Raw };
+  // ✅ รองรับ boolean confirm
+  if (typeof m5Raw === "boolean") {
+    return {
+      status: m5Raw ? "READY" : "WAIT",
+      status_th: m5Raw ? "มี confirm 5m แล้ว" : "รอ 5m confirm",
+      note_th: m5Raw ? "ผ่านเงื่อนไขยืนยัน" : "ยังไม่ผ่านเงื่อนไขยืนยัน",
+      raw: { m5Raw },
+    };
+  }
+
+  // ✅ รองรับ string confirm เช่น "READY" / "CONFIRMED" / "WAIT"
+  if (typeof m5Raw === "string") {
+    const s = m5Raw.trim().toUpperCase();
+    const ok = ["READY", "CONFIRMED", "OK", "PASS"].includes(s);
+    const wait = ["WAIT", "PENDING", "HOLD"].includes(s);
+
+    return {
+      status: ok ? "READY" : wait ? "WAIT" : "WAIT",
+      status_th: ok ? "มี confirm 5m แล้ว" : "รอ 5m confirm",
+      note_th: ok ? "ผ่านเงื่อนไขยืนยัน" : "ยังไม่ผ่านเงื่อนไขยืนยัน",
+      raw: { m5Raw },
+    };
+  }
+
+  // ✅ object (รูปแบบเดิมของคุณ)
+  const zone = normalizeZone(pick(m5Raw, ["zone", "ob_zone", "range", "price_zone"])) ?? null;
+
+  const status =
+    asStr(pick(m5Raw, ["status", "state"])) ??
+    (zone ? "READY" : "WAIT");
+
+  const status_th =
+    asStr(pick(m5Raw, ["status_th", "state_th"])) ??
+    (zone ? "มี confirm 5m แล้ว" : "รอ 5m confirm");
+
+  const note_th = asStr(pick(m5Raw, ["note_th", "reason_th", "why_th", "desc_th"]));
+  const note = asStr(pick(m5Raw, ["note", "reason", "why", "desc"]));
+
+  return { status, status_th, note_th, note, raw: m5Raw };
 }
+
+
 
 
 function buildEntry(ob: any): GateEntry {

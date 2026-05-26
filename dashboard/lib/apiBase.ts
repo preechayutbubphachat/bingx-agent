@@ -1,19 +1,21 @@
-// dashboard/lib/apiBase.ts
-function stripSlash(s: string) {
-    return s.replace(/\/+$/, "");
+function stripTrailingSlash(s: string) {
+  return s.replace(/\/+$/, "");
 }
 
-export const API_BASE = stripSlash(process.env.NEXT_PUBLIC_API_BASE ?? "");
+function ensureLeadingSlash(s: string) {
+  return s.startsWith("/") ? s : `/${s}`;
+}
+
+export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "").trim();
 
 export function apiUrl(path: string) {
-    const p = path.startsWith("/") ? path : `/${path}`;
-    if (!API_BASE) return p;
+  const p = ensureLeadingSlash(path);
 
-    // ✅ browser safety: ถ้า base ไม่ตรง origin -> ใช้ relative
-    if (typeof window !== "undefined") {
-        const origin = stripSlash(window.location.origin);
-        if (stripSlash(API_BASE) !== origin) return p;
-    }
+  if (!API_BASE) return p;
 
-    return `${API_BASE}${p}`;
+  if (API_BASE.startsWith("/")) {
+    return `${stripTrailingSlash(API_BASE)}${p}`;
+  }
+
+  return `${stripTrailingSlash(API_BASE)}${p}`;
 }

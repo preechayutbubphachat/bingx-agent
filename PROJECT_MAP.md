@@ -17,7 +17,7 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0F — Git Main Release + Plesk Deployment Evidence Verification** ✅ Git main release complete, Plesk verification pending, 2026-05-26
+**Phase M-0G — Plesk UI Regression / Stale Deployment Investigation & Restore** 🔎 source restore in progress, Plesk verification pending, 2026-05-26
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending Plesk evidence, endpoint checks, paper fill evidence, and `EXCHANGE_MANUAL_APPROVAL=approved`)
@@ -31,95 +31,123 @@
 
 > `<PROJECT_ROOT>` กำหนดโดย `BINGX_AGENT_DIR=<PROJECT_ROOT>` — production server: `httpdocs/` | local Windows: path โปรเจคจริง | ห้าม hard-code `C:\bingx-agent`
 
-### Phase M-0F Done
-- [x] Build fix verified on `main`.
-- [x] `lightweight-charts` dependency present in `dashboard/package.json` and `dashboard/package-lock.json`.
-- [x] `dashboard/package.json` build script uses `node ./node_modules/next/dist/bin/next build`.
-- [x] `dashboard/package.json` `prebuild` runs `scripts/clean-public-build-artifacts.cjs`.
-- [x] `dashboard/next.config.js` sets `turbopack.root` to `dashboard/`.
-- [x] `npm install` EXIT:0.
-- [x] `npm run build` EXIT:0.
-- [x] `npx tsc --noEmit --incremental false` EXIT:0.
-- [x] Git main release commit prepared for `origin/main`.
-- [x] Plesk pull/build/verify instruction added below.
+### Phase M-0G Done
+- [x] Local `main` release workspace verified against `origin/main`.
+- [x] Confirmed deployed `main` source was missing latest M-0D/M-0B dashboard evidence components.
+- [x] Source component files restored to Git main release workspace:
+  - `OperatorEvidenceCard`
+  - `M0BPreflightCard`
+  - `ExchangeReadinessCard`
+  - `PaperPerformanceCard`
+  - `LiveMigrationGateCard`
+  - `MarketRegimeMiniChart`
+- [x] `/public` page wiring restored for latest evidence cards.
+- [x] Dashboard build marker added: `M-0G / main / 2026-05-26T11:20:00+07:00`.
+- [x] Local `npm install` EXIT:0.
+- [x] Local `npm run build` EXIT:0.
+- [x] Local `npx tsc --noEmit --incremental false` EXIT:0.
+- [x] Local endpoint smoke checks returned HTTP 200 for `/api/operator-evidence`, `/api/m0b-preflight`, `/api/health`, `/api/paper-performance`, and `/api/exchange-readiness`.
+- [x] Local `/public` HTML contains deployment build marker.
 
-### Phase M-0F In Progress
+### Phase M-0G In Progress
 - Plesk deployment evidence verification.
-- Manual endpoint checks.
-- `/public` visual check.
+- UI regression investigation.
+- Endpoint/manual dashboard checks.
 - Paper fill quality evidence.
 - Approval checklist review.
 
-### Phase M-0F Blocked / Pending
-- Plesk `git pull` pending.
+### Phase M-0G Blocked / Pending
+- Plesk app root verification pending.
+- Plesk `git pull origin main` pending after this release.
+- Plesk `.next` clean pending.
 - Plesk `npm install` pending.
 - Plesk `npm run build` pending.
+- Plesk Node app restart pending.
 - Manual endpoint checks pending:
   - `/api/operator-evidence`
   - `/api/m0b-preflight`
   - `/api/health`
   - `/api/paper-performance`
   - `/api/exchange-readiness`
-- `/public` visual check pending.
+- `/public` visual check pending on Plesk after restart.
+- Browser/Plesk cache remains suspected until build marker appears.
 - Paper fills with `averageFillPrice` pending.
 - `EXCHANGE_MANUAL_APPROVAL` not approved.
 - Phase M-0B implementation remains BLOCKED.
 
-### Phase M-0F — Git Main Release + Plesk Deployment Evidence Checklist
+### Phase M-0G — Plesk UI Regression / Stale Deployment Checklist
 
-- [x] local/repo npm run build EXIT:0
-- [x] Git remote origin = `https://github.com/preechayutbubphachat/bingx-agent.git`
-- [x] branch = main
-- [x] git pull origin main --rebase completed
-- [x] commit created
-- [x] push origin main completed
-- [x] no .env/.env.local committed
-- [x] no node_modules committed
-- [x] no .next committed
-- [x] no secrets committed
-- [ ] Plesk git pull pending/done
-- [ ] Plesk npm install pending/done
-- [ ] Plesk npm run build pending/done
-- [ ] /api/operator-evidence manual check pending/done
-- [ ] /api/m0b-preflight manual check pending/done
-- [ ] /api/health manual check pending/done
-- [ ] /api/paper-performance manual check pending/done
-- [ ] /public visual check pending/done
-- [x] Phase M-0B remains BLOCKED
+- [x] GitHub main latest commit inspected locally.
+- [ ] Plesk branch = main
+- [ ] Plesk git pull origin main done
+- [x] `dashboard/app/public/page.tsx` contains latest components.
+- [x] `OperatorEvidenceCard` source exists.
+- [x] `M0BPreflightCard` source exists.
+- [x] `ExchangeReadinessCard` source exists.
+- [x] `PaperPerformanceCard` source exists.
+- [x] `LiveMigrationGateCard` source exists.
+- [x] `MarketRegimeMiniChart` source exists.
+- [x] deployment/build marker added.
+- [x] Local `.next` cleaned before build.
+- [x] Local `npm install` done.
+- [x] Local `npm run build` EXIT:0.
+- [ ] `.next` cleaned on Plesk.
+- [ ] Plesk `npm install` done.
+- [ ] Plesk `npm run build` EXIT:0.
+- [ ] Plesk Node app restarted.
+- [ ] `/public` visual check passed.
+- [ ] endpoints verified.
+- [x] Local endpoint smoke checks passed.
+- [x] Phase M-0B remains BLOCKED.
 
-### Phase M-0F Next
-1. On Plesk:
+### Phase M-0G Next
+1. Push UI restore/deployment marker fix to Git main.
+2. On Plesk:
    ```bash
    cd /var/www/vhosts/ob-gate.com/httpdocs
    git pull origin main
    cd dashboard
+   rm -rf .next
    npm install
    npm run build
    ```
-2. Verify `/public` dashboard.
-3. Verify endpoints:
+3. Restart Node app in Plesk.
+4. Verify `/public` dashboard.
+5. Verify endpoints:
    - `/api/operator-evidence`
    - `/api/m0b-preflight`
    - `/api/health`
    - `/api/paper-performance`
    - `/api/exchange-readiness`
-4. Collect paper fills with `averageFillPrice`.
-5. Complete approval checklist.
-6. Only then set `EXCHANGE_MANUAL_APPROVAL=approved`.
-7. Only then start Phase M-0B read-only exchange API implementation.
+6. Confirm build marker appears.
+7. Continue paper fill evidence collection.
+8. Complete approval checklist.
+9. Only then set `EXCHANGE_MANUAL_APPROVAL=approved`.
+10. Only then start Phase M-0B read-only exchange API implementation.
 
-### 2026-05-26 — Phase M-0F Git Main Release + Plesk Deployment Evidence Verification
+### 2026-05-26 — Phase M-0G Plesk UI Regression / Stale Deployment Investigation
+- Added:
+  - Dashboard deployment/build marker on `/public`.
 - Updated:
+  - `dashboard/app/public/page.tsx`
+  - `dashboard/components/*` dashboard evidence UI surface
+  - `dashboard/lib/*` dashboard evidence/readiness helpers
+  - `dashboard/app/api/*` dashboard evidence endpoints
   - `PROJECT_MAP.md`
 - Validated:
-  - `npm install`
-  - `npm run build`
-  - `npx tsc --noEmit --incremental false`
-  - `git push origin main`
+  - Source wiring inspection complete.
+  - Local `npm install`
+  - Local `npm run build`
+  - Local `npx tsc --noEmit --incremental false`
+  - Local endpoint smoke checks
+  - Local `/public` build marker HTML check
 - Pending:
+  - Plesk app root/path check
   - Plesk `git pull`
+  - Plesk `.next` clean
   - Plesk `npm install`
   - Plesk `npm run build`
+  - Plesk Node app restart
   - endpoint checks
   - `/public` visual check
   - paper fills with `averageFillPrice`

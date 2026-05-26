@@ -17,7 +17,7 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0G — Plesk UI Regression / Stale Deployment Investigation & Restore** 🔎 source restore in progress, Plesk verification pending, 2026-05-26
+**Phase M-0H — Runtime Source-of-Truth Git Protection & Ignore Policy** 🔒 runtime Git protection in progress, Plesk verification pending, 2026-05-26
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending Plesk evidence, endpoint checks, paper fill evidence, and `EXCHANGE_MANUAL_APPROVAL=approved`)
@@ -30,6 +30,84 @@
 | `dashboard/app/public/data/*.json` | Mirror เพื่อแสดงผล/cache | display-only, not authoritative |
 
 > `<PROJECT_ROOT>` กำหนดโดย `BINGX_AGENT_DIR=<PROJECT_ROOT>` — production server: `httpdocs/` | local Windows: path โปรเจคจริง | ห้าม hard-code `C:\bingx-agent`
+
+### Phase M-0H Done
+- [x] Runtime file inventory completed from dashboard/API readers.
+- [x] Root `.gitignore` updated for runtime source-of-truth files, generated market caches, plan state, paper logs, and dashboard display mirrors.
+- [x] Tracked dashboard mirror/cache files removed from Git index with `git rm --cached` only.
+- [x] `docs/RUNTIME_FILES_GIT_POLICY.md` added.
+- [x] `PROJECT_ARCHITECTURE.md` synchronized with runtime Git protection policy.
+
+### Phase M-0H In Progress
+- Plesk deployment verification.
+- Runtime file protection validation after Plesk pull.
+- Paper fill evidence.
+- Approval checklist review.
+
+### Phase M-0H Blocked / Pending
+- Plesk verification pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation remains BLOCKED.
+
+### Runtime Files Git Protection
+
+Rules:
+- Runtime JSON/TXT/JSONL files in `<PROJECT_ROOT>` are generated data.
+- They must not be committed to Git.
+- `git pull` must not overwrite server runtime data.
+- Use `.example.json` or `.example.jsonl` for examples only.
+- If runtime files were tracked before, remove them with `git rm --cached`.
+- Never delete server runtime files during Git cleanup.
+- Dashboard mirror files under `dashboard/app/public/data/` and `dashboard/public/data/` are display/cache only, not authoritative.
+
+### Phase M-0H — Runtime Source-of-Truth Git Protection Checklist
+
+- [x] Runtime authoritative file inventory completed.
+- [x] Market cache file inventory completed.
+- [x] Plan/state file inventory completed.
+- [x] Paper/simulation file inventory completed.
+- [x] Dashboard mirror/cache file inventory completed.
+- [x] `.gitignore` runtime protection added.
+- [x] Runtime mirror/cache files untracked with `git rm --cached` where previously tracked.
+- [x] `docs/RUNTIME_FILES_GIT_POLICY.md` added.
+- [x] `PROJECT_ARCHITECTURE.md` references runtime Git policy.
+- [x] Runtime files were not deleted.
+- [x] Runtime JSON/TXT fresh data not committed.
+- [x] Phase M-0B remains BLOCKED.
+- [ ] Plesk pull verification.
+- [ ] Plesk runtime files confirmed preserved after pull.
+
+### Phase M-0H Next
+1. Push runtime Git protection update to Git main.
+2. On Plesk, pull latest code.
+3. Verify runtime JSON files remain present and are not overwritten by Git.
+4. Rerun snapshot if any runtime file is stale.
+5. Verify `/api/health`, `/api/plan-status`, and `/api/runtime-audit`.
+6. Continue paper fill evidence collection.
+7. Complete approval checklist.
+8. Only then set `EXCHANGE_MANUAL_APPROVAL=approved`.
+9. Only then start Phase M-0B read-only exchange API implementation.
+
+### 2026-05-26 — Phase M-0H Runtime Source-of-Truth Git Protection
+- Added:
+  - `docs/RUNTIME_FILES_GIT_POLICY.md`
+  - Runtime file ignore list in `.gitignore`
+- Updated:
+  - `.gitignore`
+  - `PROJECT_MAP.md`
+  - `PROJECT_ARCHITECTURE.md`
+- Untracked:
+  - Dashboard display mirror/cache files previously tracked under `dashboard/app/public/data/` and `dashboard/public/data/`
+- Validation:
+  - `git status`
+  - `git ls-files` runtime check
+  - `git check-ignore`
+- Safety:
+  - no live trading
+  - no order placement
+  - no exchange API calls
+  - no runtime files deleted
 
 ### Phase M-0G Done
 - [x] Local `main` release workspace verified against `origin/main`.

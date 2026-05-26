@@ -1,12 +1,65 @@
-node_modules
+# Runtime source-of-truth / generated market data
+market_snapshot.json
+latest_decision.json
+latest_decision_agent.json
+JSON_Agent.json
+latest_step2.txt
+
+# Market data runtime caches
+klines.json
+orderbook_snapshot.json
+open_interest_snapshot.json
+oi_history_cache.json
+news_context.json
+derivatives_history_cache.json
+volatility_baseline_cache.json
+funding_snapshot.json
+
+# Plan status / scheduler / runtime state
+plan_status.json
+plan_status_state.json
+plan_status_log.jsonl
+plan_history.jsonl
+scheduler_heartbeat.json
+alert_summary.json
+alerts_summary.json
+runtime_audit.json
+runtime_audit_report.json
+
+# Paper trading / simulation runtime logs
+paper_ledger.json
+paper_journal.json
+paper_execution_log.json
+paper_trades.json
+paper_status.json
+paper_pnl.jsonl
+execution_audit_log.json
+execution_log.json
+dashboard/tmp/
+dashboard/tmp/*.jsonl
+
+# Local runtime temp files
+*.tmp
+latest_decision.tmp
+
+# Dashboard display mirrors / generated cache
+dashboard/app/public/data/*.json
+dashboard/app/public/data/*.jsonl
+dashboard/public/data/*.json
+dashboard/public/data/*.jsonl
+
+# Build/dependency/env safety
+node_modules/
+dashboard/node_modules/
+.next/
+dashboard/.next/
 .env
 .env.local
 .env.*
+!.env.example
+!.env.local.example
 dist
 build
-.next
-dashboard/.next
-dashboard/node_modules
 coverage
 .DS_Store
 npm-debug.log*

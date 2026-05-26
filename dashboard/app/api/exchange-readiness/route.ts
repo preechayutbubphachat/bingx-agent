@@ -48,6 +48,7 @@ export async function GET() {
     // Structured error — ห้าม expose stack trace หรือ secret
     const message =
       err instanceof Error ? err.message : "Unknown error in exchange-readiness";
+    console.error("[/api/exchange-readiness] Unexpected error:", message);
 
     return NextResponse.json(
       {
@@ -68,7 +69,8 @@ export async function GET() {
         noExchangeApiCalls: true,
         noOrderPlacement: true,
         phase: "M-0",
-        error: message,
+        error: "EXCHANGE_READINESS_FAILED",
+        message: "Exchange readiness check encountered an unexpected error",
       },
       { status: 200 } // 200 เสมอ — ok field บอกสถานะ
     );

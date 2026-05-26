@@ -110,7 +110,8 @@ export async function GET() {
           liveTradingEnabled: false,
           orderPlacementEnabled: false,
         },
-        error: message,
+        error: "RUNTIME_AUDIT_FAILED",
+        message: "Runtime audit encountered an unexpected error",
       },
       { status: 200 } // ใช้ 200 เสมอ เพื่อไม่ให้ reverse proxy หยุด
     );

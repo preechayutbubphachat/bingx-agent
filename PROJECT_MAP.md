@@ -17,7 +17,7 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0H — Runtime Source-of-Truth Git Protection & Ignore Policy** 🔒 runtime Git protection in progress, Plesk verification pending, 2026-05-26
+**Phase M-0I — Runtime Payload Error Audit & Public Dashboard Error Recovery** 🛠️ code complete locally, Plesk verification pending, 2026-05-26
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending Plesk evidence, endpoint checks, paper fill evidence, and `EXCHANGE_MANUAL_APPROVAL=approved`)
@@ -30,6 +30,95 @@
 | `dashboard/app/public/data/*.json` | Mirror เพื่อแสดงผล/cache | display-only, not authoritative |
 
 > `<PROJECT_ROOT>` กำหนดโดย `BINGX_AGENT_DIR=<PROJECT_ROOT>` — production server: `httpdocs/` | local Windows: path โปรเจคจริง | ห้าม hard-code `C:\bingx-agent`
+
+### Phase M-0I Done
+- [x] Screenshot error/warning blocks analyzed.
+- [x] Production unauthenticated endpoint audit completed; API paths returned login HTML instead of JSON without session.
+- [x] Runtime file audit completed locally; core runtime JSON valid, `scheduler_heartbeat.json` missing.
+- [x] `/api/plan-status` hardened to return structured safe JSON on unexpected errors.
+- [x] `/api/latest`, `/api/runtime-audit`, and `/api/exchange-readiness` hardened to avoid client stack/internal error leakage.
+- [x] `readLatest()` now honors `BINGX_AGENT_DIR=<PROJECT_ROOT>`.
+- [x] `/api/health` no longer falls back to `C:\bingx-agent`; it uses runtime directory detection.
+- [x] `PlanStatusProvider` handles non-JSON/login responses and structured `ok:false` payloads without crashing the whole provider tree.
+- [x] `DashboardDiagnosticsCard` added to summarize endpoint/runtime issues and next actions.
+- [x] Raw `/public` debug JSON reduced behind collapsed details.
+- [x] `npm install` EXIT:0.
+- [x] `npm run build` EXIT:0.
+- [x] Local endpoint checks returned JSON for core M-0 endpoints.
+- [x] Local `/public` HTML contains DashboardDiagnosticsCard and collapsed debug details.
+- [x] Root runtime/cache files that were still tracked were removed from Git index with `git rm --cached` only.
+
+### Phase M-0I In Progress
+- Plesk endpoint/manual dashboard checks.
+- Runtime data quality verification on server.
+- Paper fill quality evidence.
+
+### Phase M-0I Blocked / Pending
+- Plesk `/public` visual check pending after pull/build/restart.
+- Plesk authenticated endpoint checks pending.
+- `scheduler_heartbeat.json` missing in local runtime audit sample.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation remains BLOCKED.
+
+### Phase M-0I — Runtime Payload Error Audit & Public Dashboard Error Recovery Checklist
+
+- [x] Screenshot errors analyzed.
+- [ ] Browser console errors captured on authenticated Plesk session.
+- [x] `/api/plan-status` checked locally.
+- [x] `/api/health` checked locally.
+- [x] `/api/paper-performance` checked locally.
+- [x] `/api/operator-evidence` checked locally.
+- [x] `/api/m0b-preflight` checked locally.
+- [x] `/api/exchange-readiness` checked locally.
+- [x] Runtime files checked for exists/readable/validJson locally.
+- [x] Endpoint structured error responses hardened.
+- [x] Component/provider defensive rendering hardened.
+- [x] DashboardDiagnosticsCard added.
+- [x] `npm run build` EXIT:0.
+- [ ] `/public` visual check passed on Plesk.
+- [x] Raw stack traces not exposed by hardened endpoint fallbacks.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0I Next
+1. Push runtime payload/error recovery to Git main.
+2. Pull on Plesk.
+3. Run `npm install && npm run build`.
+4. Restart Node.js App in Plesk.
+5. Verify `/public` UI is stable and DashboardDiagnosticsCard is visible.
+6. Verify authenticated endpoint JSON responses.
+7. Verify runtime source-of-truth files and scheduler heartbeat.
+8. Continue paper fill evidence collection.
+9. Complete approval checklist.
+10. Only then consider Phase M-0B.
+
+### 2026-05-26 — Phase M-0I Runtime Payload Error Audit & Public Dashboard Error Recovery
+- Added:
+  - `dashboard/components/DashboardDiagnosticsCard.tsx`
+  - `dashboard/lib/safeJsonResponse.ts`
+- Updated:
+  - endpoint error handling for latest, plan-status, runtime-audit, exchange-readiness, and health
+  - `PlanStatusProvider` defensive payload handling
+  - `/public` dashboard diagnostics and collapsed debug rendering
+  - `PROJECT_MAP.md`
+- Validated:
+  - `npm install`
+  - `npm run build`
+  - local endpoint checks
+  - local `/public` HTML diagnostics marker
+- Pending:
+  - authenticated Plesk endpoint checks
+  - Plesk `/public` visual check
+  - paper fills with `averageFillPrice`
+  - approval checklist
+  - `EXCHANGE_MANUAL_APPROVAL=approved`
+- Safety:
+  - no live trading
+  - no order placement
+  - no exchange API calls
+  - no secrets exposed
+- no runtime JSON modified/deleted
+- runtime files removed from Git index only; working-tree files preserved
 
 ### Phase M-0H Done
 - [x] Runtime file inventory completed from dashboard/API readers.

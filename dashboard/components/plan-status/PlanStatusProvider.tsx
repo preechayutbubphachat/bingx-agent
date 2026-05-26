@@ -134,6 +134,25 @@ function normalizeFieldOwnershipBoundary(
   } as RouteFieldOwnershipBoundary;
 }
 
+async function readSafeJson(res: Response) {
+  const contentType = res.headers.get("content-type") ?? "";
+  const text = await res.text();
+  if (!contentType.toLowerCase().includes("application/json")) {
+    const isHtml = /^\s*</.test(text);
+    throw new Error(
+      isHtml
+        ? "endpoint returned HTML/login instead of JSON"
+        : `endpoint returned ${contentType || "unknown content-type"}`
+    );
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("endpoint returned invalid JSON");
+  }
+}
+
 function normalizeMarkerProof(input: any): PlanStatusResp["marker_proof"] | undefined {
   if (!isPlainObject(input)) return undefined;
 
@@ -520,11 +539,23 @@ export default function PlanStatusProvider(props: {
         throw new Error(`plan-status http ${res.status}`);
       }
 
-      const raw = await res.json();
+      const raw = await readSafeJson(res);
       const normalized = normalizePlanStatusResp(raw);
 
       if (!normalized.ok) {
-        throw new Error("plan-status not ok");
+        const safeError =
+          typeof raw?.message === "string"
+            ? raw.message
+            : typeof raw?.error === "string"
+              ? raw.error
+              : "plan-status returned structured warning";
+        if (!mountedRef.current) return;
+        if (seq !== requestSeqRef.current) return;
+        setData(normalized);
+        setFetchedAt(Date.now());
+        setError(safeError);
+        firstLoadDoneRef.current = true;
+        return;
       }
 
       if (!mountedRef.current) return;

@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { computeLiquidityMagnetFromCandles } from "@/lib/liquidityMagnet";
 import { buildSourceInfo, readRuntimeJson, resolveRuntimeDir } from "@/lib/readLatest";
+import { safeJsonErrorResponse } from "@/lib/safeJsonResponse";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -1235,6 +1236,7 @@ function buildObGate(params: {
 /** ===================================================================== */
 
 export async function GET() {
+    try {
     const runtime = await resolveRuntimeDir();
     const dataDir = runtime.dir;
 
@@ -2812,4 +2814,30 @@ export async function GET() {
 
         explain_th: explainTH,
     });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error in plan-status";
+        console.error("[/api/plan-status] Unexpected error:", message);
+
+        return safeJsonErrorResponse(
+            err,
+            {
+                code: "PLAN_STATUS_FAILED",
+                fallbackMessage: "Unable to build plan status from runtime source-of-truth",
+                status: "ERROR",
+                severity: "critical",
+                warnings: ["Plan status route returned a safe fallback payload"],
+                nextActions: [
+                    "Check BINGX_AGENT_DIR points to project runtime root",
+                    "Verify latest_decision.json and market_snapshot.json",
+                    "Run /api/runtime-audit",
+                ],
+                extra: {
+                    noExchangeApiCalls: true,
+                    noOrderPlacement: true,
+                    phase: "M-0I",
+                },
+            },
+            200
+        );
+    }
 }

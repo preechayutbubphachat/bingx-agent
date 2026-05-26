@@ -45,7 +45,10 @@ async function statSafe(p: string) {
 }
 
 export async function resolveRuntimeDir() {
-    const envDir = process.env.BINGX_DATA_DIR?.trim() || process.env.DATA_DIR?.trim();
+    const envDir =
+        process.env.BINGX_AGENT_DIR?.trim() ||
+        process.env.BINGX_DATA_DIR?.trim() ||
+        process.env.DATA_DIR?.trim();
     const cwd = process.cwd();
     const candidates = unique([
         envDir ? path.resolve(cwd, envDir) : "",

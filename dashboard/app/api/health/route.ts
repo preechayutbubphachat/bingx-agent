@@ -34,17 +34,18 @@ import { evaluateExchangeReadiness } from "@/lib/exchangeReadiness";
 import { evaluateM0BPreflight } from "@/lib/m0bPreflight";
 import { computePaperPerformance } from "@/lib/paperPerformance";
 import { evaluateOperatorEvidence } from "@/lib/operatorEvidence";
+import { resolveRuntimeDir } from "@/lib/readLatest";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const HEALTH_ENDPOINT_VERSION = "1.0.0";
 
-function resolveRootDirForHealth(): { rootDir: string; resolvedFrom: string } {
+async function resolveRootDirForHealth(): Promise<{ rootDir: string; resolvedFrom: string }> {
   const envCandidates = [
+    process.env.BINGX_AGENT_DIR?.trim(),
     process.env.DATA_DIR?.trim(),
     process.env.BINGX_DATA_DIR?.trim(),
-    process.env.BINGX_AGENT_DIR?.trim(),
     process.env.OBGATE_DATA_DIR?.trim(),
   ].filter(Boolean) as string[];
 
@@ -55,9 +56,10 @@ function resolveRootDirForHealth(): { rootDir: string; resolvedFrom: string } {
     };
   }
 
+  const resolved = await resolveRuntimeDir();
   return {
-    rootDir: path.resolve("C:\\bingx-agent"),
-    resolvedFrom: "well_known_fallback",
+    rootDir: resolved.dir,
+    resolvedFrom: "runtime_dir_detection",
   };
 }
 
@@ -78,7 +80,7 @@ function safeError(e: ConfigError) {
 
 export async function GET() {
   try {
-    const { rootDir, resolvedFrom } = resolveRootDirForHealth();
+    const { rootDir, resolvedFrom } = await resolveRootDirForHealth();
     const health: SystemHealthResult = runSystemHealthCheck(rootDir);
     const flags = readSafetyFlags();
 

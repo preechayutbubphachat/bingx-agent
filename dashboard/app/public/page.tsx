@@ -19,6 +19,7 @@ import PaperPerformanceCard from "@/components/PaperPerformanceCard";
 import ExchangeReadinessCard from "@/components/ExchangeReadinessCard";
 import M0BPreflightCard from "@/components/M0BPreflightCard";
 import OperatorEvidenceCard from "@/components/OperatorEvidenceCard";
+import DashboardDiagnosticsCard from "@/components/DashboardDiagnosticsCard";
 import CopyPostButton from "@/components/CopyPostButton";
 import Step2Panel from "@/components/Step2Panel";
 import RunSnapshotButton from "@/components/RunSnapshotButton";
@@ -391,6 +392,9 @@ export default async function PublicPage() {
         {/* ── Phase G: Alert Banner ─────────────────────────────────────────── */}
         <AlertBanner alerts={activeAlerts} />
 
+        {/* Phase M-0I: Endpoint/runtime payload diagnostics */}
+        <DashboardDiagnosticsCard />
+
         {/* ── Phase I: Runtime State Audit Card ────────────────────────────── */}
         <RuntimeAuditCard />
 
@@ -533,7 +537,15 @@ export default async function PublicPage() {
 
           <div className="rounded-2xl bg-neutral-900 p-6">
             <div className="mb-2 text-sm text-neutral-400">ข้อมูลระบบ (JSON / อ้างอิง)</div>
-            <pre className="whitespace-pre-wrap text-xs leading-relaxed text-neutral-300">
+            <div className="rounded-xl border border-neutral-800 bg-neutral-950/70 p-3 text-xs text-neutral-300">
+              <div>owner: /api/plan-status</div>
+              <div>SSR payload: {hasSsrDiagnosticPlanStatus ? diagnosticPayloadKind : "absent"}</div>
+              <div>SSR fail-safe: {failSafeLabel(diagnosticFailSafeMode)}</div>
+              <div>root decision/snapshot: {pageBadgeHasDecision && pageBadgeHasSnapshot ? "available" : "incomplete"}</div>
+            </div>
+            <details className="mt-3 rounded-xl border border-neutral-800 bg-neutral-950/60 p-3">
+              <summary className="cursor-pointer text-xs font-medium text-neutral-300">Debug details (collapsed)</summary>
+            <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-neutral-400">
               {JSON.stringify(
                 {
                   live_truth_model: {
@@ -578,6 +590,7 @@ export default async function PublicPage() {
                 2
               )}
             </pre>
+            </details>
           </div>
         </div>
       </div>

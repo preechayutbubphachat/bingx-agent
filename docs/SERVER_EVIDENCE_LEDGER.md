@@ -29,7 +29,51 @@ Reason:
 - paper fill evidence pending
 - EXCHANGE_MANUAL_APPROVAL not approved
 
-Current Stage: Phase M-0N — Server Evidence Intake + Plesk Verification + M-0B Gate Readiness Ledger
+Current Stage: Phase M-0S — Public-Safe Health Endpoint + Auth-Aware Evidence Release
+
+---
+
+## Public-Safe Health Probe Evidence
+
+Endpoint:
+- `/api/public-health`
+
+Purpose:
+- Allow Scheduled Task / external monitor to verify safe runtime readiness without login.
+- Does not replace authenticated endpoint verification.
+- Does not approve Phase M-0B.
+- Does not expose secrets.
+- Does not call exchange API.
+
+Expected:
+- HTTP 200.
+- JSON response.
+- `phase = M-0B_BLOCKED`.
+- `liveTradingEnabled=false`.
+- `orderPlacementEnabled=false`.
+- `productionReady=false`.
+- `exchangeManualApproval=not_approved`.
+- Runtime core file existence only.
+- No raw runtime JSON.
+- No secrets.
+- No stack trace.
+
+Still required:
+- Authenticated endpoint verification.
+- `/public` visual verification.
+- Paper fill evidence with `averageFillPrice`.
+- Manual approval.
+
+Evidence Fields:
+- Operator:
+- Timestamp (ICT):
+- `/api/public-health` HTTP status:
+- JSON response confirmed:
+- Secrets exposed: yes/no
+- Stack trace exposed: yes/no
+- Runtime raw payload exposed: yes/no
+- Result: PASS / FAIL
+- Notes:
 
 ---
 
@@ -235,13 +279,161 @@ Phase M-0B may only be considered for approval after ALL of the following are co
 6. Operator explicitly approves
 7. EXCHANGE_MANUAL_APPROVAL=approved set in Plesk environment by Operator
 
-**No agent may set EXCHANGE_MANUAL_APPROVAL=approved.**
-**No agent may unblock Phase M-0B unilaterally.**
-**Manual operator confirmation is required.**
+**No agent may set EXCH
+---
 
-### Approval Fields
+## Latest Operator Evidence — 2026-05-27 (Phase M-0R)
 
-- Operator:
-- Approval date (ICT):
-- All gate conditions confirmed: yes / no
-- Notes:
+### Plesk Build Evidence
+
+| Item | Result |
+|------|--------|
+| npm install | PASSED |
+| npm run build | PASSED |
+| Next.js build | PASSED (EXIT:0) |
+| TypeScript check | PASSED |
+| /public route generated | YES |
+| API routes generated | YES |
+| Node.js App restart | DONE |
+
+- Operator: Operator/Plesk
+- Timestamp (ICT): 2026-05-27
+- Build result: EXIT:0
+
+### Environment Evidence
+
+| Variable | Result |
+|----------|--------|
+| dashboard/.env.local readable | PASSED |
+| DATA_DIR | PATH_OK — /var/www/vhosts/ob-gate.com/httpdocs |
+| BINGX_AGENT_DIR | PATH_OK — /var/www/vhosts/ob-gate.com/httpdocs |
+| AGENT_DIR | PATH_OK — /var/www/vhosts/ob-gate.com/httpdocs |
+| LIVE_TRADING_ENABLED=false | PASS |
+| ENABLE_ORDER_PLACEMENT=false | PASS |
+| PRODUCTION_TRADING_READY=false | PASS |
+| EXCHANGE_MANUAL_APPROVAL=not_approved | PASS |
+
+> All three dir env vars (DATA_DIR / BINGX_AGENT_DIR / AGENT_DIR) resolve to the same root path.
+> No secret values recorded here — only key names and correct-state confirmation.
+
+### Runtime File Evidence
+
+| File | Status | JSON Start Check |
+|------|--------|-----------------|
+| latest_decision.json | EXISTS | LIKELY_JSON |
+| market_snapshot.json | EXISTS | LIKELY_JSON |
+| klines.json | EXISTS | LIKELY_JSON |
+| orderbook_snapshot.json | EXISTS | LIKELY_JSON |
+| open_interest_snapshot.json | EXISTS | LIKELY_JSON |
+| scheduler_heartbeat.json | EXISTS | LIKELY_JSON |
+| plan_status.json | EXISTS | LIKELY_JSON |
+| news_context.json | MISSING | N/A — WARNING (optional if NO_NEWS mode active) |
+
+> Source of Truth: `latest_decision.json` and `market_snapshot.json` exist and start with JSON.
+> news_context.json missing is classified as **Expected Blocker** (not a real bug) if NO_NEWS mode is active or news scheduler not running.
+
+### Endpoint Evidence (Unauthenticated curl -k)
+
+| Endpoint | HTTP Status | Observation |
+|----------|-------------|-------------|
+| /api/health | 307 | Redirects to /login?next=/api/health |
+| /api/plan-status | 307 | Redirects to /login?next=/api/plan-status |
+| (other API endpoints) | 307 (likely) | Same auth redirect behavior expected |
+
+**Interpretation:**
+- HTTP 307 = **Auth protection is working correctly**
+- This is NOT proof that endpoints are broken or that endpoint code is wrong
+- Unauthenticated requests (Scheduled Task, plain curl) are expected to be redirected
+- Endpoint JSON correctness is **not yet verified** — requires authenticated session
+- Auth redirect source: Next.js Edge Middleware manifest shows empty (`"middleware": {}`), so redirect is likely from route-level auth check or Plesk proxy layer
+
+**Classification:** Expected Blocker (see Red Block Classification Rule)
+
+### Endpoint Verification Strategy
+
+#### Option A — Authenticated Browser Verification (Recommended)
+
+Operator logs into dashboard in browser, then opens each endpoint directly:
+
+```
+/api/health
+/api/plan-status
+/api/runtime-audit
+/api/operator-evidence
+/api/m0b-preflight
+/api/paper-performance
+/api/exchange-readiness
+/api/winrate
+/api/ob-stats
+/api/plan-log
+```
+
+Pass criteria per endpoint:
+- Returns JSON (not HTML login page)
+- No raw stack trace visible
+- No secret or API key visible
+- `ok` / `status` / `warnings` / `blockers` / `nextActions` fields present where applicable
+
+#### Option B — Add Public-Safe Health Endpoint (Optional, for automated monitoring)
+
+Create `/api/public-health` — a minimal no-auth endpoint for Scheduled Task or external monitors.
+
+**Public-safe rules (MUST enforce):**
+- No secrets returned
+- No AUTH_PASSWORD_HASH / AUTH_COOKIE_SECRET / ADMIN_KEY / API keys
+- No raw runtime JSON content dump
+- No full env dump or absolute sensitive paths
+- No account / position / order data
+- No BingX private API call
+- No stack trace
+
+**Allowed output only:**
+```json
+{
+  "ok": true,
+  "status": "SAFE_PUBLIC_HEALTH",
+  "phase": "M-0B_BLOCKED",
+  "liveTradingEnabled": false,
+  "orderPlacementEnabled": false,
+  "productionReady": false,
+  "exchangeManualApproval": "not_approved",
+  "runtimeCore": {
+    "latestDecision": "exists",
+    "marketSnapshot": "exists"
+  },
+  "auth": {
+    "protectedEndpoints": true,
+    "unauthenticatedApiRedirect": "expected"
+  },
+  "nextActions": [
+    "verify authenticated endpoints",
+    "verify public dashboard",
+    "collect paper fill evidence"
+  ]
+}
+```
+
+**Candidate files if Option B chosen:**
+- `dashboard/app/api/public-health/route.ts` (new file)
+- `dashboard/lib/publicHealth.ts` (optional helper)
+- Auth exclusion: route handler simply does NOT call `requireAuth()` / auth check — no middleware change needed since Next.js Edge Middleware is empty (confirmed via manifest)
+- `PROJECT_MAP.md`, `docs/SERVER_EVIDENCE_LEDGER.md`
+
+**Implementation note:** Since middleware manifest is empty (`"middleware": {}`), a new route at `/api/public-health` with no auth guard in the handler will be publicly accessible without middleware changes.
+
+**Recommendation:** Use Option A first (zero code change). Only implement Option B if Scheduled Task monitoring is required for ongoing server health proof.
+
+### Current Gate Result (Phase M-0R)
+
+| Gate | Status |
+|------|--------|
+| Plesk deployment (build + restart) | ✅ PASS |
+| BINGX_AGENT_DIR / DATA_DIR env path | ✅ PASS |
+| Safety flags (LIVE=false, ORDER=false, PROD=false) | ✅ PASS |
+| EXCHANGE_MANUAL_APPROVAL=not_approved | ✅ PASS (must stay not_approved until gate clears) |
+| Runtime core files exist + JSON start check | ✅ PASS |
+| news_context.json | ⚠️ MISSING (Expected Blocker if NO_NEWS mode) |
+| Endpoint JSON correctness (authenticated) | ⏳ PENDING |
+| /public visual verification | ⏳ PENDING |
+| Paper fill evidence (averageFillPrice) | ⏳ PENDING |
+| Phase M-0B gate | 🔒 BLOCKED |

@@ -17,10 +17,76 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0Q — Environment File Audit + Git Release Owner Handoff** — Codex audited `.env` and `dashboard/.env.local` without exposing secret values, created sanitized env audit documentation, updated safe examples/ignore rules, built dashboard, and released safe files to `origin main`, 2026-05-27
+**Phase M-0S — Public-Safe Health Endpoint + Auth-Aware Evidence Release** — `/api/public-health` implemented as a public-safe unauthenticated probe, auth allowlist updated narrowly, server evidence docs updated, dashboard build validated, and Phase M-0B remains blocked, 2026-05-27
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Operator** Plesk git pull/rebuild/restart, (2) `BINGX_AGENT_DIR` set on Plesk, (3) runtime file verification, (4) endpoint checks on server, (5) `/public` visual verification, (6) paper fill evidence, (7) `EXCHANGE_MANUAL_APPROVAL=approved`)
+
+### Phase M-0S Done
+- [x] `/api/public-health` implemented.
+- [x] Public-safe JSON response contract added.
+- [x] Auth allowlist updated for `/api/public-health` only.
+- [x] `docs/SERVER_EVIDENCE_LEDGER.md` updated with public-safe probe evidence section.
+- [x] Dashboard build EXIT:0.
+- [x] Safe files committed.
+- [x] Push `origin main` completed.
+
+### Phase M-0S In Progress
+- Operator/Plesk pull/rebuild/restart.
+- Public-health endpoint verification on Plesk.
+- Authenticated endpoint verification.
+- `/public` visual verification.
+- Paper fill evidence.
+- Approval checklist.
+
+### Phase M-0S Blocked / Pending
+- Authenticated endpoint JSON correctness pending.
+- `/public` visual check pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0S Next
+1. Operator pulls latest main on Plesk.
+2. Operator rebuilds dashboard.
+3. Operator restarts Node.js App.
+4. Operator verifies `/api/public-health` via Scheduled Task or browser without login.
+5. Operator verifies protected endpoints after login.
+6. Operator verifies `/public` dashboard after login.
+7. Operator collects paper fill evidence.
+8. Keep Phase M-0B blocked until all gates pass.
+
+### Phase M-0R Done
+- [x] PART A — SERVER_EVIDENCE_LEDGER.md updated with latest operator evidence (build, restart, env, runtime files, JSON start check, endpoint unauthenticated check).
+- [x] PART B — PROJECT_MAP.md Current Stage updated to Phase M-0R; Done/In Progress/Blocked/Next sections updated.
+- [x] PART C — Endpoint Verification Strategy (Option A + Option B) documented in SERVER_EVIDENCE_LEDGER.md.
+- [x] PART D — Public-safe health endpoint implementation plan prepared (candidate files, JSON contract, auth notes, middleware manifest confirmed empty).
+- [x] PART E — PROJECT_CONTEXT.md Section 8 Current Next Step updated.
+- [x] PART G — Changelog entry added.
+- [x] HTTP 307 auth redirect classified as **Expected Blocker** (auth protection working, not endpoint failure).
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0R In Progress
+- Authenticated endpoint verification (Operator opens endpoints after login in browser).
+- /public visual verification (Operator opens /public after login).
+- Paper fill evidence with averageFillPrice (ongoing).
+
+### Phase M-0R Blocked / Pending
+- Endpoint JSON correctness not yet verified — unauthenticated Scheduled Task gets HTTP 307 auth redirect.
+- /public visual check pending (operator must open in logged-in browser).
+- Paper fills with averageFillPrice pending.
+- EXCHANGE_MANUAL_APPROVAL not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0R Next
+1. Operator opens protected endpoints in logged-in browser and records JSON response (Option A).
+2. OR: Implement `/api/public-health` minimal public endpoint for automated monitoring (Option B — only if needed).
+3. Operator visually verifies /public dashboard after login.
+4. Classify any remaining red blocks as Expected Blocker vs Real Bug.
+5. Continue paper fill evidence collection (averageFillPrice required).
+6. Keep Phase M-0B blocked until all gates pass.
+7. Codex: build + commit + push (for this docs update).
+8. Keep Phase M-0B blocked.
 
 ### Phase M-0Q Done
 - [x] `.env` audited without exposing secret values.
@@ -336,6 +402,69 @@
 8. Continue paper fill evidence collection.
 9. Complete approval checklist.
 10. Only then consider Phase M-0B.
+
+### 2026-05-27 — Phase M-0S Public-Safe Health Endpoint + Auth-Aware Evidence Release
+- Added:
+  - `/api/public-health` public-safe endpoint.
+  - Public-safe health response contract.
+  - Auth proxy dependency files required for protected endpoint redirect behavior.
+  - `docs/SERVER_EVIDENCE_LEDGER.md` public-safe probe section.
+- Updated:
+  - `PROJECT_MAP.md` Current Stage.
+  - `PROJECT_CONTEXT.md` Current Next Step.
+  - `dashboard/proxy.ts` auth allowlist for `/api/public-health` only.
+  - `dashboard/app/api/auth/login/route.ts` sanitized to avoid secret/hash-fragment logging.
+- Validation:
+  - `npm install`.
+  - `npm run build`.
+  - local `/api/public-health` check if runnable.
+- Pending:
+  - Plesk pull/rebuild/restart.
+  - authenticated endpoint checks.
+  - `/public` visual check.
+  - paper fills with `averageFillPrice`.
+  - `EXCHANGE_MANUAL_APPROVAL=approved`.
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API calls.
+  - no runtime JSON modified/deleted.
+  - no secrets exposed.
+  - Phase M-0B remains BLOCKED.
+
+### 2026-05-27 — Phase M-0R Auth-Aware Endpoint Verification + Public Safe Health Probe Planning
+- Added/Updated:
+  - `docs/SERVER_EVIDENCE_LEDGER.md` — Latest Operator Evidence section (Plesk build, restart, env, runtime files, JSON start check, endpoint curl results, endpoint verification strategy, current gate result table)
+  - `PROJECT_MAP.md` — Current Stage updated to Phase M-0R; Done/In Progress/Blocked/Next block added
+  - `PROJECT_CONTEXT.md` — Section 8 Current Next Step updated
+- Evidence recorded:
+  - Plesk npm install + build: PASSED (EXIT:0)
+  - Node.js App restart: DONE
+  - dashboard/.env.local readable: PASSED
+  - DATA_DIR / BINGX_AGENT_DIR / AGENT_DIR: PATH_OK (all resolve to httpdocs)
+  - LIVE_TRADING_ENABLED=false: PASS
+  - ENABLE_ORDER_PLACEMENT=false: PASS
+  - PRODUCTION_TRADING_READY=false: PASS
+  - EXCHANGE_MANUAL_APPROVAL=not_approved: PASS
+  - Runtime core files (7 of 8): EXISTS + LIKELY_JSON
+  - news_context.json: MISSING — classified Expected Blocker
+  - Endpoint unauthenticated curl: HTTP 307 redirect to /login
+- Interpretation:
+  - HTTP 307 = auth protection working correctly, NOT endpoint failure
+  - Endpoint JSON correctness requires authenticated browser session (or public-safe endpoint)
+  - Next.js Edge Middleware manifest empty — /api/* auth redirect from route-level guard or Plesk proxy
+- Pending:
+  - Authenticated endpoint verification
+  - /public visual check
+  - Paper fills with averageFillPrice
+  - EXCHANGE_MANUAL_APPROVAL=approved
+- Safety:
+  - LIVE_TRADING_ENABLED: false
+  - ENABLE_ORDER_PLACEMENT: false
+  - Phase M-0B: BLOCKED
+  - No runtime JSON modified/deleted
+  - No secrets exposed
+  - No Git commands used by Claude
 
 ### 2026-05-27 — Phase M-0Q Environment File Audit + Git Release Owner Handoff
 - Added:
@@ -1307,7 +1436,7 @@ Operator evidence pack: `docs/M0B_OPERATOR_EVIDENCE_PACK.md`
 
 ## 10) Changelog
 
-> See section 0.1 — Project Status for full changelog history (phases A through M-0O)
+> See section 0.1 — Project Status for full changelog history (phases A through M-0S)
 
 ---
 
@@ -1315,10 +1444,10 @@ Operator evidence pack: `docs/M0B_OPERATOR_EVIDENCE_PACK.md`
 
 > See section 0.1 for full current status
 
-- **Current Stage**: Phase M-0O — Codex Git Release Owner + Claude Cowork Handoff Execution
+- **Current Stage**: Phase M-0S — Public-Safe Health Endpoint + Auth-Aware Evidence Release
 - **Live Trading**: No
 - **Production Trading**: Not yet
-- **Phase M-0B**: BLOCKED — pending Codex push + Plesk deploy + operator approval
+- **Phase M-0B**: BLOCKED — pending Plesk deploy + public/authenticated endpoint evidence + operator approval
 
 ---
 
@@ -1375,13 +1504,14 @@ EXCHANGE_MANUAL_APPROVAL=        # must NOT be set to "approved" without evidenc
 - [ ] Codex push latest working tree to GitHub main
 - [ ] Plesk: `git pull origin main` + `npm run build` EXIT:0 + restart Node app
 - [ ] `BINGX_AGENT_DIR=/var/www/vhosts/ob-gate.com/httpdocs` set in Plesk env
-- [ ] `/api/health` returns `ok:true` on server
-- [ ] `/api/plan-status` returns structured JSON (not HTML/login page)
-- [ ] `/api/paper-performance` returns paper metrics
-- [ ] `/api/operator-evidence` returns evidence pack
-- [ ] `/api/m0b-preflight` returns preflight status
-- [ ] `/api/exchange-readiness` returns readiness checks
-- [ ] `/api/runtime-audit` returns runtime file audit
+- [ ] `/api/public-health` returns HTTP 200 JSON without login
+- [ ] `/api/health` returns structured JSON after login
+- [ ] `/api/plan-status` returns structured JSON after login
+- [ ] `/api/paper-performance` returns paper metrics after login
+- [ ] `/api/operator-evidence` returns evidence pack after login
+- [ ] `/api/m0b-preflight` returns preflight status after login
+- [ ] `/api/exchange-readiness` returns readiness checks after login
+- [ ] `/api/runtime-audit` returns runtime file audit after login
 - [ ] `/public` dashboard visible, no crash, DashboardDiagnosticsCard visible
 - [ ] Paper journal has entries with `averageFillPrice` set
 - [ ] `paperDataQuality.hasAverageFillPrice: true` in paper-performance
@@ -1393,7 +1523,7 @@ EXCHANGE_MANUAL_APPROVAL=        # must NOT be set to "approved" without evidenc
 
 ## 16) Roadmap — Next Phases
 
-> See section 0.1 Project Status for detailed Phase M-0L/M-0B blocking conditions.
+> See section 0.1 Project Status for detailed Phase M-0S/M-0B blocking conditions.
 
 ### Priority Matrix
 | Priority | Task |

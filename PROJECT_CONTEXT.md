@@ -97,14 +97,15 @@ Never:
 
 Claude must not perform Git. Claude ends every session with a Codex Git Handoff Required block.
 
+Current stage: Phase M-0S — Public-Safe Health Endpoint + Auth-Aware Evidence Release
+
 Next correct work:
 1. Claude does not perform Git.
-2. Codex handles Git release only if files changed (build + commit + push origin main).
-3. Operator pulls latest main on Plesk (git pull origin main).
-4. Operator rebuilds and restarts Node.js App (rm -rf .next + npm install + npm run build + restart).
-5. Operator verifies BINGX_AGENT_DIR is set correctly in Plesk environment.
-6. Operator verifies runtime files (latest_decision.json, market_snapshot.json) at PROJECT_ROOT.
-7. Operator verifies server endpoints return JSON (see docs/SERVER_EVIDENCE_LEDGER.md §6).
-8. Operator verifies /public dashboard (see docs/SERVER_EVIDENCE_LEDGER.md §7).
-9. Operator collects paper fill evidence with averageFillPrice (see docs/SERVER_EVIDENCE_LEDGER.md §9).
-10. Keep Phase M-0B blocked until all evidence and EXCHANGE_MANUAL_APPROVAL pass (see docs/SERVER_EVIDENCE_LEDGER.md §10).
+2. Codex implements/releases `/api/public-health` if needed.
+3. Operator pulls latest main on Plesk.
+4. Operator rebuilds/restarts Node.js App.
+5. Operator verifies `/api/public-health` without login.
+6. Operator verifies protected endpoints after login.
+7. Operator verifies `/public` dashboard after login.
+8. Operator collects paper fill evidence with `averageFillPrice`.
+9. Keep Phase M-0B blocked until all evidence and EXCHANGE_MANUAL_APPROVAL pass.

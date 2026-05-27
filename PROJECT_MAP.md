@@ -17,10 +17,55 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0O — Codex Git Release Owner + Claude Cowork Handoff Execution** — Codex processed Phase M-0N docs/source handoff, verified `main`/`origin`, built dashboard, staged safe files only, committed, and pushed `origin main`, 2026-05-27
+**Phase M-0P — Post-Git Release Plesk Deployment Evidence + Server Verification Handoff** — Codex verified the post-release `main`/`origin` state, documented the Operator/Plesk pull-build-restart handoff, and kept Phase M-0B blocked pending server evidence, 2026-05-27
 
 ### Next Stage
-**Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Codex** build + commit + push, (2) **Operator** Plesk git pull/rebuild/restart, (3) `BINGX_AGENT_DIR` set on Plesk, (4) endpoint checks on server, (5) paper fill evidence, (6) `EXCHANGE_MANUAL_APPROVAL=approved`)
+**Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Operator** Plesk git pull/rebuild/restart, (2) `BINGX_AGENT_DIR` set on Plesk, (3) runtime file verification, (4) endpoint checks on server, (5) `/public` visual verification, (6) paper fill evidence, (7) `EXCHANGE_MANUAL_APPROVAL=approved`)
+
+### Phase M-0P Done
+- [x] Git release state verified on branch `main`.
+- [x] Remote `origin` verified as `https://github.com/preechayutbubphachat/bingx-agent.git`.
+- [x] Pull/rebase latest `origin/main` completed.
+- [x] Latest Git commit identified for Operator/Plesk pull.
+- [x] Operator/Plesk pull/rebuild/restart commands documented.
+- [x] Plesk environment verification checklist documented.
+- [x] Runtime source-of-truth file verification checklist documented.
+- [x] Server endpoint verification checklist documented.
+- [x] `/public` dashboard verification checklist documented.
+- [x] Runtime JSON / secrets remain excluded from release scope.
+
+### Phase M-0P In Progress
+- Operator/Plesk execution.
+- `BINGX_AGENT_DIR` verification on server.
+- Runtime file exists/valid/fresh verification.
+- Server endpoint checks.
+- `/public` visual verification.
+- Paper fill evidence collection.
+- Approval checklist.
+
+### Phase M-0P Blocked / Pending
+- Plesk deployment verification pending.
+- `BINGX_AGENT_DIR` verification pending.
+- Server runtime file verification pending.
+- Endpoint checks pending.
+- `/public` visual verification pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0P Next
+1. Operator completes Plesk `git pull origin main`.
+2. Operator removes stale `dashboard/.next`.
+3. Operator runs `npm install`.
+4. Operator runs `npm run build`.
+5. Operator restarts Node.js App in Plesk.
+6. Operator verifies `DATA_DIR`, `BINGX_AGENT_DIR`, and `AGENT_DIR` point to `/var/www/vhosts/ob-gate.com/httpdocs`.
+7. Operator verifies runtime files at project root.
+8. Operator verifies server endpoints return safe JSON.
+9. Operator verifies `/public` dashboard and red block classification.
+10. Operator collects paper fill evidence.
+11. Codex records returned evidence.
+12. Only after all gates pass, consider Phase M-0B.
 
 ### Phase M-0O Done
 - [x] Codex accepted Claude cowork handoff input from Phase M-0N changelog and reported that no fully filled `Codex Git Handoff Required` block was present.
@@ -253,6 +298,29 @@
 8. Continue paper fill evidence collection.
 9. Complete approval checklist.
 10. Only then consider Phase M-0B.
+
+### 2026-05-27 — Phase M-0P Post-Git Release Plesk Deployment Evidence + Server Verification Handoff
+- Codex:
+  - verified post-release Git state on branch `main`.
+  - verified `origin` remote.
+  - pulled/rebased latest `origin/main`.
+  - documented Operator/Plesk deployment handoff.
+  - documented environment, runtime file, endpoint, and `/public` verification checklists.
+- Pending:
+  - Plesk pull/rebuild/restart.
+  - `BINGX_AGENT_DIR` verification.
+  - server runtime file verification.
+  - server endpoint checks.
+  - `/public` visual check.
+  - paper fill evidence.
+  - `EXCHANGE_MANUAL_APPROVAL=approved`.
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API calls.
+  - no runtime JSON committed.
+  - no secrets committed.
+  - Phase M-0B remains BLOCKED.
 
 ### 2026-05-27 — Phase M-0O Codex Git Release Owner + Claude Cowork Handoff Execution
 - Codex:

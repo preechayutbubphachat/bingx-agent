@@ -20,7 +20,10 @@ async function fileExists(p: string) {
  * ใช้สำหรับไฟล์ที่ runner เขียนไว้ข้างนอก (เช่น plan_status_log.jsonl)
  */
 async function resolveDataDir() {
-    const envDir = process.env.BINGX_DATA_DIR?.trim() || process.env.DATA_DIR?.trim();
+    const envDir =
+        process.env.BINGX_AGENT_DIR?.trim() ||
+        process.env.BINGX_DATA_DIR?.trim() ||
+        process.env.DATA_DIR?.trim();
     const cwd = process.cwd();
     const candidates = [
         envDir ? path.resolve(cwd, envDir) : "",
@@ -105,6 +108,7 @@ async function readJsonlTail(filePath: string, limit: number, srcTag: string) {
 }
 
 export async function GET(req: Request) {
+    try {
     const { searchParams } = new URL(req.url);
 
     // ✅ limit เพดาน
@@ -193,4 +197,14 @@ export async function GET(req: Request) {
             },
         },
     });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err ?? "Unknown error in plan-log");
+        console.error("[/api/plan-log] Unexpected error:", message);
+        return NextResponse.json({
+            ok: false,
+            items: [],
+            error: message,
+            reason: "server_error",
+        });
+    }
 }

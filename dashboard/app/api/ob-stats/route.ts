@@ -23,7 +23,7 @@ async function fileExists(p: string) {
  * โดยดูจากการมีอยู่ของ latest_decision.json
  */
 async function resolveDataDir() {
-    const envDir = process.env.BINGX_DATA_DIR?.trim();
+    const envDir = process.env.BINGX_AGENT_DIR?.trim() || process.env.BINGX_DATA_DIR?.trim();
     const candidates = [
         envDir,
         process.cwd(),
@@ -228,6 +228,7 @@ function dedupeKey(x: CloseEvent) {
 }
 
 export async function GET(req: Request) {
+    try {
     const url = new URL(req.url);
 
     const limitLines = Math.max(
@@ -424,4 +425,25 @@ export async function GET(req: Request) {
         stats,
         recent_trades: all.slice(0, recent),
     });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err ?? "Unknown error in ob-stats");
+        console.error("[/api/ob-stats] Unexpected error:", message);
+        return NextResponse.json({
+            ok: false,
+            error: message,
+            reason: "server_error",
+            stats: {
+                total: 0,
+                wins: 0,
+                losses: 0,
+                winrate: 0,
+                avg_r: 0,
+                by_bias: {
+                    LONG: { total: 0, wins: 0, losses: 0, winrate: 0, avg_r: 0 },
+                    SHORT: { total: 0, wins: 0, losses: 0, winrate: 0, avg_r: 0 },
+                },
+            },
+            recent_trades: [],
+        });
+    }
 }

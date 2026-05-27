@@ -15,7 +15,7 @@ async function fileExists(p: string) {
 }
 
 async function resolveDataDir() {
-    const envDir = process.env.BINGX_DATA_DIR?.trim();
+    const envDir = process.env.BINGX_AGENT_DIR?.trim() || process.env.BINGX_DATA_DIR?.trim();
     const candidates = [
         envDir,
         process.cwd(),
@@ -84,63 +84,77 @@ function summarize(events: CloseEvent[]) {
 }
 
 export async function GET() {
-    const dataDir = await resolveDataDir();
-    const historyPath = path.join(dataDir, "plan_history.jsonl");
+    try {
+        const dataDir = await resolveDataDir();
+        const historyPath = path.join(dataDir, "plan_history.jsonl");
 
-    if (!(await fileExists(historyPath))) {
+        if (!(await fileExists(historyPath))) {
+            return NextResponse.json({
+                ok: true,
+                data_dir: dataDir,
+                file: "plan_history.jsonl",
+                has_data: false,
+                reason: "file_missing",
+                overall: summarize([]),
+                by_type: { OB: summarize([]), TREND: summarize([]) },
+                last_events: [],
+            });
+        }
+
+        const raw = await fs.readFile(historyPath, "utf8");
+        const lines = raw.split("\n").filter(Boolean);
+
+        const parsed: CloseEvent[] = [];
+        for (const ln of lines) {
+            try {
+                const obj = JSON.parse(ln);
+                if (!isCloseEvent(obj)) continue;
+
+                const r = mapResult(String(obj.type), String(obj.result ?? ""));
+                if (!r) continue;
+
+                parsed.push({
+                    t: Number(obj.t ?? Date.now()),
+                    type: String(obj.type),
+                    symbol: obj.symbol,
+                    trade_id: obj.trade_id,
+                    result: r,
+                    r_multiple: typeof obj.r_multiple === "number" ? obj.r_multiple : null,
+                });
+            } catch {
+                // ignore bad line
+            }
+        }
+
+        // newest first
+        parsed.sort((a, b) => b.t - a.t);
+
+        const ob = parsed.filter((e) => mapCloseType(e.type) === "OB");
+        const trend = parsed.filter((e) => mapCloseType(e.type) === "TREND");
+
         return NextResponse.json({
             ok: true,
             data_dir: dataDir,
             file: "plan_history.jsonl",
+            has_data: parsed.length > 0,
+            overall: summarize(parsed),
+            by_type: {
+                OB: summarize(ob),
+                TREND: summarize(trend),
+            },
+            last_events: parsed.slice(0, 20),
+        });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error in winrate";
+        console.error("[/api/winrate] Unexpected error:", message);
+        return NextResponse.json({
+            ok: false,
             has_data: false,
-            reason: "file_missing",
+            reason: "server_error",
+            error: message,
             overall: summarize([]),
             by_type: { OB: summarize([]), TREND: summarize([]) },
             last_events: [],
         });
     }
-
-    const raw = await fs.readFile(historyPath, "utf8");
-    const lines = raw.split("\n").filter(Boolean);
-
-    const parsed: CloseEvent[] = [];
-    for (const ln of lines) {
-        try {
-            const obj = JSON.parse(ln);
-            if (!isCloseEvent(obj)) continue;
-
-            const r = mapResult(String(obj.type), String(obj.result ?? ""));
-            if (!r) continue;
-
-            parsed.push({
-                t: Number(obj.t ?? Date.now()),
-                type: String(obj.type),
-                symbol: obj.symbol,
-                trade_id: obj.trade_id,
-                result: r,
-                r_multiple: typeof obj.r_multiple === "number" ? obj.r_multiple : null,
-            });
-        } catch {
-            // ignore bad line
-        }
-    }
-
-    // newest first
-    parsed.sort((a, b) => b.t - a.t);
-
-    const ob = parsed.filter((e) => mapCloseType(e.type) === "OB");
-    const trend = parsed.filter((e) => mapCloseType(e.type) === "TREND");
-
-    return NextResponse.json({
-        ok: true,
-        data_dir: dataDir,
-        file: "plan_history.jsonl",
-        has_data: parsed.length > 0,
-        overall: summarize(parsed),
-        by_type: {
-            OB: summarize(ob),
-            TREND: summarize(trend),
-        },
-        last_events: parsed.slice(0, 20),
-    });
 }

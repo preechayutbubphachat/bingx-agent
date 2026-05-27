@@ -17,10 +17,50 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0M — Codex Git Release Owner Execution + Claude Cowork Handoff Processing** — Codex release workflow executed on `main`; docs-only Claude handoff processed; dashboard build required before push, 2026-05-27
+**Phase M-0O — Codex Git Release Owner + Claude Cowork Handoff Execution** — Codex processed Phase M-0N docs/source handoff, verified `main`/`origin`, built dashboard, staged safe files only, committed, and pushed `origin main`, 2026-05-27
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Codex** build + commit + push, (2) **Operator** Plesk git pull/rebuild/restart, (3) `BINGX_AGENT_DIR` set on Plesk, (4) endpoint checks on server, (5) paper fill evidence, (6) `EXCHANGE_MANUAL_APPROVAL=approved`)
+
+### Phase M-0O Done
+- [x] Codex accepted Claude cowork handoff input from Phase M-0N changelog and reported that no fully filled `Codex Git Handoff Required` block was present.
+- [x] Branch `main` verified.
+- [x] Remote `origin` verified.
+- [x] Pull/rebase latest `origin/main` completed.
+- [x] Dashboard build EXIT:0.
+- [x] Safe files staged only.
+- [x] Runtime JSON / secrets excluded from staged files.
+- [x] Commit created.
+- [x] Push `origin main` completed.
+
+### Phase M-0O In Progress
+- Operator/Plesk pull/rebuild/restart.
+- `BINGX_AGENT_DIR` verification.
+- Server endpoint checks.
+- `/public` visual verification.
+- Paper fill evidence.
+- Approval checklist.
+
+### Phase M-0O Blocked / Pending
+- Plesk deployment verification pending.
+- `BINGX_AGENT_DIR` verification pending.
+- Endpoint checks pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0O Next
+1. Operator pulls latest main on Plesk.
+2. Operator cleans `dashboard/.next`.
+3. Operator runs `npm install`.
+4. Operator runs `npm run build`.
+5. Operator restarts Node.js App.
+6. Operator verifies `BINGX_AGENT_DIR`.
+7. Operator verifies runtime files.
+8. Operator verifies endpoints.
+9. Operator verifies `/public`.
+10. Operator collects paper fill evidence.
+11. Only after all gates pass, consider Phase M-0B.
 
 ### Phase M-0M Done
 - [x] Codex reviewed Claude cowork docs changes and confirmed no filled `Codex Git Handoff Required` block was present.
@@ -32,6 +72,67 @@
 - [x] Dashboard build required before commit/push.
 - [x] Safe files only: docs release ownership updates.
 - [x] Phase M-0B remains BLOCKED.
+
+
+
+### Phase M-0N Done
+- [x] PART A (session 1) — Docs consistency check: PROJECT_CONTEXT.md / PROJECT_MAP.md / PROJECT_ARCHITECTURE.md all aligned; no conflicts found.
+- [x] PART B (session 1) — Current Stage updated to Phase M-0N; Done/In Progress/Blocked/Next sections added.
+- [x] PART C (session 1) — `## Plesk Server Verification Checklist` section added to PROJECT_MAP.md.
+- [x] PART D (session 1) — `## Red Block Classification Rule` section added to PROJECT_MAP.md.
+- [x] PART E (session 1) — `## Paper Fill Evidence Plan` section added to PROJECT_MAP.md.
+- [x] PART F (session 1) — PROJECT_CONTEXT.md Section 8 verified correct.
+- [x] PART G (session 1) — Changelog entry added.
+- [x] PART A (session 2) — Docs consistency audit: all 3 files consistent; PROJECT_CONTEXT.md §8 needs expansion; SERVER_EVIDENCE_LEDGER.md missing.
+- [x] PART B (session 2) — `docs/SERVER_EVIDENCE_LEDGER.md` created with 10 sections (Purpose, Decision, Plesk, Env, Runtime, Endpoints, Dashboard, Red Block Classification, Paper Evidence, Approval Status).
+- [x] PART C (session 2) — PROJECT_MAP.md Current Stage updated; Done block expanded.
+- [x] PART D (session 2) — PROJECT_CONTEXT.md §8 expanded from 6 steps to 10 steps with explicit references to SERVER_EVIDENCE_LEDGER.md.
+- [x] PART E (session 2) — PROJECT_ARCHITECTURE.md §15 cross-reference updated to include docs/SERVER_EVIDENCE_LEDGER.md.
+- [x] PART F (session 2) — Changelog entry added.
+- [x] Docs-only change — no code files modified.
+- [x] No git commands used by Claude.
+
+### Phase M-0N In Progress
+- Codex Git release (build + commit + push origin main).
+- Plesk pull/rebuild/restart by Operator.
+- `BINGX_AGENT_DIR` verification on Plesk.
+- Server endpoint verification.
+- `/public` visual verification.
+- Paper fill evidence collection.
+- Approval checklist completion.
+
+### Phase M-0N Blocked / Pending
+- Codex build + commit + push pending if not yet done.
+- Plesk pull/rebuild/restart pending if not yet done.
+- `BINGX_AGENT_DIR` not verified on server.
+- Endpoint checks on server pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0N Next
+1. Codex performs build + commit + push origin main.
+2. Operator pulls latest main on Plesk.
+3. Operator runs `rm -rf .next`.
+4. Operator runs `npm install`.
+5. Operator runs `npm run build`.
+6. Operator restarts Node.js App.
+7. Operator verifies `BINGX_AGENT_DIR`.
+8. Operator verifies `/public` dashboard.
+9. Operator verifies endpoints (see Plesk Server Verification Checklist below).
+10. Operator collects paper fill evidence.
+11. Only after all gates pass, consider Phase M-0B.
+
+### Phase M-0L-D Done
+- [x] PART A — PROJECT_CONTEXT.md audited: all 8 sections present; Section 4 Codex "Git owner" → "Git release owner" updated; Section 8 explicit "Claude must not perform Git" added as first item.
+- [x] PART B — PROJECT_MAP.md verified: all key subsections present (§0.2 Agent Responsibility Boundary, Absolute Git Rule, Codex Branch Rule, Final Non-Git Enforcement Note, §0.3 Codex Git Handoff Template, §0.4 Standard Claude Closing Format). No changes required.
+- [x] PART C — Codex Git Handoff Template verified: `main` branch check + remote verification present in §0.3. No changes required.
+- [x] PART D — PROJECT_ARCHITECTURE.md §15 cross-reference updated: added `PROJECT_CONTEXT.md` reference alongside `PROJECT_MAP.md` and `docs/RUNTIME_FILES_GIT_POLICY.md`.
+- [x] PART E — Current Stage updated to Phase M-0L-D.
+- [x] PART F — PROJECT_CONTEXT.md Section 8 Current Next Step updated with explicit step list.
+- [x] PART G — Changelog entry added.
+- [x] Docs-only change — no runtime code files modified.
+- [x] No git commands used by Claude.
 
 ### Phase M-0M In Progress
 - Operator/Plesk pull/rebuild/restart.
@@ -152,6 +253,77 @@
 8. Continue paper fill evidence collection.
 9. Complete approval checklist.
 10. Only then consider Phase M-0B.
+
+### 2026-05-27 — Phase M-0O Codex Git Release Owner + Claude Cowork Handoff Execution
+- Codex:
+  - accepted Claude handoff input from Phase M-0N records and reported handoff block missing.
+  - verified branch `main`.
+  - verified `origin` remote.
+  - pulled/rebased latest `origin/main`.
+  - ran dashboard build before commit.
+  - staged safe files only.
+  - verified no runtime JSON/secrets staged.
+  - committed changes.
+  - pushed `origin main`.
+- Pending:
+  - Plesk pull/rebuild/restart.
+  - `BINGX_AGENT_DIR` verification.
+  - server endpoint checks.
+  - `/public` visual check.
+  - paper fill evidence.
+  - `EXCHANGE_MANUAL_APPROVAL=approved`.
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API calls.
+  - no runtime JSON committed.
+  - no secrets committed.
+  - Phase M-0B remains BLOCKED.
+
+### 2026-05-27 — Phase M-0N (session 2) Server Evidence Intake + Plesk Verification + M-0B Gate Readiness Ledger
+- Added: `docs/SERVER_EVIDENCE_LEDGER.md` — 10-section server evidence ledger (Plesk deployment, env, runtime files, endpoints, dashboard, red block classification, paper evidence, approval gate)
+- Updated: PROJECT_CONTEXT.md §8 — expanded from 6 steps to 10 steps with explicit Operator workflow and SERVER_EVIDENCE_LEDGER.md references
+- Updated: PROJECT_ARCHITECTURE.md §15 — cross-reference to docs/SERVER_EVIDENCE_LEDGER.md added
+- Updated: PROJECT_MAP.md Current Stage and Done block
+- Validation: docs-only, no runtime code changed, no git commands used by Claude, build not required
+- Pending: Codex Git release (build + commit + push), Plesk pull/rebuild/restart, BINGX_AGENT_DIR verification, endpoint checks, paper fills with averageFillPrice, EXCHANGE_MANUAL_APPROVAL
+- Safety: LIVE_TRADING_ENABLED=false, ENABLE_ORDER_PLACEMENT=false, Phase M-0B BLOCKED, no exchange API calls, no runtime JSON modified, no secrets added
+- Files changed: docs/SERVER_EVIDENCE_LEDGER.md (created), PROJECT_CONTEXT.md, PROJECT_ARCHITECTURE.md, PROJECT_MAP.md
+
+### 2026-05-27 — Phase M-0N Non-Git Server Evidence Planning + Plesk Verification Handoff
+- Added: Plesk Server Verification Checklist (Deployment/Environment/Runtime/Endpoints/Dashboard)
+- Added: Red Block Classification Rule (Expected Blockers vs Real Bugs)
+- Added: Paper Fill Evidence Plan (10 required checkboxes + Rules block)
+- Updated: PROJECT_MAP.md Current Stage → Phase M-0N
+- Updated: PROJECT_MAP.md Phase M-0N Done/In Progress/Blocked/Next block
+- Validation: docs-only, no runtime code changed, no git commands, build not required
+- Pending: Codex build/commit/push, Plesk pull/rebuild/restart, BINGX_AGENT_DIR verification, endpoint checks, paper fills with averageFillPrice, EXCHANGE_MANUAL_APPROVAL
+- Safety: LIVE_TRADING_ENABLED=false, ENABLE_ORDER_PLACEMENT=false, Phase M-0B BLOCKED, no exchange API calls, no runtime JSON modified, no secrets added
+- Files changed: PROJECT_MAP.md only
+
+### 2026-05-27 — Phase M-0L-D Finalize Project Context + Claude Non-Git Rule + Codex Git Ownership
+- Added:
+  - `PROJECT_ARCHITECTURE.md` §15 cross-reference updated to include `PROJECT_CONTEXT.md` (quick context for AI agents) alongside `PROJECT_MAP.md` and `docs/RUNTIME_FILES_GIT_POLICY.md`.
+- Updated:
+  - `PROJECT_CONTEXT.md` Section 4 — Codex responsibility: "Git owner" → "Git release owner", added "build must pass before commit" and "safe files only" qualifiers.
+  - `PROJECT_CONTEXT.md` Section 8 — Current Next Step: explicit step list with "Claude must not perform Git" as first item; numbered steps for Codex/Operator/paper evidence.
+  - `PROJECT_MAP.md` — Current Stage to Phase M-0L-D, Phase M-0L-D Done section added, Changelog updated.
+- Validated:
+  - Docs-only change — no runtime code files modified.
+  - No git commands used by Claude.
+  - tsc not required (no code change).
+- Pending:
+  - Codex build + `git add PROJECT_MAP.md PROJECT_ARCHITECTURE.md PROJECT_CONTEXT.md` + `git commit` + `git push origin main`
+  - Operator: Plesk deployment + BINGX_AGENT_DIR env + endpoint checks
+  - Phase M-0B remains BLOCKED until all gates pass
+- Safety:
+  - LIVE_TRADING_ENABLED: false (unchanged)
+  - ENABLE_ORDER_PLACEMENT: false (unchanged)
+  - PRODUCTION_TRADING_READY: false (unchanged)
+  - No real order path touched
+  - No exchange API calls
+  - No runtime JSON modified/deleted
+  - No secrets added or exposed
 
 ### 2026-05-27 — Phase M-0M Codex Git Release Owner Execution + Claude Cowork Handoff Processing
 - Codex:
@@ -730,6 +902,120 @@ logs/ (runtime logs)
 
 ---
 
+---
+
+## Plesk Server Verification Checklist
+
+> ใช้ checklist นี้ทุกครั้งที่ Operator ทำ Plesk deployment — ต้องผ่านทุกข้อก่อนพิจารณา Phase M-0B
+
+### Deployment
+- [ ] Operator ran `git pull origin main` on Plesk
+- [ ] Operator cleaned `dashboard/.next` (`rm -rf .next`)
+- [ ] Operator ran `npm install`
+- [ ] Operator ran `npm run build` (EXIT:0)
+- [ ] Operator restarted Node.js App in Plesk panel
+- [ ] `/public` opened after hard refresh (Ctrl+Shift+R)
+
+### Environment Variables
+- [ ] `BINGX_AGENT_DIR` is set in Plesk env
+- [ ] `BINGX_AGENT_DIR` points to `/var/www/vhosts/ob-gate.com/httpdocs` or actual project root
+- [ ] `LIVE_TRADING_ENABLED=false`
+- [ ] `ENABLE_ORDER_PLACEMENT=false`
+- [ ] `PRODUCTION_TRADING_READY=false`
+- [ ] `EXCHANGE_MANUAL_APPROVAL` not approved (unless all evidence passed)
+
+### Runtime Files (check on server)
+- [ ] `latest_decision.json` — exists
+- [ ] `latest_decision.json` — valid JSON
+- [ ] `latest_decision.json` — fresh (recent timestamp)
+- [ ] `market_snapshot.json` — exists
+- [ ] `market_snapshot.json` — valid JSON
+- [ ] `market_snapshot.json` — fresh (recent timestamp)
+- [ ] `klines.json` — checked if used by dashboard
+- [ ] `orderbook_snapshot.json` — checked if used
+- [ ] `open_interest_snapshot.json` — checked if used
+- [ ] `news_context.json` — checked if used
+- [ ] `scheduler_heartbeat.json` — checked if used (missing = warning only)
+
+### Endpoints (authenticated session)
+- [ ] `/api/health` — returns JSON
+- [ ] `/api/plan-status` — returns JSON
+- [ ] `/api/runtime-audit` — returns JSON
+- [ ] `/api/operator-evidence` — returns JSON
+- [ ] `/api/m0b-preflight` — returns JSON
+- [ ] `/api/paper-performance` — returns JSON
+- [ ] `/api/exchange-readiness` — returns JSON
+- [ ] `/api/winrate` — returns JSON
+- [ ] `/api/ob-stats` — returns JSON
+- [ ] `/api/plan-log` — returns JSON
+
+### Public Dashboard (/public)
+- [ ] `DashboardDiagnosticsCard` — visible
+- [ ] `OperatorEvidenceCard` — visible
+- [ ] `M0BPreflightCard` — visible
+- [ ] `ExchangeReadinessCard` — visible
+- [ ] `PaperPerformanceCard` — visible
+- [ ] `LiveMigrationGateCard` — visible
+- [ ] `MarketRegimeMiniChart` — shows chart or waiting state (not crashed)
+- [ ] No raw stack trace visible
+- [ ] Red blocks classified as expected blocker vs real bug (see Red Block Classification Rule)
+
+---
+
+## Red Block Classification Rule
+
+> ใช้ rule นี้เพื่อแยก "ปกติ" กับ "ต้องแก้" เมื่อเห็น error/warning บน dashboard
+
+### Expected Blockers (ไม่ต้องแก้ — ถือว่า normal จนกว่าจะผ่าน gate)
+- `EXCHANGE_MANUAL_APPROVAL` not approved
+- Phase M-0B blocked
+- Paper fills missing `averageFillPrice`
+- Paper sample insufficient
+- Read-only exchange sync not approved
+- Runtime optional file missing but handled safely (e.g. `scheduler_heartbeat.json`)
+- Server evidence pending
+- `liveReadiness` gate blocked due to insufficient paper data
+
+### Real Bugs (ต้องแก้ทันที)
+- Raw stack trace visible in UI
+- `TypeError: ...` visible in UI
+- `Cannot read properties of undefined/null` in UI
+- Endpoint returns HTML instead of JSON (usually login redirect — check auth)
+- JSON parse error in response
+- Component crash / white screen
+- Secret or API key exposed to client
+- Runtime path resolver still uses hard-coded `C:/bingx-agent` or similar
+- UI shows raw JSON / error dump that is too long without collapse
+
+---
+
+## Paper Fill Evidence Plan
+
+> กำหนด evidence ที่ต้องมีก่อนพิจารณา Phase M-0B
+
+### Required Before Phase M-0B Approval
+- [ ] Paper fills include `averageFillPrice`
+- [ ] Paper fills include `fillQty`
+- [ ] Paper cycles include open/close or entry/exit events
+- [ ] Paper events include `mode` tag
+- [ ] Paper events include `regime` tag (if available from snapshot)
+- [ ] Paper events include `session` tag (if available)
+- [ ] Paper events include fee/slippage estimate (if available)
+- [ ] Paper has enough closed cycles (not just open positions)
+- [ ] `paperDataQuality` field is not `insufficient`
+- [ ] `edgeStatus` must not be `positive_candidate` if sample size is insufficient
+
+### Rules
+```
+Paper PnL is not live PnL.
+Paper evidence is required before read-only exchange sync approval review.
+Live trading remains disabled.
+EXCHANGE_MANUAL_APPROVAL must not be set until all evidence passes.
+Phase M-0B remains blocked until all required evidence is confirmed by operator.
+```
+
+---
+
 ## 1) Source of Truth (ข้อมูลจริงของระบบอยู่ที่ไหน)
 
 **ระบบถือว่าไฟล์ที่ root เป็น “ความจริง” (authoritative):**
@@ -895,7 +1181,7 @@ Operator evidence pack: `docs/M0B_OPERATOR_EVIDENCE_PACK.md`
 
 ## 10) Changelog
 
-> See section 0.1 — Project Status for full changelog history (phases A through M-0M)
+> See section 0.1 — Project Status for full changelog history (phases A through M-0O)
 
 ---
 
@@ -903,7 +1189,7 @@ Operator evidence pack: `docs/M0B_OPERATOR_EVIDENCE_PACK.md`
 
 > See section 0.1 for full current status
 
-- **Current Stage**: Phase M-0M — Codex Git Release Owner Execution + Claude Cowork Handoff Processing
+- **Current Stage**: Phase M-0O — Codex Git Release Owner + Claude Cowork Handoff Execution
 - **Live Trading**: No
 - **Production Trading**: Not yet
 - **Phase M-0B**: BLOCKED — pending Codex push + Plesk deploy + operator approval

@@ -1372,7 +1372,7 @@ Agents must read this architecture file when modifying:
 
 ## 15) Agent / Release Ownership
 
-> Cross-reference: see `PROJECT_MAP.md` sections 0.2, 0.3, 0.4 for full enforcement rules.
+> Cross-reference: `PROJECT_CONTEXT.md` (quick context for AI agents), `PROJECT_MAP.md` sections 0.2, 0.3, 0.4 (full enforcement rules), `docs/RUNTIME_FILES_GIT_POLICY.md` (runtime JSON protection), `docs/SERVER_EVIDENCE_LEDGER.md` (server-side deployment, runtime, endpoint, and dashboard evidence required before Phase M-0B approval).
 
 ### Responsibility Matrix
 

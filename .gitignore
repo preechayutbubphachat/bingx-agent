@@ -58,6 +58,9 @@ dashboard/.next/
 .env.*
 !.env.example
 !.env.local.example
+dashboard/.env.local
+dashboard/.env.*
+!dashboard/.env.local.example
 dist
 build
 coverage

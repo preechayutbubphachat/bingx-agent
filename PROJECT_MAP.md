@@ -17,10 +17,48 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0P — Post-Git Release Plesk Deployment Evidence + Server Verification Handoff** — Codex verified the post-release `main`/`origin` state, documented the Operator/Plesk pull-build-restart handoff, and kept Phase M-0B blocked pending server evidence, 2026-05-27
+**Phase M-0Q — Environment File Audit + Git Release Owner Handoff** — Codex audited `.env` and `dashboard/.env.local` without exposing secret values, created sanitized env audit documentation, updated safe examples/ignore rules, built dashboard, and released safe files to `origin main`, 2026-05-27
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Operator** Plesk git pull/rebuild/restart, (2) `BINGX_AGENT_DIR` set on Plesk, (3) runtime file verification, (4) endpoint checks on server, (5) `/public` visual verification, (6) paper fill evidence, (7) `EXCHANGE_MANUAL_APPROVAL=approved`)
+
+### Phase M-0Q Done
+- [x] `.env` audited without exposing secret values.
+- [x] `dashboard/.env.local` audited without exposing secret values.
+- [x] `docs/ENVIRONMENT_AUDIT.md` created.
+- [x] `.env.example` created with placeholders only.
+- [x] `dashboard/.env.local.example` updated with Plesk path placeholders and required safety/auth keys.
+- [x] `.gitignore` and `dashboard/.gitignore` env protection confirmed/updated.
+- [x] Dashboard build EXIT:0.
+- [x] Safe files committed.
+- [x] Push `origin main` completed.
+
+### Phase M-0Q In Progress
+- Operator/Plesk env verification.
+- Plesk pull/rebuild/restart.
+- Server endpoint checks.
+- `/public` visual verification.
+- Paper fill evidence.
+
+### Phase M-0Q Blocked / Pending
+- Operator must rotate exposed/weak/duplicated secrets if confirmed on server.
+- Plesk restart pending after env changes.
+- Endpoint checks pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0Q Next
+1. Operator rotates any exposed/weak/duplicated secrets.
+2. Operator updates Plesk/dashboard env.
+3. Operator restarts Node.js App.
+4. Operator pulls latest main on Plesk.
+5. Operator rebuilds dashboard.
+6. Operator verifies env visibility.
+7. Operator verifies endpoints.
+8. Operator verifies `/public`.
+9. Continue paper fill evidence.
+10. Keep Phase M-0B blocked.
 
 ### Phase M-0P Done
 - [x] Git release state verified on branch `main`.
@@ -298,6 +336,26 @@
 8. Continue paper fill evidence collection.
 9. Complete approval checklist.
 10. Only then consider Phase M-0B.
+
+### 2026-05-27 — Phase M-0Q Environment File Audit + Git Release Owner Handoff
+- Added:
+  - `docs/ENVIRONMENT_AUDIT.md`.
+  - `.env.example` with placeholder-only server env keys.
+- Updated:
+  - `dashboard/.env.local.example` with Plesk path placeholders, dashboard settings, auth placeholders, and safety flags.
+  - `.gitignore` and `dashboard/.gitignore` env protection.
+  - `PROJECT_MAP.md`.
+- Validation:
+  - `npm install`.
+  - `npm run build`.
+- Safety:
+  - no secrets committed.
+  - no `.env` committed.
+  - no `dashboard/.env.local` committed.
+  - no runtime JSON committed.
+  - no live trading.
+  - no order placement.
+  - Phase M-0B remains BLOCKED.
 
 ### 2026-05-27 — Phase M-0P Post-Git Release Plesk Deployment Evidence + Server Verification Handoff
 - Codex:

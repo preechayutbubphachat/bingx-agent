@@ -1367,3 +1367,38 @@ Agents must read this architecture file when modifying:
 - monitoring/audit
 - live migration gate
 ```
+
+---
+
+## 15) Agent / Release Ownership
+
+> Cross-reference: see `PROJECT_MAP.md` sections 0.2, 0.3, 0.4 for full enforcement rules.
+
+### Responsibility Matrix
+
+| Actor | Allowed | Prohibited |
+|-------|---------|------------|
+| **Claude cowork** | analysis, code/docs edit, tsc/build validation, handoff block | git operations, deployment, Plesk actions, live order placement |
+| **Codex** | git release (branch `main` only), build-before-push, safe-file staging, commit, push | pushing to non-main branch without operator approval, committing runtime JSON / secrets / node_modules / .next |
+| **Operator / Plesk** | server pull, rebuild, restart, runtime env verification, `EXCHANGE_MANUAL_APPROVAL` | — |
+
+### Key Rules (enforced in PROJECT_MAP.md §0.2)
+
+- Claude must never run or suggest itself as the actor for any Git operation.
+- Codex must always verify `git branch --show-current` returns `main` before staging.
+- Runtime JSON (source-of-truth root files) must never be committed to Git.
+- Secrets / API keys / `.env.*` must never be committed.
+- `node_modules/`, `.next/`, build artifacts must never be committed.
+
+### Phase M-0B Gate (as of 2026-05-27)
+
+Phase M-0B (read-only Exchange API implementation) remains **BLOCKED** until all of the following are confirmed by the operator:
+
+1. Codex build + commit + push to `main` complete
+2. Operator Plesk `git pull` + `npm run build` + restart complete
+3. `BINGX_AGENT_DIR` set in Plesk env
+4. Endpoint checks on server pass
+5. Paper fill evidence (`averageFillPrice`) confirmed
+6. `EXCHANGE_MANUAL_APPROVAL=approved` set by operator
+
+No agent may unblock Phase M-0B unilaterally. Manual operator approval is required.

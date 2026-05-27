@@ -17,10 +17,71 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0I — Runtime Payload Error Audit & Public Dashboard Error Recovery** 🛠️ code complete locally, Plesk verification pending, 2026-05-26
+**Phase M-0M — Codex Git Release Owner Execution + Claude Cowork Handoff Processing** — Codex release workflow executed on `main`; docs-only Claude handoff processed; dashboard build required before push, 2026-05-27
 
 ### Next Stage
-**Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending Plesk evidence, endpoint checks, paper fill evidence, and `EXCHANGE_MANUAL_APPROVAL=approved`)
+**Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Codex** build + commit + push, (2) **Operator** Plesk git pull/rebuild/restart, (3) `BINGX_AGENT_DIR` set on Plesk, (4) endpoint checks on server, (5) paper fill evidence, (6) `EXCHANGE_MANUAL_APPROVAL=approved`)
+
+### Phase M-0M Done
+- [x] Codex reviewed Claude cowork docs changes and confirmed no filled `Codex Git Handoff Required` block was present.
+- [x] Codex treated `PROJECT_MAP.md` and `PROJECT_ARCHITECTURE.md` as docs-only release candidates after diff review.
+- [x] Branch `main` verified.
+- [x] Remote `origin` verified as `https://github.com/preechayutbubphachat/bingx-agent.git`.
+- [x] Pull/rebase latest `origin/main` completed without conflict.
+- [x] Runtime/secret protection checked before staging.
+- [x] Dashboard build required before commit/push.
+- [x] Safe files only: docs release ownership updates.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0M In Progress
+- Operator/Plesk pull/rebuild/restart.
+- `BINGX_AGENT_DIR` verification on Plesk.
+- Server endpoint checks.
+- Paper fill evidence.
+- Approval checklist.
+
+### Phase M-0M Blocked / Pending
+- Plesk deployment verification pending.
+- Endpoint checks pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0L-C Done
+- [x] PART A — Audit confirmed: all 10 git prohibitions present in `### Claude cowork — ห้ามทำ`; `### Final Non-Git Enforcement Note` absent → added.
+- [x] PART B — `### Final Non-Git Enforcement Note` added to `## 0.2) Agent Responsibility Boundary` — explicit rule that Claude is not the Git/release agent; no exceptions; Codex is sole Git actor; Operator is sole Plesk actor.
+- [x] PART C — `## 15) Agent / Release Ownership` section added to `PROJECT_ARCHITECTURE.md` — responsibility matrix (Claude/Codex/Operator), key rules cross-referencing §0.2, Phase M-0B gate conditions.
+- [x] PART D — Current Stage updated to Phase M-0L-C.
+- [x] PART E — 2026-05-27 changelog entry added.
+- [x] Docs-only change — no runtime code files modified.
+- [x] No git commands used by Claude.
+
+### Phase M-0L-B Done
+- [x] `### Absolute Git Rule for Claude` subsection added to section 0.2 — prohibits Claude from all Git operations; must produce Codex handoff block only.
+- [x] `### Codex Branch Rule` subsection added to section 0.2 — Codex must verify `main` branch before staging; no other branch unless operator approves.
+- [x] Expanded `### Claude cowork — ห้ามทำ` list — added `git fetch`, `git reset` (all forms), `git checkout`, `git status` (in release context).
+- [x] Expanded never-commit list in section 0.3 — added `.env.*`, `dashboard/node_modules/`, `dashboard/.next/`, secrets/API keys.
+- [x] `### Runtime JSON Protection Note` added to section 0.3 — `git rm --cached` is Codex-only; Claude must not run it.
+- [x] `## 0.4) Standard Claude Closing Format` section added — required closing report block template for all Claude sessions.
+- [x] Current Stage updated to Phase M-0L-B.
+- [x] Changelog entry added.
+- [x] No git commands used by Claude.
+
+### Phase M-0L-A Done
+- [x] `## 0.2) Agent Responsibility Boundary` section added to PROJECT_MAP.md — documents Claude/Codex/Operator split, Claude Git prohibition, and required handoff format.
+- [x] `## 0.3) Codex Git Handoff Template` section added — step-by-step commands for Codex to build + commit + push, with "never commit" file list.
+- [x] Current Stage updated to Phase M-0L-A.
+- [x] Changelog entry added.
+- [x] No git commands used by Claude.
+
+### Phase M-0L-A/B Blocked / Pending
+- **Codex**: build + `git add` safe files + `git commit` + `git push origin main`
+- **Operator**: Plesk `git pull origin main` + rebuild + restart Node app
+- **Operator**: set `BINGX_AGENT_DIR=/var/www/vhosts/ob-gate.com/httpdocs` in Plesk env
+- **Server checks**: endpoint verification, runtime file verification, `/public` visual check
+- **Paper fills**: `averageFillPrice` evidence pending
+- **`EXCHANGE_MANUAL_APPROVAL`**: not approved
+- **Phase M-0B**: BLOCKED
 
 ### Source of Truth (Runtime)
 | ไฟล์ | บทบาท | Authority |
@@ -91,6 +152,104 @@
 8. Continue paper fill evidence collection.
 9. Complete approval checklist.
 10. Only then consider Phase M-0B.
+
+### 2026-05-27 — Phase M-0M Codex Git Release Owner Execution + Claude Cowork Handoff Processing
+- Codex:
+  - verified `main` branch.
+  - verified `origin` remote.
+  - pulled/rebased latest `origin/main`.
+  - reviewed Claude docs changes and found no filled handoff block; proceeded with docs-only candidates after diff review.
+  - removed duplicate `PROJECT_ARCHITECTURE.md` Agent / Release Ownership section before release.
+  - required dashboard build before commit/push.
+  - staged safe files only.
+- Pending:
+  - Plesk pull/rebuild/restart.
+  - server endpoint checks.
+  - paper fill evidence.
+  - `EXCHANGE_MANUAL_APPROVAL=approved`.
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API calls.
+  - no runtime JSON committed.
+  - no secrets committed.
+
+### 2026-05-27 — Phase M-0L-C Finalize Claude Non-Git Workflow + Codex Git Handoff Enforcement
+- Added:
+  - `### Final Non-Git Enforcement Note` in `## 0.2) Agent Responsibility Boundary` — canonical rule: Claude is not the Git/release agent; Codex is sole Git actor; Operator is sole Plesk/server actor; no exceptions without explicit PROJECT_MAP.md supersession.
+  - `## 15) Agent / Release Ownership` in `PROJECT_ARCHITECTURE.md` — responsibility matrix table, key git prohibition rules cross-ref to §0.2, Phase M-0B gate conditions (6 items required before operator approval).
+- Updated:
+  - `PROJECT_MAP.md` — Current Stage to Phase M-0L-C, Phase M-0L-C Done section added, Changelog updated.
+- Validated:
+  - Docs-only change — no runtime code files modified.
+  - No git commands used by Claude.
+  - tsc not required (no code change).
+- Pending:
+  - **Codex**: build + `git add PROJECT_MAP.md PROJECT_ARCHITECTURE.md` + `git commit` + `git push origin main`
+  - **Operator**: Plesk deployment + BINGX_AGENT_DIR env + endpoint checks
+  - Phase M-0B remains BLOCKED until all gates pass
+- Safety:
+  - LIVE_TRADING_ENABLED: false (unchanged)
+  - ENABLE_ORDER_PLACEMENT: false (unchanged)
+  - PRODUCTION_TRADING_READY: false (unchanged)
+  - No real order path touched
+  - No exchange API calls
+  - No runtime JSON modified/deleted
+  - No secrets added or exposed
+
+### 2026-05-27 — Phase M-0L-B Lock Non-Git Claude Workflow + Codex Git Ownership Audit
+- Added:
+  - `### Absolute Git Rule for Claude` subsection in `## 0.2)` — explicit rule: Claude must never run or suggest itself as Git actor; must produce Codex handoff block only.
+  - `### Codex Branch Rule` subsection in `## 0.2)` — Codex must verify `main` branch before staging; no other branch unless operator explicitly approves.
+  - `### Runtime JSON Protection Note` in `## 0.3)` — `git rm --cached` is Codex-only; Claude must not run it; protects root source-of-truth files from Git overwrite.
+  - `## 0.4) Standard Claude Closing Format` — required session-closing report template; all future Claude sessions must produce this block.
+- Updated:
+  - `## 0.2)` — `### Claude cowork — ห้ามทำ` list expanded: `git fetch`, `git reset` (all forms), `git checkout` (release), `git status` (release context) added.
+  - `## 0.3)` — never-commit list expanded: `.env.*`, `dashboard/node_modules/`, `dashboard/.next/`, `secrets / API keys / credentials` added.
+  - `PROJECT_MAP.md` — Current Stage to M-0L-B, Phase M-0L-B Done section added, Changelog updated.
+- Validated:
+  - Docs-only change — no runtime code files modified.
+  - No git commands used by Claude.
+  - tsc not required (no code change).
+- Pending:
+  - **Codex**: build + `git add` safe files + `git commit` + `git push origin main`
+  - **Operator**: Plesk deployment + BINGX_AGENT_DIR env + endpoint checks
+  - Phase M-0B remains BLOCKED until all gates pass
+- Safety:
+  - LIVE_TRADING_ENABLED: false (unchanged)
+  - ENABLE_ORDER_PLACEMENT: false (unchanged)
+  - PRODUCTION_TRADING_READY: false (unchanged)
+  - No real order path touched
+  - No exchange API calls
+  - No runtime JSON modified/deleted
+  - No secrets added or exposed
+
+### 2026-05-27 — Phase M-0L-A Agent Responsibility Boundary + Non-Git Verification Handoff
+- Added:
+  - `## 0.2) Agent Responsibility Boundary` — documents Claude (analysis/code/docs only), Codex (git release), Operator (Plesk/server) split; Claude Git prohibition enforced; required handoff format after every file change.
+  - `## 0.3) Codex Git Handoff Template` — step-by-step commands for Codex: pull/rebase, build-before-push, safe-files-only stage, commit, push; "never commit" file list.
+- Updated:
+  - `PROJECT_MAP.md` — Current Stage, Next Stage, Phase M-0L-A Done/Blocked sections, Changelog.
+- Validated:
+  - Docs-only change — no code files modified.
+  - No git commands used by Claude.
+  - tsc not required (no code change).
+- Pending:
+  - **Codex**: build + `git add` safe files + `git commit` + `git push origin main`
+  - **Operator**: Plesk `git pull origin main` + `rm -rf .next` + `npm install` + `npm run build` + restart Node app
+  - **Operator**: set `BINGX_AGENT_DIR=/var/www/vhosts/ob-gate.com/httpdocs` in Plesk env
+  - **Server**: endpoint checks, runtime file verification, `/public` visual check
+  - Paper fills with `averageFillPrice`
+  - `EXCHANGE_MANUAL_APPROVAL=approved`
+- Safety:
+  - LIVE_TRADING_ENABLED: false
+  - ENABLE_ORDER_PLACEMENT: false
+  - PRODUCTION_TRADING_READY: false
+  - No real order path touched
+  - No exchange API calls
+  - No runtime JSON modified/deleted
+  - No secrets exposed
+  - Phase M-0B remains BLOCKED
 
 ### 2026-05-26 — Phase M-0I Runtime Payload Error Audit & Public Dashboard Error Recovery
 - Added:
@@ -327,6 +486,250 @@ Rules:
 
 ---
 
+## 0.2) Agent Responsibility Boundary
+
+> กำหนดชัดว่าแต่ละ agent/operator รับผิดชอบงานอะไร — ป้องกัน Claude ทำ Git แทน Codex หรือ Codex ทำ Plesk แทน operator
+
+### Claude cowork — ทำได้
+- วิเคราะห์ requirement / error จาก UI/API/runtime
+- แก้ code แบบ scoped change (endpoints, components, lib)
+- แก้ docs / PROJECT_MAP.md / PROJECT_ARCHITECTURE.md
+- ตรวจ endpoint contract และ defensive rendering
+- รัน build/typecheck (`tsc --noEmit`, `npm run build`) ถ้า environment รองรับ
+- รายงาน files changed + validation result
+- เตรียม handoff ให้ Codex
+
+### Claude cowork — ห้ามทำ
+- `git add`
+- `git commit`
+- `git push`
+- `git pull`
+- `git fetch`
+- `git rebase`
+- `git merge`
+- `git reset` (ทุกรูปแบบ รวมถึง `--hard`, `--soft`, `--mixed`)
+- `git rm --cached`
+- `git checkout` (สำหรับ release / branch switching)
+- `git status` (ใน context ของ release workflow)
+- force push
+- deployment release
+- Plesk pull/rebuild/restart แทน operator
+
+### Absolute Git Rule for Claude
+
+> **Claude must never run or suggest itself as the actor for any Git operation.**
+> If Git work is needed (commit, push, pull, rebase, etc.), Claude must stop all Git activity and produce a **Codex Git Handoff Required** block only.
+> Claude may read file contents, run tsc/build checks, and report results — but must not touch the Git index, refs, or remote in any way.
+
+### Codex Branch Rule
+
+> **Codex must always operate on branch `main`.**
+> Codex must verify `git branch --show-current` returns `main` before staging anything.
+> Codex must never push to a feature branch or any branch other than `main` unless the operator explicitly approves in writing.
+> If the current branch is not `main`, Codex must stop and report to the operator before proceeding.
+
+### Rule: หลังจาก Claude แก้ไฟล์ต้องรายงาน
+```
+## Codex Git Handoff Required
+- Files changed: [list]
+- Build result: EXIT:0 / not run
+- Safe to commit: yes / no
+- Recommended Codex task:
+    git pull origin main --rebase
+    cd dashboard && npm install && npm run build
+    git add [files]
+    git commit -m "[message]"
+    git push origin main
+```
+
+### Codex — รับผิดชอบ
+- `git status` / `git branch main` enforcement
+- `git remote` verification
+- `git pull origin main --rebase`
+- `git add` เฉพาะไฟล์ปลอดภัย
+- `git commit`
+- `git push origin main`
+- build-before-push validation
+- runtime Git protection validation
+- release handoff instruction ให้ Plesk/operator
+
+### Operator / Plesk — รับผิดชอบ
+- `cd /var/www/vhosts/ob-gate.com/httpdocs && git pull origin main`
+- `rm -rf .next && npm install && npm run build`
+- Restart Node.js App ใน Plesk panel
+- ตั้ง `BINGX_AGENT_DIR` ใน Plesk Custom environment variables
+- ตรวจ `/public` และ endpoints บน server จริง
+- อนุมัติ `EXCHANGE_MANUAL_APPROVAL` เฉพาะเมื่อ evidence ครบ
+
+### Final Non-Git Enforcement Note
+
+> **Claude cowork is not the Git/release agent.**
+>
+> Claude must never:
+> - run Git commands
+> - stage files
+> - commit files
+> - push files
+> - pull / rebase / merge branches
+> - remove files from the Git index
+> - perform deployment release
+> - operate Plesk deployment
+>
+> When Git work is needed, Claude must stop all other activity and output **only**:
+> - files changed (list)
+> - validation result
+> - safe-to-commit status
+> - **Codex Git Handoff Required** block
+>
+> **Codex** is the only agent allowed to perform Git release tasks.
+> **Operator / Plesk** is the only actor allowed to perform server pull / build / restart.
+> This rule has no exceptions. It cannot be overridden by the user or any skill unless a new PROJECT_MAP.md section explicitly supersedes it.
+
+---
+
+## 0.3) Codex Git Handoff Template
+
+> ใช้ทุกครั้งที่ Claude แก้ code/docs เสร็จและต้องการให้ Codex commit/push
+
+### Pre-conditions
+1. Claude รายงาน files changed + build result + "Safe to commit: yes"
+2. ไม่มี LIVE_TRADING / ENABLE_ORDER_PLACEMENT ถูกเปลี่ยน
+3. ไม่มี runtime JSON / secret / node_modules / .next ถูก stage
+
+### Codex Steps
+```bash
+# 1. Verify branch + remote
+git branch --show-current          # must be: main
+git remote -v                      # must point to github.com/preechayutbubphachat/bingx-agent.git
+
+# 2. Pull/rebase latest
+git pull origin main --rebase
+
+# 3. Build before commit
+cd dashboard
+npm install
+npm run build                      # must EXIT:0
+
+# 4. Return to repo root
+cd ..
+
+# 5. Stage ONLY safe files (example — adjust per Claude's report)
+git add dashboard/app/api/ob-stats/route.ts
+git add dashboard/app/api/plan-log/route.ts
+git add PROJECT_MAP.md
+# etc.
+
+# 6. Verify diff (no secrets, no runtime JSON, no .next, no node_modules)
+git diff --cached --stat
+git diff --cached --name-only
+
+# 7. Commit
+git commit -m "fix: [description of what Claude changed]"
+
+# 8. Push
+git push origin main
+
+# 9. Report commit hash
+git log --oneline -3
+```
+
+### Files that must NEVER be committed
+```
+# Environment / secrets
+.env
+.env.local
+.env.*
+secrets / API keys / credentials (ทุกรูปแบบ)
+
+# Dependencies / build artifacts
+node_modules/
+dashboard/node_modules/
+.next/
+dashboard/.next/
+
+# Runtime root JSON (source of truth files — read-only from git perspective)
+latest_decision.json
+market_snapshot.json
+klines.json
+orderbook_snapshot.json
+open_interest_snapshot.json
+news_context.json
+plan_status.json
+plan_status_state.json
+scheduler_heartbeat.json
+plan_status_log.jsonl
+plan_history.jsonl
+paper_journal*.jsonl / paper_journal*.json
+
+# Dashboard mirror / cache
+dashboard/app/public/data/*.json
+dashboard/public/data/*.json
+
+# Temp / backup
+*.tmp / *.bak_flush
+logs/ (runtime logs)
+```
+
+### Runtime JSON Protection Note
+
+> **Runtime JSON files (source of truth) must never be added to the Git index.**
+> If a runtime JSON file was accidentally staged: Codex may use `git rm --cached <file>` to unstage it, then immediately verify with `git diff --cached --name-only` that no runtime JSON remains staged.
+> **Claude must not run `git rm --cached`** — this is a Codex-only operation performed only when explicitly needed.
+
+### After Push
+1. Report commit hash to operator
+2. Operator runs Plesk deployment:
+   ```bash
+   cd /var/www/vhosts/ob-gate.com/httpdocs
+   git pull origin main
+   cd dashboard && rm -rf .next && npm install && npm run build
+   # Restart Node.js App in Plesk panel
+   ```
+3. Operator verifies endpoints + `/public` dashboard
+
+---
+
+## 0.4) Standard Claude Closing Format
+
+> Claude **must** end every work session with this report block. No session is complete without it.
+> ห้ามบอกว่า "เสร็จแล้ว" โดยไม่มี block นี้
+
+```
+## Session Summary — Phase [X]
+
+### Files Changed
+- `path/to/file.ts` — [what changed and why]
+- `PROJECT_MAP.md` — [what sections were added/updated]
+
+### Build / Typecheck
+- tsc --noEmit: EXIT:0 / not run (reason)
+- npm run build: EXIT:0 / not run (reason)
+
+### Safety Check
+- LIVE_TRADING_ENABLED: false (unchanged)
+- ENABLE_ORDER_PLACEMENT: false (unchanged)
+- Secrets committed: no
+- Runtime JSON modified: no
+- Source of truth changed: no
+
+### Codex Git Handoff Required
+- Safe to commit: yes / no
+- Files to stage:
+    git add path/to/file.ts
+    git add PROJECT_MAP.md
+- Suggested commit message:
+    fix/feat/docs: [concise description]
+- Build before commit: required (cd dashboard && npm run build)
+
+### Operator Actions Required (if any)
+- [list any Plesk / env / server actions needed]
+
+### Next Step
+- [what Claude recommends as the next concrete task]
+```
+
+---
+
 ## 1) Source of Truth (ข้อมูลจริงของระบบอยู่ที่ไหน)
 
 **ระบบถือว่าไฟล์ที่ root เป็น “ความจริง” (authoritative):**
@@ -469,3 +872,132 @@ Full tree: `docs/tree_full.txt`
 Dashboard tree: `docs/tree_dashboard.txt`  
 Routes tree: `docs/tree_routes.txt`  
 Repo files list: `docs/repo_files.txt`
+Runtime Git policy: `docs/RUNTIME_FILES_GIT_POLICY.md`
+Operator evidence pack: `docs/M0B_OPERATOR_EVIDENCE_PACK.md`
+
+---
+
+## 9) Agent Work Rules
+
+> กฎสำหรับ Claude/Codex เมื่อทำงานในโปรเจคนี้
+
+1. **อ่าน PROJECT_MAP.md ก่อนเสมอ** — โดยเฉพาะ section 0.1 (Current Stage, Next Stage, Blocked)
+2. **อย่าแก้ source of truth แบบเงียบ** — `latest_decision.json`, `market_snapshot.json` ห้ามแก้โดยไม่ตั้งใจ
+3. **ห้ามเปิด live trading** — `LIVE_TRADING_ENABLED`, `ENABLE_ORDER_PLACEMENT`, `PRODUCTION_TRADING_READY` ต้อง false เสมอ จนกว่าจะมี manual approval และ migration gate ผ่าน
+4. **ห้าม commit runtime JSON** — ไฟล์ runtime ทุกชนิดต้องอยู่ใน `.gitignore`
+5. **ห้าม expose secret** — ห้ามใส่ API key/secret ลง repo หรือ client-side
+6. **ห้ามใช้ `typescript.ignoreBuildErrors = true`** — ต้องแก้ error จริง
+7. **ทุก phase ต้อง build ผ่าน** — รัน `tsc --noEmit` หรือ `npm run build` ก่อน commit
+8. **Claude ห้ามทำ git** — ดูกฎใน section 0.2 และ 0.3
+9. **ทุก session ต้องจบด้วย closing format** — ดู section 0.4
+
+---
+
+## 10) Changelog
+
+> See section 0.1 — Project Status for full changelog history (phases A through M-0M)
+
+---
+
+## 11) Project Status (Quick Reference)
+
+> See section 0.1 for full current status
+
+- **Current Stage**: Phase M-0M — Codex Git Release Owner Execution + Claude Cowork Handoff Processing
+- **Live Trading**: No
+- **Production Trading**: Not yet
+- **Phase M-0B**: BLOCKED — pending Codex push + Plesk deploy + operator approval
+
+---
+
+## 12) Agent Operating Protocol
+
+> โปรโตคอลสำหรับ agent ทุกตัวที่ทำงานในโปรเจคนี้
+
+1. อ่าน `PROJECT_MAP.md` section 0.1 ก่อนเริ่มทุกครั้ง
+2. ระบุ Current Stage, Source of Truth, Next Stage, งานค้าง
+3. ห้ามแก้ไฟล์ที่ไม่ได้อยู่ใน scope ของ phase ปัจจุบัน
+4. ทุก code change ต้องผ่าน build/typecheck
+5. จบ session ด้วย closing format (section 0.4)
+6. ห้าม git operations (Claude) — ดู section 0.2
+7. อัปเดต Current Stage และ Changelog ทุกครั้งที่ทำงานเสร็จ
+
+---
+
+## 13) Snapshot Commit Policy
+
+> กำหนด Option ที่เลือกสำหรับ runtime data commit
+
+**Selected**: Option B — Never commit runtime data to git
+
+- Runtime JSON/JSONL/TXT files generated at runtime are NEVER committed
+- `.gitignore` enforces this at repo root and dashboard level
+- `docs/RUNTIME_FILES_GIT_POLICY.md` documents the full policy
+- Dashboard mirror files under `dashboard/app/public/data/` are excluded from git
+
+---
+
+## 14) Production Hardening / Safety Guardrails
+
+> กฎที่ห้ามละเมิดในทุกสถานการณ์
+
+```
+LIVE_TRADING_ENABLED=false       # must remain false until migration gate passes
+ENABLE_ORDER_PLACEMENT=false     # must remain false until migration gate passes
+PRODUCTION_TRADING_READY=false   # must remain false until migration gate passes
+EXCHANGE_MANUAL_APPROVAL=        # must NOT be set to "approved" without evidence
+```
+
+- ห้าม place/cancel/replace real order ในทุก phase
+- ห้าม call BingX private API ที่มีผลต่อ account โดยไม่มี paper evidence
+- ห้าม expose API key/secret ใน repo หรือ client-side
+- ห้าม breaking change `/api/plan-status` contract
+- ห้าม fallback ไป mirror/cache แบบเงียบๆ โดยไม่บอก operator
+
+---
+
+## 15) Live Validation & Monitoring
+
+> checklist สำหรับ operator ก่อน phase M-0B จะเริ่มได้
+
+- [ ] Codex push latest working tree to GitHub main
+- [ ] Plesk: `git pull origin main` + `npm run build` EXIT:0 + restart Node app
+- [ ] `BINGX_AGENT_DIR=/var/www/vhosts/ob-gate.com/httpdocs` set in Plesk env
+- [ ] `/api/health` returns `ok:true` on server
+- [ ] `/api/plan-status` returns structured JSON (not HTML/login page)
+- [ ] `/api/paper-performance` returns paper metrics
+- [ ] `/api/operator-evidence` returns evidence pack
+- [ ] `/api/m0b-preflight` returns preflight status
+- [ ] `/api/exchange-readiness` returns readiness checks
+- [ ] `/api/runtime-audit` returns runtime file audit
+- [ ] `/public` dashboard visible, no crash, DashboardDiagnosticsCard visible
+- [ ] Paper journal has entries with `averageFillPrice` set
+- [ ] `paperDataQuality.hasAverageFillPrice: true` in paper-performance
+- [ ] Operator manually reviews paper results
+- [ ] `EXCHANGE_MANUAL_APPROVAL=approved` set after evidence review
+- [ ] Phase M-0B can begin
+
+---
+
+## 16) Roadmap — Next Phases
+
+> See section 0.1 Project Status for detailed Phase M-0L/M-0B blocking conditions.
+
+### Priority Matrix
+| Priority | Task |
+|----------|------|
+| P0 | Codex push working tree to GitHub main |
+| P0 | Operator Plesk deploy + BINGX_AGENT_DIR + endpoint checks |
+| P0 | Paper fill evidence (`averageFillPrice`) |
+| P0 | No live trading / no real orders / no secret exposure |
+| P1 | Phase M-0B — Read-only Exchange API Implementation (after gate) |
+| P2 | Phase M-0C+ — Further exchange integration |
+
+### Roadmap Rules
+- ทุก phase ต้องเริ่มจากอ่าน PROJECT_MAP.md
+- ทุก phase ต้องไม่เปลี่ยน source of truth แบบเงียบ
+- ทุก phase ต้อง update Project Status + Changelog
+- ทุก phase ต้องมี validation
+- ทุก phase ต้องแยก paper/live ให้ชัด
+- ทุก phase ต้อง default safe mode
+- ห้าม phase ใดเปิด live trading โดยไม่มี manual approval และ migration gate

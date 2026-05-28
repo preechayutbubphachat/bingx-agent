@@ -17,7 +17,7 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0Y - Authenticated Browser Evidence Verification + Operator-Minimal Manual Handoff** - `/api/public-health` PASS is recorded; remaining gates move to authenticated browser/session verification, `/public` visual verification, paper fill evidence, and manual approval. Phase M-0B remains blocked, 2026-05-28
+**Phase M-0Z-4 — Build Release Verification + Post-Deploy Evidence Intake + Paper Fill Liveness Audit** — Fix 1+2 IMPLEMENTED (syntax PASS); `npm run build` PASS on actual machine; Phase M-0Z-4 roadmap DESIGNED (7-Checkpoint plan, Evidence Gate Matrix 11 rows, Paper Liveness Audit, Codex Handoff, Operator Checklist, M-0B Pre-Plan); Plesk deploy PENDING (Operator); `/public` visual PENDING; paper fills 0 (data gap); Phase M-0B remains BLOCKED, 2026-05-28
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Operator** Plesk git pull/rebuild/restart, (2) `BINGX_AGENT_DIR` set on Plesk, (3) runtime file verification, (4) endpoint checks on server, (5) `/public` visual verification, (6) paper fill evidence, (7) `EXCHANGE_MANUAL_APPROVAL=approved`)
@@ -145,6 +145,200 @@
 10. Do not enable live trading.
 11. Do not enable order placement.
 12. Do not set `EXCHANGE_MANUAL_APPROVAL=approved` without explicit operator approval after evidence review.
+
+### Phase M-0Z Done
+- [x] Canonical Agent Roles defined (Claude / Codex / Operator) — aligned across PROJECT_CONTEXT.md, PROJECT_MAP.md.
+- [x] File Ownership / Purpose model defined: CONTEXT=short-term memory, MAP=control board, ARCH=blueprint, LEDGER=evidence.
+- [x] RACI Matrix added to PROJECT_MAP.md.
+- [x] Decision Log added to PROJECT_MAP.md.
+- [x] Context Hygiene Rules added to PROJECT_CONTEXT.md and PROJECT_MAP.md.
+- [x] Current Snapshot section added/updated in PROJECT_CONTEXT.md.
+- [x] PROJECT_CONTEXT.md rewritten as short-form 2-minute context (no long phase history).
+- [x] /public visual gate PASS/WARNING/FAIL/PENDING criteria defined in SERVER_EVIDENCE_LEDGER.md.
+- [x] Paper evidence gate PASS/WARNING/FAIL/PENDING criteria defined in SERVER_EVIDENCE_LEDGER.md.
+- [x] `/api/public-health` PASS preserved and confirmed.
+- [x] Protected endpoint SAFE_JSON_WITH_EXPECTED_BLOCKERS status preserved.
+- [x] No Git commands used by Claude.
+- [x] No runtime JSON modified/deleted.
+- [x] No secrets exposed.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0Z In Progress
+- Codex Git release of M-0Z docs changes (build + commit + push).
+- `/public` visual evidence closeout after authenticated browser/session.
+- Paper fill evidence collection (averageFillPrice, fillQty, closed cycles).
+- Approval checklist review.
+
+### Phase M-0Z Blocked / Pending
+- `/public` visual evidence pending — authenticated browser/session required.
+- Paper fills missing `averageFillPrice`, `fillQty`, closed cycles.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0Z Next
+1. Codex: build + commit + push origin main (docs-only release).
+2. Operator: verify `/public` visual in authenticated browser/session.
+3. Classify any red blocks as expected blocker vs real bug.
+4. Collect paper fill evidence with `averageFillPrice`, `fillQty`, closed cycles.
+5. If any gate PENDING or FAIL → keep Phase M-0B BLOCKED.
+6. If all gates PASS → mark `READY_FOR_REVIEW` only.
+7. Do NOT enable live trading.
+8. Do NOT enable order placement.
+9. Do NOT set `EXCHANGE_MANUAL_APPROVAL=approved` without complete evidence.
+
+### Phase M-0Z-1 Done
+- [x] Paper evidence instrumentation audit completed (2026-05-28).
+- [x] Gap 1 identified: `readPaperJournal.ts` — `ORDER_FILLED` payload not parsed for `averageFillPrice` / `filledQuantity`.
+- [x] Gap 2 identified: `paperPerformance.ts` `extractFills()` — `FILL_RESULT` events excluded.
+- [x] Gap 3 identified: `mode` audit event field = "PAPER" (not grid mode) → always "UNKNOWN" in attribution.
+- [x] Gap 4 identified: `regime` not stored in audit events — requires `paper_pnl.jsonl`.
+- [x] Gap 5 identified: `paper_pnl.jsonl` not yet written by server.cjs.
+- [x] Root cause classification: Gaps 1+2 = instrumentation code issue; Gaps 3-5 = data gap.
+- [x] Fix 1+2 proposed: low-effort, dashboard lib only, safe to implement now.
+- [x] Fix 3 deferred: server.cjs changes — requires Phase M-0B planning.
+- [x] `/public` manual verification checklist written in SERVER_EVIDENCE_LEDGER.md.
+- [x] SERVER_EVIDENCE_LEDGER.md updated with audit + implementation plan sections.
+- [x] PROJECT_CONTEXT.md Current Snapshot updated to Phase M-0Z-1.
+- [x] PROJECT_MAP.md updated to Phase M-0Z-1.
+- [x] No Git commands used by Claude.
+- [x] No code implemented (fixes proposed only — Codex implements).
+- [x] No runtime JSON modified.
+- [x] No secrets exposed.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0Z-1 In Progress
+- ~~Codex implements Fix 1 (`readPaperJournal.ts`) + Fix 2 (`paperPerformance.ts`).~~ → **DONE by Claude (M-0Z-2)**
+
+### Phase M-0Z-1 Blocked / Pending (resolved in M-0Z-2)
+- ~~Fix 1+2 not yet implemented.~~ → IMPLEMENTED
+- `/public` visual evidence PENDING → carried to M-0Z-2
+- Paper fills PENDING → carried to M-0Z-2
+
+---
+
+### Phase M-0Z-2 Done
+- [x] Fix 1 implemented: `dashboard/lib/readPaperJournal.ts` — `ORDER_FILLED` payload parsing added (syntax PASS, 2026-05-28).
+- [x] Fix 2 implemented: `dashboard/lib/paperPerformance.ts` — `FILL_RESULT` added to `extractFills()` filter (syntax PASS, 2026-05-28).
+- [x] TypeScript syntax check: 0 errors across all project TS/TSX files.
+- [x] SERVER_EVIDENCE_LEDGER.md updated to Phase M-0Z-2 (evidence snapshot + implementation result).
+- [x] PROJECT_CONTEXT.md Current Snapshot updated to Phase M-0Z-2.
+- [x] PROJECT_MAP.md updated to Phase M-0Z-2.
+- [x] No Git commands used by Claude.
+- [x] No exchange API called.
+- [x] No server.cjs modified.
+- [x] No runtime JSON modified.
+- [x] No secrets exposed.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0Z-2 In Progress
+- `npm run build` (Codex — must be EXIT:0 before commit).
+- Operator/Codex verifies `/public` visual using manual checklist.
+- Paper trading accumulating fills naturally.
+
+### Phase M-0Z-2 Blocked / Pending
+- `npm run build` — sandbox DNS blocked; Codex must run on actual machine.
+- `/public` visual evidence PENDING — authenticated browser/session required.
+- Paper fills with `averageFillPrice`, `fillQty`, closed cycles — PENDING (0 fills yet).
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation BLOCKED.
+
+### Phase M-0Z-2 Next
+1. **Codex:** `npm run build` from `dashboard/` — must EXIT:0.
+2. **Codex:** Commit Fix 1 + Fix 2 to `origin/main` (safe — dashboard lib only, no server/runtime changes).
+3. **Operator/Codex:** Login to browser/session; verify `/public` using checklist in SERVER_EVIDENCE_LEDGER.md.
+4. Classify any red blocks as expected blocker vs real bug.
+5. Let paper trading accumulate fills naturally — do NOT force-fill.
+6. Re-check `paperDataQuality` after build deployed.
+7. Keep Phase M-0B BLOCKED until all evidence gates PASS.
+
+---
+
+### Phase M-0Z-3 Done
+- [x] Phase M-0Z-3 roadmap designed: Evidence Gate Matrix (10 gates), Codex Handoff Block, Operator Checklist, Paper Evidence Decision Tree, M-0B Pre-Plan (read-only scope), Failure Decision Tree (2026-05-28).
+- [x] Evidence Gate Matrix classified: PASS (2 gates), PENDING (2 gates), BLOCKED (2 gates), NOT_APPROVED (1 gate), INSTRUMENTATION_FIXED (2 gates), N/A (1 gate).
+- [x] `PROJECT_CONTEXT.md` Current Snapshot updated to Phase M-0Z-3.
+- [x] `PROJECT_MAP.md` Current Stage updated to Phase M-0Z-3; Phase M-0Z-3 Done/In Progress/Blocked/Next added.
+- [x] `docs/SERVER_EVIDENCE_LEDGER.md` Phase M-0Z-3 evidence intake section added.
+- [x] Codex Git Handoff block issued (covers Fix 1+2 code files + M-0Z-3 doc updates).
+- [x] No Git commands used by Claude.
+- [x] No exchange API called.
+- [x] No runtime JSON modified.
+- [x] No secrets exposed.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0Z-3 In Progress
+- Codex: `npm run build` from `dashboard/` (must EXIT:0).
+- Codex: commit Fix 1+2 code changes + doc updates → push `origin main`.
+- Operator: Plesk pull + rebuild + restart after Codex push.
+- Operator/Codex: `/public` visual verification (11-point checklist) in authenticated browser/session.
+- System: Paper fills accumulating naturally (no force-fill).
+
+### Phase M-0Z-3 Blocked / Pending
+- `npm run build` — Codex must run on actual machine (sandbox DNS blocked).
+- `/public` visual evidence — PENDING (authenticated browser/session required).
+- Paper fills with `averageFillPrice`, `fillQty`, closed cycles — PENDING (0 fills yet).
+- `EXCHANGE_MANUAL_APPROVAL` — not_approved.
+- Phase M-0B implementation — BLOCKED.
+
+### Phase M-0Z-3 Next
+1. **Codex:** `npm run build` from `dashboard/` — must EXIT:0 before any commit.
+2. **Codex:** Stage safe files (Fix 1+2 lib files + M-0Z-3 doc updates) → commit → push `origin main`.
+3. **Operator:** Plesk `git pull origin main` + rebuild dashboard + restart Node.js App.
+4. **Operator:** Verify `/api/public-health` returns HTTP 200 JSON after deploy.
+5. **Operator/Codex:** Open `/public` (authenticated) → run 11-point visual checklist → record result in LEDGER.
+6. **System:** Let paper trading accumulate fills naturally — do NOT force-fill.
+7. Re-check `/api/paper-performance` for `averageFillPrice` + `fillQty` after deploy.
+8. Do NOT enable live trading.
+9. Do NOT enable order placement.
+10. Do NOT set `EXCHANGE_MANUAL_APPROVAL=approved` until all evidence gates PASS.
+
+---
+
+### Phase M-0Z-4 Done
+- [x] Phase M-0Z-4 roadmap DESIGNED: 7-Checkpoint plan, Evidence Gate Matrix (11 rows), Paper Fill Liveness Audit checklist (8-step), Minimal Fix Policy, Codex Handoff Block, Operator Checklist (11-point), M-0B Read-only Pre-Plan (2026-05-28).
+- [x] `PROJECT_CONTEXT.md` Current Snapshot updated to Phase M-0Z-4.
+- [x] `PROJECT_MAP.md` Current Stage updated to Phase M-0Z-4; Phase M-0Z-4 Done/In Progress/Blocked/Next added.
+- [x] `docs/SERVER_EVIDENCE_LEDGER.md` Phase M-0Z-4 evidence intake section added.
+- [x] No Git commands used by Claude.
+- [x] No exchange API called.
+- [x] No runtime JSON modified.
+- [x] No secrets exposed.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0Z-4 In Progress
+- Codex: `npm run build` from `dashboard/` (Checkpoint 1 — must EXIT:0).
+- Codex: stage safe files + commit + push `origin main` (Checkpoint 2).
+- Operator: Plesk pull + rebuild + restart (Checkpoint 3).
+- Operator: verify `/api/public-health` post-deploy (Checkpoint 4).
+- Operator/Codex: `/public` visual verification — 11-point checklist (Checkpoint 5).
+- System: paper fills accumulating naturally (Checkpoint 6).
+- Paper Liveness Audit: pending after deploy (8-step checklist if 0 fills persist).
+
+### Phase M-0Z-4 Blocked / Pending
+- `npm run build` — PASS (Codex ran on actual machine).
+- Safe Git release — PENDING (after build PASS).
+- Plesk deploy/restart — PENDING (after Git push).
+- `/api/public-health` post-deploy — PENDING.
+- `/public` visual verification — PENDING (authenticated browser/session required).
+- Paper fills with `averageFillPrice`, `fillQty`, closed cycles — BLOCKED (0 fills; data gap).
+- `EXCHANGE_MANUAL_APPROVAL` — NOT_APPROVED.
+- Phase M-0B implementation — BLOCKED.
+
+### Phase M-0Z-4 Next
+1. **Codex:** `npm run build` from `dashboard/` — PASS EXIT:0.
+2. **Codex:** Verify staged files (5 safe files only — no runtime JSON / .env / .next).
+3. **Codex:** `git commit` + `git push origin main`.
+4. **Operator:** Plesk `git pull origin main` + rebuild + restart Node.js App.
+5. **Operator:** `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000` — verify HTTP 200 JSON.
+6. **Operator:** Login → open `/public` → run 11-point visual checklist → record in LEDGER.
+7. **Operator:** `curl -k -sS https://ob-gate.com/api/paper-performance | head -c 3000` → report output.
+8. **System:** Let paper fills accumulate naturally — do NOT force-fill.
+9. If 0 fills after deploy: run 8-step Paper Fill Liveness Audit before any code change.
+10. Do NOT enable live trading.
+11. Do NOT enable order placement.
+12. Do NOT set `EXCHANGE_MANUAL_APPROVAL=approved` until all 7 checkpoints PASS.
+
+---
 
 ### Phase M-0Y Done
 - [x] `/api/public-health` PASS recorded.
@@ -757,6 +951,144 @@
   - no secrets committed.
   - Phase M-0B remains BLOCKED.
 
+### 2026-05-28 — Phase M-0Z-4 Build Release Verification + Post-Deploy Evidence Intake + Paper Fill Liveness Audit
+- Designed:
+  - Phase M-0Z-4 roadmap: 7-Checkpoint plan (Build → Release → Plesk → Health → Visual → Paper → Approval).
+  - Evidence Gate Matrix: 11 rows (gate / status / owner / next action / PASS/FAIL criteria / M-0B impact).
+  - Paper Fill Liveness Audit: 8-step checklist (scheduler → plan_status → market_snapshot → paper mode → journal path → events written → API path → dashboard vs backend).
+  - Minimal Fix Policy: 6 bug type classifications with files/validation/rollback.
+  - Codex Handoff Block: 7-step build+release with STOP conditions.
+  - Operator Checklist: 11-point deploy + visual + evidence verification.
+  - M-0B Read-only Pre-Plan: scope boundary, auth design, rate limit policy, dry-run contract, rollback plan, approval checklist.
+- Updated:
+  - `PROJECT_CONTEXT.md` — Current Snapshot to Phase M-0Z-4.
+  - `PROJECT_MAP.md` — Current Stage to Phase M-0Z-4; Phase M-0Z-4 Done/In Progress/Blocked/Next added.
+  - `docs/SERVER_EVIDENCE_LEDGER.md` — Phase M-0Z-4 evidence intake section added.
+- Pending (Codex): commit safe files → push origin main after build PASS.
+- Pending (Operator): Plesk deploy → /api/public-health verify → /public visual verify.
+- Pending (System): paper fills accumulate naturally.
+- Safety: no live trading / no order placement / no exchange API / no runtime JSON modified / no secrets exposed / Phase M-0B BLOCKED.
+
+### 2026-05-28 — Phase M-0Z-3 Evidence Gate Closeout Orchestration + Build/Visual/Paper Readiness Handoff
+- Designed:
+  - Phase M-0Z-3 roadmap (Evidence Gate Matrix, Codex Handoff, Operator Checklist, Paper Evidence Plan, M-0B Pre-Plan, Failure Decision Tree).
+  - Evidence Gate Matrix — 10 gates classified (PASS/PENDING/BLOCKED/NOT_APPROVED/INSTRUMENTATION_FIXED/N/A).
+  - M-0B Pre-Plan: read-only scope, BingX API auth safety, rate limit policy, rollback conditions.
+- Updated:
+  - `PROJECT_CONTEXT.md` — Current Snapshot updated to Phase M-0Z-3.
+  - `PROJECT_MAP.md` — Current Stage to Phase M-0Z-3; Phase M-0Z-3 Done/In Progress/Blocked/Next added.
+  - `docs/SERVER_EVIDENCE_LEDGER.md` — Phase M-0Z-3 evidence intake section added.
+- Pending (Codex):
+  - `npm run build` (EXIT:0).
+  - Commit Fix 1+2 code + M-0Z-3 doc updates → push `origin main`.
+- Pending (Operator):
+  - Plesk pull + rebuild + restart.
+  - `/public` visual verification (authenticated).
+- Pending (System):
+  - Paper fills to accumulate naturally (0 fills so far).
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API calls.
+  - no runtime JSON modified/deleted.
+  - no secrets exposed.
+  - Phase M-0B remains BLOCKED.
+
+### 2026-05-28 — Phase M-0Z-2 Paper Evidence Instrumentation Fix Implementation
+
+- Implemented:
+  - Fix 1 — `dashboard/lib/readPaperJournal.ts`: added `ORDER_FILLED` payload extraction block (orderId, orderStatus, filledQuantity, averageFillPrice/avgPrice fallback, executedQty fallback)
+  - Fix 2 — `dashboard/lib/paperPerformance.ts`: added `FILL_RESULT` to `extractFills()` event type filter
+- Verified:
+  - TypeScript syntax check: 0 errors across all project TS/TSX files (node parse check)
+  - `npm run build` PENDING — sandbox DNS blocked; Codex must run on actual machine
+- Added:
+  - `## Phase M-0Z-2 Implementation Result` — in `docs/SERVER_EVIDENCE_LEDGER.md`: Fix 1/2 code, build status, post-fix gate status
+  - Phase M-0Z-2 Done/InProgress/Blocked/Next blocks in PROJECT_MAP.md
+- Updated:
+  - `PROJECT_CONTEXT.md` — Current Snapshot updated to Phase M-0Z-2; Next Actions updated
+  - `PROJECT_MAP.md` — Current Stage updated to Phase M-0Z-2
+  - `docs/SERVER_EVIDENCE_LEDGER.md` — Evidence snapshot updated to Phase M-0Z-2; implementation result section added
+- Evidence:
+  - `/api/public-health`: PASS (preserved)
+  - Protected endpoints: SAFE_JSON_WITH_EXPECTED_BLOCKERS (preserved)
+  - `/public` visual: PENDING
+  - Paper instrumentation: INSTRUMENTATION_FIXED — awaiting real paper fills
+  - Paper data: BLOCKED — 0 fills yet (data gap remains)
+- Gate:
+  - Phase M-0B remains **BLOCKED**
+- Safety:
+  - No Git command used by Claude
+  - No exchange API called
+  - No server.cjs modified
+  - No runtime JSON modified
+  - No secrets exposed
+  - No live trading enabled
+
+---
+
+### 2026-05-28 — Phase M-0Z-1 Paper Evidence Instrumentation Audit + /public Visual Evidence Closeout
+
+- Added:
+  - `## Phase M-0Z-1 Paper Evidence Instrumentation Audit` — in `docs/SERVER_EVIDENCE_LEDGER.md`: 5 gaps classified, root cause table (instrumentation vs data)
+  - `## Phase M-0Z-1 Minimal Implementation Plan` — Fix 1 (`readPaperJournal.ts`), Fix 2 (`paperPerformance.ts`), Fix 3 deferred
+  - `/public` Manual Verification Script — operator/Codex step-by-step checklist in `docs/SERVER_EVIDENCE_LEDGER.md`
+  - Phase M-0Z-1 Done/InProgress/Blocked/Next blocks in PROJECT_MAP.md
+- Updated:
+  - `PROJECT_CONTEXT.md` — Current Snapshot updated to Phase M-0Z-1; §8 next steps updated
+  - `PROJECT_MAP.md` — Current Stage updated to Phase M-0Z-1; Phase M-0Z-1 evidence snapshot row added
+  - `docs/SERVER_EVIDENCE_LEDGER.md` — Evidence snapshot updated; audit + implementation plan sections added; /public manual checklist added
+- Evidence:
+  - `/api/public-health`: PASS (preserved)
+  - Protected endpoints: SAFE_JSON_WITH_EXPECTED_BLOCKERS (preserved)
+  - `/public` visual: PENDING (manual checklist ready)
+  - Paper evidence: BLOCKED — instrumentation gap (Gap 1: ORDER_FILLED not parsed; Gap 2: FILL_RESULT ignored in extractFills) + no paper fills yet
+  - Paper instrumentation audit: DONE 2026-05-28
+- Gate:
+  - Phase M-0B remains **BLOCKED**
+  - All PASS → `READY_FOR_REVIEW` only, not live trading
+- Safety:
+  - No Git command used by Claude
+  - No code implemented (Fix 1+2 proposed only — Codex implements)
+  - No live trading
+  - No order placement
+  - No exchange API calls
+  - No runtime JSON modified/deleted
+  - No secrets exposed
+
+---
+
+### 2026-05-28 — Phase M-0Z Role Governance + Context Optimization + Visual/Paper Evidence Gate Plan
+
+- Added:
+  - `## 0.1B) Canonical Agent Roles` — Claude/Codex/Operator role titles + responsibilities + must-not rules
+  - `## 0.1C) File Ownership / Purpose Model` — role of each project file
+  - `## 0.1D) RACI Matrix` — 14-row RACI across all workstreams
+  - `## 0.1E) Decision Log` — 3 decisions recorded (role governance, Phase M-0B gate, file purpose)
+  - `## 0.1F) Context Hygiene Rules` — 12 hygiene rules
+  - Phase M-0Z Done/InProgress/Blocked/Next blocks in PROJECT_MAP.md
+- Updated:
+  - `PROJECT_CONTEXT.md` — rewritten as short-form 2-minute context with Current Snapshot section + §4 canonical roles + §9 Context Hygiene Rules + §8 Phase M-0Z next steps
+  - `PROJECT_MAP.md` — Current Stage updated to Phase M-0Z
+  - `docs/SERVER_EVIDENCE_LEDGER.md` — Phase M-0Z evidence snapshot section + `/public` visual PASS/WARNING/FAIL criteria + paper evidence gate criteria
+- Evidence:
+  - `/api/public-health`: PASS (preserved from Phase M-0Y)
+  - Protected endpoints: SAFE_JSON_WITH_EXPECTED_BLOCKERS (preserved from Phase M-0Y)
+  - `/public` visual: PENDING
+  - Paper evidence: BLOCKED (missing averageFillPrice/fillQty/closed cycles)
+- Gate:
+  - Phase M-0B remains **BLOCKED**
+  - All PASS → `READY_FOR_REVIEW` only, not live trading
+- Safety:
+  - No Git command used by Claude
+  - No live trading
+  - No order placement
+  - No exchange API calls
+  - No runtime JSON modified/deleted
+  - No secrets exposed
+
+---
+
 ### 2026-05-28 — Phase M-0Y Authenticated Browser Evidence Verification + Operator-Minimal Manual Handoff
 - Updated:
   - `PROJECT_MAP.md` Current Stage.
@@ -1200,6 +1532,185 @@ Rules:
   - no order placement
   - no exchange network calls
   - no secrets exposed
+
+---
+
+## 0.1B) Canonical Agent Roles
+
+> นิยาม canonical สำหรับทุก agent — ยึดตาม section นี้เป็น single source of truth
+
+### Claude cowork
+
+**Role:** Principal Developer / Solution Architect / Senior Developer / System Designer / Debugger
+
+**Responsibilities:**
+- Requirement analysis and architecture reasoning
+- UI/UX diagnosis and frontend/backend scoped fixes
+- API contract review and debugging plan
+- Docs update and evidence classification
+- Codex handoff preparation
+
+**Must NOT:**
+- Run any Git command (`git add`, `commit`, `push`, `pull`, `fetch`, `rebase`, `status`, `rm --cached`, `merge`, `reset`, `checkout`)
+- Release deployment or operate Plesk
+- Approve risk or set `EXCHANGE_MANUAL_APPROVAL`
+- Enable live trading or order placement
+- Call BingX private/execution API
+- Modify or delete runtime JSON
+- Mark Phase M-0B ready without full evidence
+
+---
+
+### Codex
+
+**Role:** Technical Project Manager / Release Manager / QA Gatekeeper / Git Owner
+
+**Responsibilities:**
+- Verify branch `main` and `origin` remote before any staging
+- Pull/rebase latest `origin/main`
+- Run `npm run build` before every commit (must EXIT:0)
+- Stage safe files only (never runtime JSON, .env, secrets, node_modules, .next)
+- Commit and push `origin main`
+- Protect .env / secrets / runtime JSON from being committed
+- Produce Plesk/Operator release handoff
+- Verify release checklist
+
+**Must NOT:**
+- Push non-main branch without explicit operator approval
+- Force push
+- Commit runtime JSON, .env, secrets, node_modules, .next
+- Bypass failed build
+- Enable live trading
+- Approve risk alone
+
+---
+
+### Operator
+
+**Role:** Product Owner / Risk Owner / Final Approver
+
+**Responsibilities:**
+- Final risk approval and Plesk/server access
+- Login inside browser/session when Codex requests (only — never send password in chat)
+- Rotate secrets and verify production env
+- Approve `EXCHANGE_MANUAL_APPROVAL` ONLY after all evidence passes independent review
+- Decide when to move gate from BLOCKED → READY_FOR_REVIEW
+
+**Must NOT:**
+- Approve Phase M-0B while any evidence gate is pending or fail
+- Confuse `READY_FOR_REVIEW` with `LIVE_READY`
+- Enable live/order placement without explicit safety phase completion
+
+---
+
+## 0.1C) File Ownership / Purpose Model
+
+> นิยามหน้าที่ของแต่ละ file — ยึดตาม section นี้ป้องกัน context ปนกัน
+
+| File | Role | Must Contain | Must NOT Contain |
+|------|------|-------------|-----------------|
+| `PROJECT_CONTEXT.md` | Short-term memory / Current snapshot / Read-first | Current Snapshot, canonical roles summary, safety rules, next steps, read order | Long phase history, detailed changelogs |
+| `PROJECT_MAP.md` | Project control board | Current Stage, roadmap, gate status, RACI, Decision Log, Changelog, agent templates | System architecture details |
+| `PROJECT_ARCHITECTURE.md` | System blueprint | Module map, data flow, source-of-truth policy, architecture layers, cross-references | Phase history, per-session changelogs |
+| `docs/SERVER_EVIDENCE_LEDGER.md` | Evidence ledger / Gate proof | All server evidence records, gate decisions, visual/paper criteria | Code, architecture, phase roadmap |
+
+---
+
+## 0.1D) RACI Matrix
+
+> กำหนด RACI ทุก workstream — ป้องกัน overlap และงานตกหล่น
+
+| Workstream | Responsible | Accountable / Approver | Consulted | Informed |
+|---|---|---|---|---|
+| Architecture / system design | Claude | Operator | Codex | — |
+| Frontend / UI/UX scoped fixes | Claude | Operator | Codex | — |
+| Backend / API contract scoped fixes | Claude | Operator | Codex | — |
+| Docs update (PROJECT_MAP, CONTEXT, ARCH, LEDGER) | Claude | Operator | Codex | — |
+| Evidence classification | Claude | Operator | Codex | — |
+| Git release (build + commit + push) | Codex | Operator | Claude | — |
+| Build before push validation | Codex | Operator | Claude | — |
+| Runtime JSON protection | Codex | Operator | Claude | — |
+| Plesk deploy / pull / rebuild / restart | Operator | Operator | Codex | Claude |
+| Server endpoint verification | Operator (or Codex if browser/session available) | Operator | Claude | — |
+| Paper evidence review | Claude | Operator | Codex | — |
+| Phase M-0B readiness review | Claude + Codex | Operator | — | — |
+| `EXCHANGE_MANUAL_APPROVAL` | Operator only | Operator | Claude / Codex | — |
+| Live trading approval | Operator only | Operator | Claude / Codex | — |
+
+**RACI Rules:**
+- `READY_FOR_REVIEW` means evidence is ready for human review.
+- `READY_FOR_REVIEW` does NOT mean approved.
+- `READY_FOR_REVIEW` does NOT enable live trading.
+- `READY_FOR_REVIEW` does NOT enable order placement.
+
+---
+
+## 0.1E) Decision Log
+
+> บันทึกการตัดสินใจสำคัญของโปรเจค — ลดการสับสนซ้ำซาก
+
+### 2026-05-28 — Canonical Agent Role Governance
+
+**Decision:**
+Adopt canonical roles:
+- Claude = Principal Developer / Solution Architect / Senior Developer / System Designer / Debugger
+- Codex = Technical PM / Release Manager / QA Gatekeeper / Git Owner
+- Operator = Product Owner / Risk Owner / Final Approver
+
+**Reason:**
+Project has multiple agents and evidence gates. Clear ownership prevents drift, duplicate work, accidental Git operations, and premature live trading. Previous `§0.2` had rules but lacked role titles and RACI, causing occasional role confusion.
+
+**Impact:**
+- Claude remains non-Git (absolute rule, no exceptions)
+- Codex owns all Git release operations
+- Operator owns all risk approvals and Plesk actions
+- Phase M-0B remains blocked until evidence passes
+
+---
+
+### 2026-05-28 — Phase M-0B Gate Decision
+
+**Decision:**
+Phase M-0B remains **BLOCKED**.
+
+**Reason:**
+- `/public` visual evidence pending (authenticated browser/session required)
+- Paper evidence: missing `averageFillPrice`, `fillQty`, closed cycles
+- `EXCHANGE_MANUAL_APPROVAL` not approved
+
+**Next Review:**
+After `/public` visual evidence and paper evidence are each classified PASS / WARNING / FAIL.
+
+---
+
+### 2026-05-28 — File Purpose Standardization
+
+**Decision:**
+Standardize file roles:
+- `PROJECT_CONTEXT.md` = short-term memory (2-minute read, current snapshot only)
+- `PROJECT_MAP.md` = project control board (phase history, RACI, Decision Log, changelog)
+- `PROJECT_ARCHITECTURE.md` = system blueprint (module map, architecture)
+- `docs/SERVER_EVIDENCE_LEDGER.md` = evidence ledger (gate proof)
+
+**Reason:**
+Previous `PROJECT_CONTEXT.md` contained redundant phase history making it harder to get a quick current-state read. Separating concerns prevents AI agents from reading stale phase info as "current."
+
+---
+
+## 0.1F) Context Hygiene Rules
+
+1. Always read `PROJECT_CONTEXT.md` first.
+2. `PROJECT_CONTEXT.md` must contain only the current snapshot and critical rules — not long phase history.
+3. `PROJECT_MAP.md` is the project control board (full history, RACI, Decision Log, changelog).
+4. `PROJECT_ARCHITECTURE.md` is the system blueprint.
+5. `docs/SERVER_EVIDENCE_LEDGER.md` is the evidence ledger (gate proof).
+6. Do NOT duplicate long phase history inside `PROJECT_CONTEXT.md`.
+7. Update **Current Snapshot** in `PROJECT_CONTEXT.md` whenever status changes.
+8. Update `PROJECT_MAP.md` Current Stage and Changelog whenever phase changes.
+9. Update `SERVER_EVIDENCE_LEDGER.md` whenever evidence changes.
+10. Do NOT mark Phase M-0B `READY_FOR_REVIEW` if any evidence gate is pending or fail.
+11. Do NOT confuse `READY_FOR_REVIEW` with approval.
+12. Do NOT confuse approval with live trading readiness.
 
 ---
 

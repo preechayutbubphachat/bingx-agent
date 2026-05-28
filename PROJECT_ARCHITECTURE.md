@@ -1372,7 +1372,7 @@ Agents must read this architecture file when modifying:
 
 ## 15) Agent / Release Ownership
 
-> Cross-reference: `PROJECT_CONTEXT.md` (quick context for AI agents), `PROJECT_MAP.md` sections 0.2, 0.3, 0.4 (full enforcement rules), `docs/RUNTIME_FILES_GIT_POLICY.md` (runtime JSON protection), `docs/SERVER_EVIDENCE_LEDGER.md` (server-side deployment, runtime, endpoint, and dashboard evidence required before Phase M-0B approval).
+> Cross-reference: `PROJECT_CONTEXT.md` (short-term memory / current snapshot / canonical roles summary), `PROJECT_MAP.md` sections 0.1B (Canonical Agent Roles), 0.1C (File Ownership Model), 0.1D (RACI Matrix), 0.1E (Decision Log), 0.1F (Context Hygiene Rules), 0.2, 0.3, 0.4 (full enforcement rules and Git handoff templates), `docs/RUNTIME_FILES_GIT_POLICY.md` (runtime JSON protection), `docs/SERVER_EVIDENCE_LEDGER.md` (server-side deployment, runtime, endpoint, dashboard evidence, /public visual gate criteria, paper evidence gate criteria required before Phase M-0B approval).
 
 ### Responsibility Matrix
 

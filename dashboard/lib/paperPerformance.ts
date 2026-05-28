@@ -463,7 +463,12 @@ type FillRecord = {
 function extractFills(events: PaperEventSummary[]): FillRecord[] {
   const fills: FillRecord[] = [];
   for (const ev of events) {
-    if (ev.type !== "ORDER_FILLED" && ev.type !== "ORDER_SIMULATED") continue;
+    // Phase M-0Z-2: include FILL_RESULT events (have correct averageFillPrice from syncState)
+    if (
+      ev.type !== "ORDER_FILLED" &&
+      ev.type !== "ORDER_SIMULATED" &&
+      ev.type !== "FILL_RESULT"
+    ) continue;
     const price = ev.averageFillPrice;
     const qty = ev.filledQuantity ?? ev.quantity;
     if (!price || price <= 0 || !qty || qty <= 0 || !ev.side) continue;

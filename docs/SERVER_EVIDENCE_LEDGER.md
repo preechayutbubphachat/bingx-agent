@@ -23,13 +23,523 @@ Phase M-0B approval requires:
 **Phase M-0B: BLOCKED**
 
 Reason:
-- Plesk deployment evidence pending
-- BINGX_AGENT_DIR verification pending
-- server endpoint checks pending
-- paper fill evidence pending
-- EXCHANGE_MANUAL_APPROVAL not approved
+- `/public` visual evidence pending (authenticated browser/session required)
+- Paper fill evidence pending (missing `averageFillPrice`, `fillQty`, closed cycles)
+- `EXCHANGE_MANUAL_APPROVAL` not approved
 
-Current Stage: Phase M-0U — Operator Evidence Intake After Public-Health Release + M-0B Gate Decision Preparation
+Current Stage: **Phase M-0Z-4 — Build Release Verification + Post-Deploy Evidence Intake + Paper Fill Liveness Audit** (2026-05-28)
+
+---
+
+## Phase M-0Z-4 Evidence Snapshot
+
+> Updated: 2026-05-28
+> Stage: Build Release Verification + Post-Deploy Evidence Intake + Paper Fill Liveness Audit
+> Claude does not fill evidence values — Operator/Codex fills actual results only.
+
+| Evidence Item | Status | Owner | Evidence Required |
+|---|---|---|---|
+| `npm run build` (EXIT:0) | **PASS** | Codex | 2026-05-28: `npm run build` exited 0 |
+| Safe Git release | **PENDING** | Codex | Commit hash on origin main |
+| Plesk deploy + restart | **PENDING** | Operator | Plesk restart confirmation |
+| `BINGX_AGENT_DIR` / runtime root | **RE-VERIFY** | Operator | `echo $BINGX_AGENT_DIR` output |
+| `/api/public-health` (post-deploy) | **PENDING** | Operator | curl output HTTP 200 JSON |
+| Protected endpoints (post-deploy) | **SAFE_W_BLOCKERS** | Operator | Re-verify if changed |
+| `/public` visual verification | **PENDING** | Operator/Codex | 11-point checklist result |
+| Paper fills (`averageFillPrice`) | **BLOCKED** | System | ≥1 filled event with price field |
+| Paper fills (`fillQty` / `filledQuantity`) | **BLOCKED** | System | ≥1 filled event with qty field |
+| Paper closed cycles | **BLOCKED** | System | ≥1 buy+sell pair with required fields |
+| `EXCHANGE_MANUAL_APPROVAL` | **NOT_APPROVED** | Operator | All gates PASS first |
+| Phase M-0B gate | **BLOCKED** | — | All above PASS |
+
+### Phase M-0Z-4 Gate Decision
+
+| Gate | Status | Next Action |
+|---|---|---|
+| Build | PASS | Codex: `npm run build` from `dashboard/` exited 0 |
+| Git release | PENDING | Codex: after build PASS, stage+commit+push |
+| Plesk deploy | PENDING | Operator: pull → rebuild → restart |
+| /api/public-health post-deploy | PENDING | Operator: curl verify |
+| /public visual | PENDING | Operator: 11-point checklist (authenticated) |
+| Paper evidence | BLOCKED | System: natural accumulation (0 fills yet) |
+| EXCHANGE_MANUAL_APPROVAL | NOT_APPROVED | Operator: after all gates PASS only |
+| Phase M-0B | BLOCKED | All gates PASS required |
+
+**Final Decision: Phase M-0B remains BLOCKED. Live trading remains DISABLED. Order placement remains DISABLED.**
+
+### Evidence Collection Template (Operator fills after deploy)
+
+```
+=== /api/public-health POST-DEPLOY RESULT ===
+Date/Time (ICT):
+HTTP Status:
+Response body (first 500 chars):
+Secret visible? YES/NO:
+Stack trace visible? YES/NO:
+Result: PASS / FAIL
+
+=== /public VISUAL RESULT ===
+Date/Time (ICT):
+Page renders without crash: YES/NO
+No TypeError visible: YES/NO
+No stack trace visible: YES/NO
+No API key/secret visible: YES/NO
+DashboardDiagnosticsCard visible: YES/NO
+OperatorEvidenceCard visible: YES/NO
+M0BPreflightCard visible: YES/NO
+PaperPerformanceCard visible: YES/NO
+LiveMigrationGateCard visible: YES/NO
+MarketRegimeMiniChart visible: YES/NO
+All red blocks = expected blockers only: YES/NO
+Result: PASS / WARNING / FAIL
+
+=== /api/paper-performance RESULT ===
+Date/Time (ICT):
+totalOrderFilled:
+totalPaperEvents:
+paperDataQuality:
+recentEvents[0].averageFillPrice:
+recentEvents[0].filledQuantity:
+recentEvents[0].side:
+auditRootDir:
+Result: PASS / PARTIAL / BLOCKED / DATA_GAP
+```
+
+---
+
+## Phase M-0Z-3 Evidence Snapshot
+
+> Updated: 2026-05-28
+> Stage: Evidence Gate Closeout Orchestration + Build/Visual/Paper Readiness Handoff
+> Claude does not fill evidence values — Operator/Codex fills actual results only.
+
+| Evidence Item | Status | Owner |
+|---|---|---|
+| `/api/public-health` | PASS | Codex verified 2026-05-28 |
+| Protected endpoints (authenticated) | SAFE_JSON_WITH_EXPECTED_BLOCKERS | Operator `api.txt` 2026-05-28 |
+| Env safety flags | PASS — LIVE=false, ORDER=false, PRODUCTION=false | Codex verified 2026-05-28 |
+| Fix 1 (`readPaperJournal.ts` ORDER_FILLED parse) | INSTRUMENTATION_FIXED — syntax PASS | Claude 2026-05-28 |
+| Fix 2 (`paperPerformance.ts` FILL_RESULT in extractFills) | INSTRUMENTATION_FIXED — syntax PASS | Claude 2026-05-28 |
+| `npm run build` | PENDING — Codex must run on actual machine | Codex |
+| `/public` visual verification | PENDING — manual checklist ready | Operator/Codex with browser |
+| Paper fills (`averageFillPrice`, `fillQty`) | BLOCKED — 0 fills yet (data gap) | System — accumulate naturally |
+| Paper closed cycles | BLOCKED — 0 closed cycles | System — accumulate naturally |
+| `EXCHANGE_MANUAL_APPROVAL` | NOT_APPROVED | Operator — not yet |
+| Phase M-0B gate | BLOCKED | — |
+
+### Phase M-0Z-3 Gate Decision
+
+| Gate | Status | Notes |
+|---|---|---|
+| Build (`npm run build` EXIT:0) | PENDING | Codex must run on actual machine |
+| `/public` visual | PENDING | Requires authenticated browser/session |
+| Paper evidence quality | BLOCKED | 0 fills — code fixed, data gap remains |
+| `EXCHANGE_MANUAL_APPROVAL` | NOT_APPROVED | Cannot change until all other gates PASS |
+| Phase M-0B | BLOCKED | All gates must PASS before M-0B unblocked |
+
+**Final Decision: Phase M-0B remains BLOCKED. Live trading remains DISABLED. Order placement remains DISABLED.**
+
+---
+
+## Phase M-0Z-2 Evidence Snapshot
+
+> Updated: 2026-05-28
+> Claude does not fill evidence values — Operator/Codex fills actual results only.
+
+| Evidence Item | Status |
+|---|---|
+| `/api/public-health` | PASS |
+| Protected endpoints (authenticated) | SAFE_JSON_WITH_EXPECTED_BLOCKERS |
+| `/public` visual verification | PENDING — manual checklist ready (see `/public` Visual Evidence Gate below) |
+| Paper fills (`averageFillPrice`) | INSTRUMENTATION_FIXED — code gaps closed; waiting for real paper fills to accumulate |
+| Paper fills (`fillQty`) | INSTRUMENTATION_FIXED — code gaps closed; waiting for real paper fills to accumulate |
+| Paper closed cycles | BLOCKED — 0 closed cycles (data gap remains until paper fills run) |
+| `EXCHANGE_MANUAL_APPROVAL` | not_approved |
+| Phase M-0B gate | BLOCKED |
+| Paper instrumentation audit | DONE 2026-05-28 — 2 code gaps found |
+| Fix 1 (ORDER_FILLED parse) | IMPLEMENTED 2026-05-28 — `readPaperJournal.ts` (syntax verified PASS) |
+| Fix 2 (FILL_RESULT in extractFills) | IMPLEMENTED 2026-05-28 — `paperPerformance.ts` (syntax verified PASS) |
+| `npm run build` | PENDING — Codex must run on actual machine (sandbox DNS blocked) |
+
+---
+
+## /public Visual Evidence Gate
+
+> Criteria for classifying `/public` visual verification result
+
+### PASS Criteria (ALL must be true)
+- Page renders without crash or white screen
+- No raw stack trace visible
+- No `TypeError: ...` visible
+- No `Cannot read properties of undefined/null` visible
+- No secret or API key visible
+- `DashboardDiagnosticsCard` — visible
+- `OperatorEvidenceCard` — visible
+- `M0BPreflightCard` — visible
+- `ExchangeReadinessCard` — visible
+- `PaperPerformanceCard` — visible
+- `LiveMigrationGateCard` — visible
+- `MarketRegimeMiniChart` — visible or showing waiting state (not crashed)
+- Any red blocks are classified as **expected blockers only** (see Expected Blockers list)
+
+### Expected Blockers (NOT real bugs — do not block gate)
+- `EXCHANGE_MANUAL_APPROVAL` not approved
+- Phase M-0B blocked / waiting
+- Paper evidence insufficient
+- Paper fills missing `averageFillPrice`
+- Paper sample insufficient
+- Read-only exchange sync not approved
+- `news_context.json` missing while NO_NEWS mode active
+- `scheduler_heartbeat.json` missing (warning only)
+
+### Real Bugs (MUST fix before gate can pass)
+- `TypeError` visible in UI
+- `Cannot read properties of undefined/null` in UI
+- Raw stack trace visible
+- Endpoint returns HTML instead of JSON (login redirect without auth = expected, but verify auth is working)
+- JSON parse error in response
+- Component crash / white screen
+- Secret or API key exposed to client
+- Runtime path resolver still uses hard-coded `C:/bingx-agent`
+- UI shows raw JSON / error dump too long without collapse
+
+### Classification
+| Result | Meaning |
+|---|---|
+| PASS | All PASS criteria met; all red blocks are expected blockers only |
+| WARNING | Page renders, cards visible, but some unexpected UI warnings (not bugs) |
+| FAIL | Real bug found — must fix before M-0B gate |
+| PENDING | Not yet verified in authenticated browser/session |
+
+**Current Status: PENDING**
+
+### /public Manual Verification Script (for Operator or Codex with browser/session)
+
+> Use this checklist when logged-in browser/session is available.
+> Do NOT send password, token, or cookie in chat.
+
+```
+Step 1: Login to dashboard at https://ob-gate.com/login
+Step 2: Open https://ob-gate.com/public
+Step 3: Check each item below and record result
+```
+
+| Check | Pass Condition | Your Result |
+|---|---|---|
+| Page renders without crash | No white screen, no fatal error | |
+| No TypeError visible | No "TypeError: Cannot read..." text | |
+| No stack trace visible | No code dump / trace on screen | |
+| No API key / secret visible | No token/key string visible | |
+| DashboardDiagnosticsCard visible | Card appears (may show warnings) | |
+| OperatorEvidenceCard visible | Card appears (may show BLOCKED) | |
+| M0BPreflightCard visible | Card appears (may show WAITING) | |
+| PaperPerformanceCard visible | Card appears (may show no_data) | |
+| LiveMigrationGateCard visible | Card appears | |
+| MarketRegimeMiniChart visible | Chart or waiting-state badge visible | |
+| Any red blocks → expected blockers only | All red = approval/paper/exchange blockers | |
+
+**Expected red blocks that are NOT bugs:**
+- EXCHANGE_MANUAL_APPROVAL not approved
+- Phase M-0B BLOCKED / WAITING
+- Paper data quality: insufficient
+- Paper fills missing averageFillPrice
+- Read-only exchange sync not approved
+
+**Record evidence and paste result here or in chat for Codex to classify.**
+
+---
+
+## Paper Evidence Gate
+
+> Required evidence before Phase M-0B can be marked READY_FOR_REVIEW
+
+### Required Fields (ALL must be present)
+- `averageFillPrice` — fill price per closed cycle
+- `fillQty` — quantity per fill/cycle
+- Closed cycles — entry/exit or open/close cycle pairs (not just open positions)
+- `mode` tag — grid mode at time of trade
+- `regime` tag — market regime if available
+- `session` tag — trading session if available
+- Fee/slippage estimate — if available
+- `paperDataQuality` — must NOT be `insufficient`
+
+### Classification
+| Result | Meaning |
+|---|---|
+| PASS | Enough closed cycles with all required fields present |
+| WARNING | Required fields exist but sample size too small (note: not sufficient for READY_FOR_REVIEW alone) |
+| FAIL / BLOCKED | Missing `averageFillPrice`, `fillQty`, or closed cycles |
+| PENDING | No new paper evidence provided yet |
+
+### Rules
+```
+Paper PnL is not live PnL.
+Paper evidence cannot enable live trading.
+Paper evidence can only move Phase M-0B to READY_FOR_REVIEW if ALL other gates also PASS.
+READY_FOR_REVIEW does not enable live trading or order placement.
+EXCHANGE_MANUAL_APPROVAL must not be set until all evidence is independently reviewed.
+```
+
+**Current Status: BLOCKED — missing averageFillPrice, fillQty, closed cycles**
+
+---
+
+## Phase M-0Z-1 Paper Evidence Instrumentation Audit
+
+> Audit Date: 2026-05-28
+> Auditor: Claude cowork (static code analysis — read-only)
+> Files Audited:
+> - `dashboard/lib/readPaperJournal.ts`
+> - `dashboard/lib/paperPerformance.ts`
+> - `dashboard/app/api/paper-performance/route.ts`
+> - `dashboard/app/api/paper-status/route.ts`
+
+### Audit Conclusion
+
+The missing `averageFillPrice`, `fillQty`, and closed cycles are caused by **BOTH**:
+1. **Instrumentation gaps in code** — 2 code gaps that prevent fill price extraction even if fills existed
+2. **Data gap** — no paper fills have occurred yet (system has not completed any paper round-trips)
+
+**Fixing the code alone will NOT make gates pass until real paper fills accumulate.**
+
+### Gap 1 — `ORDER_FILLED` events not parsed for fill price
+
+| Item | Detail |
+|---|---|
+| File | `dashboard/lib/readPaperJournal.ts` |
+| Issue | `averageFillPrice` extracted from `ORDER_SIMULATED` and `FILL_RESULT` only |
+| Gap | `ORDER_FILLED` payload is NOT parsed → `averageFillPrice` and `filledQuantity` always `null` |
+| Impact | `extractFills()` skips all `ORDER_FILLED` events (price=null filtered out) → 0 fill records |
+
+Extraction code (what exists vs what's missing):
+```
+ORDER_SIMULATED → payload.results[0].averageFillPrice ✓ (extracted)
+FILL_RESULT     → payload.averageFillPrice             ✓ (extracted)
+ORDER_FILLED    → NOT PARSED → null                   ✗ ← GAP
+```
+
+### Gap 2 — `FILL_RESULT` events ignored in `extractFills()`
+
+| Item | Detail |
+|---|---|
+| File | `dashboard/lib/paperPerformance.ts` |
+| Function | `extractFills()` |
+| Gap | Checks `ORDER_FILLED` and `ORDER_SIMULATED` only — `FILL_RESULT` excluded |
+| Impact | `FILL_RESULT` events (Phase M-0B fill sync events) have correct fill price but never reach round-trip pairing |
+
+```typescript
+// Current code — misses FILL_RESULT:
+if (ev.type !== "ORDER_FILLED" && ev.type !== "ORDER_SIMULATED") continue;
+```
+
+### Gap 3 — `mode` always resolves to "UNKNOWN"
+
+| Item | Detail |
+|---|---|
+| Files | `readPaperJournal.ts` + `paperPerformance.ts` |
+| Issue | Audit events use `mode: "PAPER"` (execution mode flag, not grid mode) |
+| Gap | `deriveMode("PAPER")` → `"UNKNOWN"` — not mapped in mode lookup |
+| Impact | Attribution by mode always UNKNOWN; grid mode (NEUTRAL_GRID/LONG_GRID) not stored in events |
+| Future | Grid mode needs separate field in audit event payload (e.g., `gridMode`) |
+
+### Gap 4 — `regime` not stored in audit events
+
+| Item | Detail |
+|---|---|
+| Source | `tmp/*.jsonl` audit files |
+| Gap | Regime field does not exist in audit event schema |
+| Impact | Attribution by market regime impossible from audit log |
+| Fix | Server must write `paper_pnl.jsonl` with `regime` per closed trade |
+
+### Gap 5 — `paper_pnl.jsonl` not written by server
+
+| Item | Detail |
+|---|---|
+| Expected file | `<BINGX_AGENT_DIR>/paper_pnl.jsonl` |
+| Status | File likely missing (no paper round-trips have completed) |
+| Impact | No `regime`, `gridSpacingPct`, `failureReason`, `noTradeReason` attribution possible |
+| Fix | `server.cjs` must write per-cycle PnL log entries |
+
+### Root Cause Classification
+
+| Missing Field | Root Cause | Severity |
+|---|---|---|
+| `averageFillPrice` | Instrumentation gap (Gap 1 + Gap 2) | High |
+| `fillQty` | Instrumentation gap (Gap 1 + Gap 2) | High |
+| `mode` tag | Data design gap (Gap 3) | Medium |
+| `regime` tag | Data gap (Gap 4) | Medium |
+| `gridSpacingPct` | Data gap (Gap 5 — `paper_pnl.jsonl` missing) | Medium |
+| Closed cycles | Consequence of Gaps 1+2 | — |
+
+---
+
+## Phase M-0Z-1 Minimal Implementation Plan
+
+> Proposed fixes — NOT yet implemented.
+> Codex implements only after Operator review.
+> Scope: dashboard lib only (Fixes 1+2). Fix 3 deferred to future server phase.
+> All fixes are READ-ONLY from exchange perspective. No trading logic changes.
+
+### Fix 1 — Parse `ORDER_FILLED` payload in `readPaperJournal.ts`
+
+**File:** `dashboard/lib/readPaperJournal.ts`
+**Location:** Inside the `allPaperEvents.push(...)` block — add after the existing `FILL_RESULT` extraction block.
+
+```typescript
+// Add: extract fill price from ORDER_FILLED events
+if (eventType === "ORDER_FILLED") {
+  orderId = typeof payload?.orderId === "string" ? payload.orderId : null;
+  orderStatus = typeof payload?.status === "string" ? payload.status : null;
+  filledQuantity =
+    typeof payload?.filledQuantity === "number" ? payload.filledQuantity
+    : typeof payload?.executedQty === "number" ? payload.executedQty
+    : null;
+  averageFillPrice =
+    typeof payload?.averageFillPrice === "number" ? payload.averageFillPrice
+    : typeof payload?.avgPrice === "number" ? payload.avgPrice
+    : null;
+}
+```
+
+**Safety:** Read-only. No exchange API. No file write. Field stays `null` if payload schema doesn't include it.
+
+---
+
+### Fix 2 — Include `FILL_RESULT` in `extractFills()` in `paperPerformance.ts`
+
+**File:** `dashboard/lib/paperPerformance.ts`
+**Function:** `extractFills()`
+
+```typescript
+// Current:
+if (ev.type !== "ORDER_FILLED" && ev.type !== "ORDER_SIMULATED") continue;
+
+// Proposed:
+if (
+  ev.type !== "ORDER_FILLED" &&
+  ev.type !== "ORDER_SIMULATED" &&
+  ev.type !== "FILL_RESULT"
+) continue;
+```
+
+**Safety:** Read-only. `FILL_RESULT` events already have `averageFillPrice` populated by `readPaperJournal.ts`. No exchange API. No file write.
+
+---
+
+### Fix 3 — Write `paper_pnl.jsonl` from server (deferred)
+
+**File:** `server.cjs`
+**Scope:** Deferred — requires server-side changes and Phase M-0B gate planning.
+
+Required schema per line:
+```json
+{
+  "ts": 1234567890000,
+  "mode": "NEUTRAL_GRID",
+  "regime": "RANGE",
+  "session": "ASIA",
+  "side": "BUY",
+  "quantity": 0.001,
+  "entryPrice": 65000.0,
+  "exitPrice": 65200.0,
+  "grossPnl": 0.2,
+  "fee": 0.013,
+  "slippage": 0.007,
+  "funding": 0.001,
+  "netPnl": 0.179,
+  "holdingTimeSec": 3600,
+  "gridSpacingPct": 0.3,
+  "failureReason": null,
+  "noTradeReason": null
+}
+```
+
+### Implementation Priority
+
+| Fix | File | Effort | Safe Now? |
+|---|---|---|---|
+| Fix 1 — `ORDER_FILLED` parsing | `readPaperJournal.ts` | Low | YES — dashboard lib only |
+| Fix 2 — `FILL_RESULT` in extractFills | `paperPerformance.ts` | Low | YES — dashboard lib only |
+| Fix 3 — `paper_pnl.jsonl` logging | `server.cjs` | Medium | NO — defer to server phase |
+
+**Gate impact of Fix 1 + 2:**
+- Will NOT change `paperDataQuality` until paper fills with prices actually exist
+- Will enable correct extraction when fills do arrive
+- Phase M-0B gate remains BLOCKED until paper fills accumulate and quality improves
+
+---
+
+## Phase M-0Z-2 Implementation Result
+
+> Date: 2026-05-28
+> Implementer: Claude cowork (dashboard lib only — no exchange API, no server changes, no runtime JSON)
+
+### Fix 1 — `readPaperJournal.ts` — IMPLEMENTED
+
+**Change:** Added `ORDER_FILLED` payload extraction block after the `FILL_RESULT` block (inside `allPaperEvents.push` logic).
+
+```typescript
+// extract from ORDER_FILLED (Phase M-0Z-2: fill price from ORDER_FILLED payload)
+if (eventType === "ORDER_FILLED") {
+  orderId = typeof payload?.orderId === "string" ? payload.orderId : null;
+  orderStatus = typeof payload?.status === "string" ? payload.status : null;
+  filledQuantity =
+    typeof payload?.filledQuantity === "number" ? payload.filledQuantity
+    : typeof payload?.executedQty === "number" ? payload.executedQty
+    : null;
+  averageFillPrice =
+    typeof payload?.averageFillPrice === "number" ? payload.averageFillPrice
+    : typeof payload?.avgPrice === "number" ? payload.avgPrice
+    : null;
+}
+```
+
+**Safety:** Read-only. Null-safe (field stays null if payload doesn't include it). No exchange API. No file write.
+**Syntax check:** PASS (0 errors)
+
+---
+
+### Fix 2 — `paperPerformance.ts` — IMPLEMENTED
+
+**Change:** Updated `extractFills()` filter to include `FILL_RESULT` events.
+
+```typescript
+// Phase M-0Z-2: include FILL_RESULT events (have correct averageFillPrice from syncState)
+if (
+  ev.type !== "ORDER_FILLED" &&
+  ev.type !== "ORDER_SIMULATED" &&
+  ev.type !== "FILL_RESULT"
+) continue;
+```
+
+**Safety:** Read-only. `FILL_RESULT` events already have `averageFillPrice` populated by `readPaperJournal.ts`. No exchange API. No file write.
+**Syntax check:** PASS (0 errors)
+
+---
+
+### Build Status
+
+| Step | Result |
+|---|---|
+| TypeScript syntax check (all TS/TSX files) | PASS — 0 syntax errors |
+| `tsc --noEmit` (full tsconfig) | Pre-existing errors (unrelated to these changes — caused by Next.js plugin outside build context) |
+| `npm run build` | PENDING — Codex must run on actual machine (sandbox DNS cannot reach npm registry) |
+
+**Required Codex action:** Run `npm run build` from `dashboard/` on the actual machine. Expected: EXIT:0.
+
+---
+
+### Post-Fix Gate Status
+
+| Gate | Status |
+|---|---|
+| Fix 1 code | IMPLEMENTED + SYNTAX_PASS |
+| Fix 2 code | IMPLEMENTED + SYNTAX_PASS |
+| `npm run build` | PENDING (Codex) |
+| Paper fills data | BLOCKED — 0 fills yet (data gap — let paper trading run) |
+| `/public` visual verification | PENDING (Operator/Codex with browser) |
+| `EXCHANGE_MANUAL_APPROVAL` | not_approved |
+| Phase M-0B | BLOCKED |
 
 ---
 

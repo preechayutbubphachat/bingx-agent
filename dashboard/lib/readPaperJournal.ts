@@ -305,6 +305,21 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
             averageFillPrice = typeof payload?.averageFillPrice === "number" ? payload.averageFillPrice : null;
           }
 
+          // extract from ORDER_FILLED (Phase M-0Z-2: fill price from ORDER_FILLED payload)
+          // payload shape may include: orderId, status, filledQuantity, executedQty, averageFillPrice, avgPrice
+          if (eventType === "ORDER_FILLED") {
+            orderId = typeof payload?.orderId === "string" ? payload.orderId : null;
+            orderStatus = typeof payload?.status === "string" ? payload.status : null;
+            filledQuantity =
+              typeof payload?.filledQuantity === "number" ? payload.filledQuantity
+              : typeof payload?.executedQty === "number" ? payload.executedQty
+              : null;
+            averageFillPrice =
+              typeof payload?.averageFillPrice === "number" ? payload.averageFillPrice
+              : typeof payload?.avgPrice === "number" ? payload.avgPrice
+              : null;
+          }
+
           // extract from INTENT_CREATED
           let side: string | null = null;
           let quantity: number | null = null;

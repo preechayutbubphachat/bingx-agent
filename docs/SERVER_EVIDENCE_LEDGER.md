@@ -115,24 +115,29 @@ Notes:
 
 | Endpoint | Current Evidence | Result |
 |----------|------------------|--------|
-| `/api/health` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/plan-status` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/runtime-audit` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/operator-evidence` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/m0b-preflight` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/paper-performance` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/exchange-readiness` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/winrate` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/ob-stats` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
-| `/api/plan-log` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/health` | JSON response, `healthy=true`, severity warning; expected blockers include runtime critical, no paper data, stale heartbeat, manual approval pending | WARNING |
+| `/api/plan-status` | JSON response, `ok=true`; sourceInfo warns `latest_decision.json` may be stale | WARNING |
+| `/api/runtime-audit` | JSON response, `ok=false`, severity critical; latest decision/runtime freshness blocker present | WARNING_EXPECTED_BLOCKER |
+| `/api/operator-evidence` | JSON response, `status=BLOCKED`; paper fill, closed cycle, approval checklist, and approval env pending | WARNING_EXPECTED_BLOCKER |
+| `/api/m0b-preflight` | JSON response, `status=WAITING_FOR_PAPER_FILL_QUALITY`, `noExchangeApiCalls=true`; safety flags safe, paper/approval blockers remain | WARNING_EXPECTED_BLOCKER |
+| `/api/paper-performance` | JSON response, `status=no_data`; `totalPaperFills=0`, `paperDataQuality=insufficient` | WARNING_EXPECTED_BLOCKER |
+| `/api/exchange-readiness` | JSON response, `status=WAITING_FOR_OPERATOR_APPROVAL`, `manualApprovalStatus=not_approved`, `noExchangeApiCalls=true` | WARNING_EXPECTED_BLOCKER |
+| `/api/winrate` | JSON response, `ok=true`, no trade history yet (`overall.total=0`) | WARNING_NO_DATA |
+| `/api/ob-stats` | JSON response, `ok=true`, no closed trade stats yet (`stats.total=0`) | WARNING_NO_DATA |
+| `/api/plan-log` | JSON response, `ok=true`, returned 10 items | PASS |
 
-**Decision: PENDING_AUTHENTICATED_BROWSER_SESSION**
+**Decision: WARNING_SAFE_JSON_WITH_EXPECTED_BLOCKERS**
+
+Evidence source:
+- Operator-provided `api.txt` on 2026-05-28.
+- Codex parsed 10 JSON response blocks; no token/cookie/API-key pattern was detected before summarizing.
+- No raw HTML login page, TypeError, stack trace, or secret was detected in the provided endpoint evidence.
 
 ### 3) `/public` Visual Verification
 
 | Check | Current Evidence | Result |
 |-------|------------------|--------|
-| `/public` authenticated page render | Unauthenticated probe redirects to `/login`; logged-in browser/session visual verification still needed | PENDING |
+| `/public` authenticated page render | Not included in `api.txt`; logged-in browser/session visual verification still needed | PENDING |
 | Required cards visible | Browser/session verification pending | PENDING |
 | No raw stack trace / TypeError / secret visible | Browser/session verification pending | PENDING |
 | Expected blockers classified | Browser/session verification pending | PENDING |
@@ -143,15 +148,15 @@ Notes:
 
 | Required Evidence | Result |
 |-------------------|--------|
-| `averageFillPrice` | PENDING |
-| `fillQty` | PENDING |
-| closed cycles / entry-exit cycle | PENDING |
+| `averageFillPrice` | BLOCKED - missing in `/api/paper-performance` and `/api/m0b-preflight` evidence |
+| `fillQty` | BLOCKED - no paper fill quantity data yet |
+| closed cycles / entry-exit cycle | BLOCKED - no closed cycles yet |
 | mode tag | PENDING |
 | regime tag if available | PENDING |
 | session tag if available | PENDING |
-| `paperDataQuality` not insufficient | PENDING |
+| `paperDataQuality` not insufficient | BLOCKED - current quality is `insufficient` |
 
-**Decision: PENDING_PAPER_EVIDENCE**
+**Decision: BLOCKED_PAPER_EVIDENCE_INSUFFICIENT**
 
 ### 5) Manual-Minimal Handoff
 

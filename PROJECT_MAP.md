@@ -153,16 +153,18 @@
 - [x] Protected endpoint verification checklist prepared.
 - [x] `/public` visual verification checklist prepared.
 - [x] Paper evidence checklist restated.
+- [x] Operator-provided `api.txt` parsed by Codex.
+- [x] Protected endpoint evidence classified as safe JSON with expected blockers/warnings.
 
 ### Phase M-0Y In Progress
-- Codex authenticated browser verification if browser/session is available.
-- Protected endpoint evidence.
+- Codex authenticated browser visual verification if browser/session is available.
+- Protected endpoint evidence follow-up only if new endpoint output changes.
 - `/public` visual evidence.
 - Paper fill evidence with `averageFillPrice`.
 - Approval checklist.
 
 ### Phase M-0Y Blocked / Pending
-- Protected endpoint evidence pending unless Codex verifies PASS in an authenticated browser/session.
+- Protected endpoint evidence has safe JSON responses, but expected runtime/paper/approval blockers remain.
 - `/public` visual evidence pending unless Codex verifies PASS in an authenticated browser/session.
 - Paper fills with `averageFillPrice` pending unless evidence exists.
 - `EXCHANGE_MANUAL_APPROVAL` not approved.
@@ -762,9 +764,9 @@
   - `PROJECT_CONTEXT.md` Current Next Step.
 - Evidence:
   - `/api/public-health` PASS.
-  - protected endpoints pending browser/authenticated verification.
+  - protected endpoints classified from Operator `api.txt`: safe JSON responses with expected runtime/paper/approval blockers.
   - `/public` visual pending browser verification.
-  - paper fill evidence pending.
+  - paper fill evidence blocked: missing `averageFillPrice`, fill quantity, and closed cycles.
 - Workflow:
   - Codex should verify via browser/session if possible.
   - Operator only logs in when Codex requests.

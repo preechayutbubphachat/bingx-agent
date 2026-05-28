@@ -102,11 +102,11 @@ Current stage: Phase M-0Y — Authenticated Browser Evidence Verification + Oper
 Next correct work:
 1. Claude does not perform Git.
 2. `/api/public-health` passed.
-3. Codex should verify protected endpoints after login if browser/session is available.
-4. Operator should login only inside browser/session when Codex requests.
-5. Operator must not send password/token in chat.
-6. Codex should verify `/public` visual after login if possible.
-7. Codex should check paper evidence if available.
+3. Operator-provided protected endpoint JSON evidence was parsed from `api.txt`; endpoints returned safe JSON with expected blockers/warnings.
+4. Codex should verify `/public` visual after login if browser/session is available.
+5. Operator should login only inside browser/session when Codex requests.
+6. Operator must not send password/token in chat.
+7. Paper evidence remains blocked until fills include `averageFillPrice`, `fillQty`, and closed cycles.
 8. If Codex cannot perform browser verification, it must give Operator a minimal manual checklist.
 9. Keep Phase M-0B blocked if any gate is PENDING or FAIL.
 10. If all gates PASS, mark READY_FOR_REVIEW only.

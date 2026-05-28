@@ -17,7 +17,7 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0X - Codex Release Owner: Public-Health Gate Evidence Release + Plesk Verification Handoff** - Codex release owner verifies main/origin, pulls latest main, builds dashboard, stages safe docs/source only, pushes main if changes exist, and hands Plesk verification back to Operator. Phase M-0B remains blocked, 2026-05-28
+**Phase M-0Y - Authenticated Browser Evidence Verification + Operator-Minimal Manual Handoff** - `/api/public-health` PASS is recorded; remaining gates move to authenticated browser/session verification, `/public` visual verification, paper fill evidence, and manual approval. Phase M-0B remains blocked, 2026-05-28
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Operator** Plesk git pull/rebuild/restart, (2) `BINGX_AGENT_DIR` set on Plesk, (3) runtime file verification, (4) endpoint checks on server, (5) `/public` visual verification, (6) paper fill evidence, (7) `EXCHANGE_MANUAL_APPROVAL=approved`)
@@ -145,6 +145,40 @@
 10. Do not enable live trading.
 11. Do not enable order placement.
 12. Do not set `EXCHANGE_MANUAL_APPROVAL=approved` without explicit operator approval after evidence review.
+
+### Phase M-0Y Done
+- [x] `/api/public-health` PASS recorded.
+- [x] Operator manual burden reduced to login-only when Codex can use a browser/session.
+- [x] Codex browser/session verification workflow added.
+- [x] Protected endpoint verification checklist prepared.
+- [x] `/public` visual verification checklist prepared.
+- [x] Paper evidence checklist restated.
+
+### Phase M-0Y In Progress
+- Codex authenticated browser verification if browser/session is available.
+- Protected endpoint evidence.
+- `/public` visual evidence.
+- Paper fill evidence with `averageFillPrice`.
+- Approval checklist.
+
+### Phase M-0Y Blocked / Pending
+- Protected endpoint evidence pending unless Codex verifies PASS in an authenticated browser/session.
+- `/public` visual evidence pending unless Codex verifies PASS in an authenticated browser/session.
+- Paper fills with `averageFillPrice` pending unless evidence exists.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0Y Next
+1. Codex opens browser/session if available.
+2. Operator logs in manually only if requested by Codex.
+3. Codex verifies protected endpoints.
+4. Codex verifies `/public` visual.
+5. Codex checks paper evidence.
+6. Codex reports manual-only items still required.
+7. If any gate is PENDING or FAIL, keep Phase M-0B BLOCKED.
+8. If all gates PASS, mark READY_FOR_REVIEW only.
+9. Do not enable live trading.
+10. Do not enable order placement.
 
 ### Phase M-0V Done
 - [x] PART B — `docs/SERVER_EVIDENCE_LEDGER.md` Phase M-0V evidence intake section added (5 sub-sections: public-health probe, protected endpoints, /public dashboard, paper evidence, gate decision).
@@ -717,6 +751,29 @@
   - no live trading.
   - no order placement.
   - no exchange API calls.
+  - no runtime JSON committed.
+  - no secrets committed.
+  - Phase M-0B remains BLOCKED.
+
+### 2026-05-28 — Phase M-0Y Authenticated Browser Evidence Verification + Operator-Minimal Manual Handoff
+- Updated:
+  - `PROJECT_MAP.md` Current Stage.
+  - `docs/SERVER_EVIDENCE_LEDGER.md` with `/api/public-health` PASS.
+  - `PROJECT_CONTEXT.md` Current Next Step.
+- Evidence:
+  - `/api/public-health` PASS.
+  - protected endpoints pending browser/authenticated verification.
+  - `/public` visual pending browser verification.
+  - paper fill evidence pending.
+- Workflow:
+  - Codex should verify via browser/session if possible.
+  - Operator only logs in when Codex requests.
+  - If Codex cannot use browser/session, Operator receives minimal manual checklist.
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API calls.
+  - no secrets requested in chat.
   - no runtime JSON committed.
   - no secrets committed.
   - Phase M-0B remains BLOCKED.

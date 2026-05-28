@@ -97,15 +97,17 @@ Never:
 
 Claude must not perform Git. Claude ends every session with a Codex Git Handoff Required block.
 
-Current stage: Phase M-0W — Operator Verification Result Intake + Public-Health Gate Closeout
+Current stage: Phase M-0Y — Authenticated Browser Evidence Verification + Operator-Minimal Manual Handoff
 
 Next correct work:
 1. Claude does not perform Git.
-2. Operator sends `/api/public-health` verification output (curl or browser, no login required).
-3. Operator sends protected endpoint evidence after login (JSON / no-stack-trace / no-secret per endpoint).
-4. Operator sends `/public` dashboard visual evidence after login (renders, cards visible, no crash, no secret).
-5. Operator sends paper fill evidence with `averageFillPrice`, `fillQty`, closed cycles, mode/regime/session tags.
-6. Claude classifies each evidence item as PASS / WARNING / FAIL / PENDING (see docs/SERVER_EVIDENCE_LEDGER.md).
-7. Keep Phase M-0B blocked if any gate is PENDING or FAIL.
-8. If all gates PASS → mark READY_FOR_REVIEW only — does not enable live trading or order placement.
-9. READY_FOR_REVIEW does not mean live trading is permitted — `EXCHANGE_MANUAL_APPROVAL` must be set by Operator after independent review of all evidence.
+2. `/api/public-health` passed.
+3. Codex should verify protected endpoints after login if browser/session is available.
+4. Operator should login only inside browser/session when Codex requests.
+5. Operator must not send password/token in chat.
+6. Codex should verify `/public` visual after login if possible.
+7. Codex should check paper evidence if available.
+8. If Codex cannot perform browser verification, it must give Operator a minimal manual checklist.
+9. Keep Phase M-0B blocked if any gate is PENDING or FAIL.
+10. If all gates PASS, mark READY_FOR_REVIEW only.
+11. READY_FOR_REVIEW does not enable live trading or order placement.

@@ -84,6 +84,87 @@ Evidence Fields:
 > Classification rules are in the Evidence Classification section below.
 > Phase M-0W Purpose: Record and classify operator verification results; close out gate evidence for Phase M-0B decision.
 
+## Latest Phase M-0Y Authenticated Browser Evidence Verification
+
+> Phase M-0Y Purpose: Record the public-health PASS and move the remaining evidence work to the smallest manual surface: operator login only when Codex can use a browser/session, then Codex verifies protected endpoints and `/public` when possible.
+> Public-health PASS does not unlock Phase M-0B by itself.
+
+### 1) Public Health Result
+
+| Check | Result |
+|-------|--------|
+| HTTP status | PASS - 200 |
+| Content-Type | PASS - application/json |
+| Redirect to /login | PASS - no redirect |
+| Secret / API key exposed | PASS - no evidence |
+| Stack trace exposed | PASS - no evidence |
+| `phase` field | PASS - `M-0B_BLOCKED` |
+| `liveTradingEnabled` | PASS - `false` |
+| `orderPlacementEnabled` | PASS - `false` |
+| `productionReady` | PASS - `false` |
+| `exchangeManualApproval` | PASS - `not_approved` |
+
+**Decision: PASS**
+
+Notes:
+- Operator reported Plesk install/build/restart, env, runtime core files, and `/api/public-health` PASS.
+- Codex unauthenticated probe also observed `/api/public-health` returning HTTP 200 JSON with safe blocked-phase fields.
+- This PASS does not make Phase M-0B ready; protected endpoints, `/public` visual evidence, paper fills with `averageFillPrice`, and explicit manual approval remain pending.
+
+### 2) Protected Endpoint Browser Verification
+
+| Endpoint | Current Evidence | Result |
+|----------|------------------|--------|
+| `/api/health` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/plan-status` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/runtime-audit` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/operator-evidence` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/m0b-preflight` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/paper-performance` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/exchange-readiness` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/winrate` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/ob-stats` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+| `/api/plan-log` | Unauthenticated probe redirects to `/login`; authenticated browser/session verification still needed | PENDING |
+
+**Decision: PENDING_AUTHENTICATED_BROWSER_SESSION**
+
+### 3) `/public` Visual Verification
+
+| Check | Current Evidence | Result |
+|-------|------------------|--------|
+| `/public` authenticated page render | Unauthenticated probe redirects to `/login`; logged-in browser/session visual verification still needed | PENDING |
+| Required cards visible | Browser/session verification pending | PENDING |
+| No raw stack trace / TypeError / secret visible | Browser/session verification pending | PENDING |
+| Expected blockers classified | Browser/session verification pending | PENDING |
+
+**Decision: PENDING_AUTHENTICATED_BROWSER_SESSION**
+
+### 4) Paper Evidence
+
+| Required Evidence | Result |
+|-------------------|--------|
+| `averageFillPrice` | PENDING |
+| `fillQty` | PENDING |
+| closed cycles / entry-exit cycle | PENDING |
+| mode tag | PENDING |
+| regime tag if available | PENDING |
+| session tag if available | PENDING |
+| `paperDataQuality` not insufficient | PENDING |
+
+**Decision: PENDING_PAPER_EVIDENCE**
+
+### 5) Manual-Minimal Handoff
+
+Operator manual action required now:
+1. Login inside the browser/session when Codex requests it.
+2. Do not send password, token, cookie, or secret in chat.
+3. Provide paper fill evidence if it is not visible to Codex after login.
+4. Do not set `EXCHANGE_MANUAL_APPROVAL=approved` until all evidence is PASS and independently reviewed.
+
+**Phase M-0B Gate: BLOCKED**
+
+---
+
 ### 1) Public Health Probe Result (`/api/public-health`)
 
 > Command: `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000`
@@ -91,25 +172,25 @@ Evidence Fields:
 
 | Check | Expected | Actual | Result |
 |-------|----------|--------|--------|
-| HTTP status | 200 | | PENDING |
-| Content-Type | application/json | | PENDING |
-| Redirect to /login | NO | | PENDING |
-| Secret / API key exposed | NO | | PENDING |
-| Stack trace exposed | NO | | PENDING |
+| HTTP status | 200 | 200 | PASS |
+| Content-Type | application/json | application/json | PASS |
+| Redirect to /login | NO | NO | PASS |
+| Secret / API key exposed | NO | no evidence | PASS |
+| Stack trace exposed | NO | no evidence | PASS |
 | Raw runtime JSON in response | NO | | PENDING |
 | Exchange API called | NO | | PENDING |
 | Runtime state mutated | NO | | PENDING |
-| `phase` field | `M-0B_BLOCKED` | | PENDING |
-| `liveTradingEnabled` | `false` | | PENDING |
-| `orderPlacementEnabled` | `false` | | PENDING |
-| `productionReady` | `false` | | PENDING |
-| `exchangeManualApproval` | `not_approved` | | PENDING |
+| `phase` field | `M-0B_BLOCKED` | `M-0B_BLOCKED` | PASS |
+| `liveTradingEnabled` | `false` | `false` | PASS |
+| `orderPlacementEnabled` | `false` | `false` | PASS |
+| `productionReady` | `false` | `false` | PASS |
+| `exchangeManualApproval` | `not_approved` | `not_approved` | PASS |
 | `runtimeCoreFiles` summary | present, existence only | | PENDING |
 | `blockers` field | present | | PENDING |
 | `warnings` field | present | | PENDING |
 | `nextActions` field | present | | PENDING |
 
-**Decision: PENDING**
+**Decision: PASS**
 
 Classification rules:
 - **PASS** = HTTP 200 JSON, no redirect, no secret, no stack trace, all expected fields present
@@ -117,8 +198,8 @@ Classification rules:
 - **FAIL** = redirect to /login, HTML response, stack trace, secret exposed, raw runtime JSON
 - **PENDING** = operator has not yet submitted evidence
 
-Operator evidence timestamp (ICT):
-Notes:
+Operator evidence timestamp (ICT): 2026-05-28
+Notes: Operator reported PASS; Codex unauthenticated probe confirmed HTTP 200 JSON with blocked-phase safety flags.
 
 ---
 
@@ -224,7 +305,7 @@ Notes:
 
 | Gate | Status |
 |------|--------|
-| `/api/public-health` HTTP 200 JSON (no secret, no redirect) | PENDING |
+| `/api/public-health` HTTP 200 JSON (no secret, no redirect) | PASS |
 | Protected endpoints JSON after login (no secret, no stack trace) | PENDING |
 | `/public` renders without crash, no secret, no stack trace | PENDING |
 | Paper evidence (`averageFillPrice`, `fillQty`, closed cycles) | PENDING |

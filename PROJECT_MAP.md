@@ -17,7 +17,7 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0S — Public-Safe Health Endpoint + Auth-Aware Evidence Release** — `/api/public-health` implemented as a public-safe unauthenticated probe, auth allowlist updated narrowly, server evidence docs updated, dashboard build validated, and Phase M-0B remains blocked, 2026-05-27
+**Phase M-0X - Codex Release Owner: Public-Health Gate Evidence Release + Plesk Verification Handoff** - Codex release owner verifies main/origin, pulls latest main, builds dashboard, stages safe docs/source only, pushes main if changes exist, and hands Plesk verification back to Operator. Phase M-0B remains blocked, 2026-05-28
 
 ### Next Stage
 **Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Operator** Plesk git pull/rebuild/restart, (2) `BINGX_AGENT_DIR` set on Plesk, (3) runtime file verification, (4) endpoint checks on server, (5) `/public` visual verification, (6) paper fill evidence, (7) `EXCHANGE_MANUAL_APPROVAL=approved`)
@@ -31,22 +31,36 @@
 - [x] Safe files committed.
 - [x] Push `origin main` completed.
 
-### Phase M-0S In Progress
-- Operator/Plesk pull/rebuild/restart.
-- Public-health endpoint verification on Plesk.
-- Authenticated endpoint verification.
-- `/public` visual verification.
-- Paper fill evidence.
-- Approval checklist.
+### Phase M-0T Done
+- [x] PART A — Phase M-0S release acknowledged; Current Stage updated to Phase M-0T.
+- [x] PART B — Operator verification commands documented in SERVER_EVIDENCE_LEDGER.md.
+- [x] PART C — Phase M-0T evidence intake section added to SERVER_EVIDENCE_LEDGER.md.
+- [x] PART D — Expected blocker vs real bug classification confirmed current.
+- [x] PART F — PROJECT_CONTEXT.md §8 updated with Phase M-0T workflow (8 steps).
+- [x] PART G — Changelog entry added.
+- [x] Docs-only change — no code files modified.
+- [x] No git commands used by Claude.
+- [x] Phase M-0B remains BLOCKED.
 
-### Phase M-0S Blocked / Pending
+### Phase M-0T In Progress
+- Operator pulls latest M-0S release on Plesk.
+- Operator rebuilds/restarts dashboard after pull.
+- `/api/public-health` unauthenticated verification.
+- Authenticated protected endpoint verification.
+- `/public` visual verification after login.
+- Paper fill evidence with `averageFillPrice`.
+- Approval checklist completion.
+
+### Phase M-0T Blocked / Pending
+- Plesk pull/rebuild/restart after M-0S release pending.
+- `/api/public-health` server HTTP 200 JSON verification pending.
 - Authenticated endpoint JSON correctness pending.
 - `/public` visual check pending.
 - Paper fills with `averageFillPrice` pending.
 - `EXCHANGE_MANUAL_APPROVAL` not approved.
 - Phase M-0B implementation blocked.
 
-### Phase M-0S Next
+### Phase M-0T Next
 1. Operator pulls latest main on Plesk.
 2. Operator rebuilds dashboard.
 3. Operator restarts Node.js App.
@@ -55,6 +69,154 @@
 6. Operator verifies `/public` dashboard after login.
 7. Operator collects paper fill evidence.
 8. Keep Phase M-0B blocked until all gates pass.
+
+### Phase M-0W Done
+- [x] PART B — `docs/SERVER_EVIDENCE_LEDGER.md` Phase M-0W verification result intake section added (5 sub-sections: public-health probe result, protected endpoints result, /public visual result, paper evidence result, Phase M-0B gate result — all PENDING operator input).
+- [x] PART C — `PROJECT_MAP.md` Current Stage updated to Phase M-0W; Done/In Progress/Blocked/Next blocks added.
+- [x] PART D — `PROJECT_CONTEXT.md` §8 updated to Phase M-0W workflow (9 steps).
+- [x] Docs-only change — no code files modified.
+- [x] No git commands used by Claude.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0W In Progress
+- Operator verifies `/api/public-health` without login and records result.
+- Operator verifies protected endpoints after login and records result.
+- Operator verifies `/public` dashboard after login and records visual result.
+- Operator provides paper fill evidence with `averageFillPrice`.
+- Approval checklist completion.
+
+### Phase M-0W Blocked / Pending
+- `/api/public-health` result pending (operator must run `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000`).
+- Authenticated endpoint JSON result pending (operator opens endpoints in logged-in browser).
+- `/public` visual result pending (operator opens dashboard in logged-in browser).
+- Paper fill evidence with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0W Next
+1. Operator sends `/api/public-health` verification output (curl or browser).
+2. Operator sends protected endpoint JSON evidence after login.
+3. Operator sends `/public` dashboard visual result after login.
+4. Operator sends paper fill evidence with `averageFillPrice`.
+5. Claude classifies each item as PASS / WARNING / FAIL / PENDING.
+6. If any gate FAIL or PENDING → keep Phase M-0B BLOCKED.
+7. If all gates PASS → mark READY_FOR_REVIEW only.
+8. Do not enable live trading.
+9. Do not enable order placement.
+10. Do not set `EXCHANGE_MANUAL_APPROVAL=approved` without explicit operator approval after evidence review.
+
+### Phase M-0X Done
+- [x] Codex read `PROJECT_CONTEXT.md`, `PROJECT_MAP.md`, `PROJECT_ARCHITECTURE.md`, and evidence/policy docs.
+- [x] Branch `main` verified.
+- [x] Origin remote verified.
+- [x] Latest `origin/main` pulled/rebased.
+- [x] Phase M-0W handoff state reviewed; no filled Claude `Codex Git Handoff Required` block found.
+- [x] Dashboard build EXIT:0.
+- [x] Safe files staged only.
+- [x] No runtime JSON/secrets staged.
+- [x] Commit created if changes existed.
+- [x] Push `origin main` completed if commit existed.
+
+### Phase M-0X In Progress
+- Operator verifies `/api/public-health` without login.
+- Operator verifies protected endpoints after login.
+- Operator verifies `/public` dashboard after login.
+- Operator provides paper fill evidence with `averageFillPrice`.
+- Approval checklist completion.
+
+### Phase M-0X Blocked / Pending
+- `/api/public-health` result pending unless Operator provided PASS.
+- Authenticated endpoint result pending unless Operator provided PASS.
+- `/public` visual result pending unless Operator provided PASS.
+- Paper fills with `averageFillPrice` pending unless Operator provided PASS.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0X Next
+1. Operator pulls latest main on Plesk.
+2. Operator rebuilds/restarts dashboard.
+3. Operator runs `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000`.
+4. Operator opens protected endpoints after login.
+5. Operator opens `/public` after login.
+6. Operator provides paper fill evidence with `averageFillPrice`.
+7. Claude classifies evidence as PASS / WARNING / FAIL / PENDING.
+8. If any gate is PENDING or FAIL, keep Phase M-0B BLOCKED.
+9. If all gates PASS, mark READY_FOR_REVIEW only.
+10. Do not enable live trading.
+11. Do not enable order placement.
+12. Do not set `EXCHANGE_MANUAL_APPROVAL=approved` without explicit operator approval after evidence review.
+
+### Phase M-0V Done
+- [x] PART B — `docs/SERVER_EVIDENCE_LEDGER.md` Phase M-0V evidence intake section added (5 sub-sections: public-health probe, protected endpoints, /public dashboard, paper evidence, gate decision).
+- [x] PART C — `PROJECT_MAP.md` Current Stage updated to Phase M-0V; Done/In Progress/Blocked/Next blocks added.
+- [x] PART D — `PROJECT_CONTEXT.md` §8 updated to Phase M-0V workflow (9 steps).
+- [x] Docs-only change — no code files modified.
+- [x] No git commands used by Claude.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0V In Progress
+- Operator verifies `/api/public-health` without login (curl or browser).
+- Operator verifies protected endpoints after login (10 endpoints).
+- Operator verifies `/public` dashboard after login.
+- Operator provides paper fill evidence with `averageFillPrice`.
+- Approval checklist completion.
+
+### Phase M-0V Blocked / Pending
+- `/api/public-health` server HTTP 200 JSON verification pending (operator must run).
+- Authenticated endpoint JSON verification pending.
+- `/public` visual check pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0V Next
+1. Operator runs `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000` without login.
+2. Operator opens protected endpoints in logged-in browser and records JSON / no-secret / no-stack-trace.
+3. Operator opens `/public` dashboard after login and records visual result.
+4. Operator provides paper fill evidence with `averageFillPrice`.
+5. Claude classifies each evidence item as PASS / WARNING / FAIL.
+6. If any gate FAIL → keep Phase M-0B blocked; fix real bug first.
+7. If all gates PASS → mark READY_FOR_REVIEW only.
+8. Do not enable live trading.
+9. Do not enable order placement.
+
+### Phase M-0U Done
+- [x] PART A — Phase M-0T evidence intake acknowledged; Current Stage updated to Phase M-0U.
+- [x] PART B — `docs/SERVER_EVIDENCE_LEDGER.md` Phase M-0U evidence intake section added (6 sub-sections: Plesk deployment, public-health probe, protected endpoints, /public dashboard, paper evidence, gate decision).
+- [x] PART C — Evidence Classification Rules added to SERVER_EVIDENCE_LEDGER.md (PASS / WARNING / FAIL with explicit criteria).
+- [x] PART D — PROJECT_CONTEXT.md §8 updated to Phase M-0U workflow (8 steps).
+- [x] PART G — Changelog entry added.
+- [x] Docs-only change — no code files modified.
+- [x] No git commands used by Claude.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0U In Progress
+- Operator/Plesk deployment after M-0S release.
+- `/api/public-health` server verification (unauthenticated).
+- Authenticated protected endpoint verification.
+- `/public` visual verification after login.
+- Paper fill evidence with `averageFillPrice`.
+- Approval checklist completion.
+
+### Phase M-0U Blocked / Pending
+- Plesk pull/rebuild/restart after M-0S release pending.
+- `/api/public-health` server HTTP 200 JSON verification pending.
+- Authenticated endpoint JSON verification pending.
+- `/public` visual check pending.
+- Paper fills with `averageFillPrice` pending.
+- `EXCHANGE_MANUAL_APPROVAL` not approved.
+- Phase M-0B implementation blocked.
+
+### Phase M-0U Next
+1. Operator verifies `/api/public-health` without login (curl or browser).
+2. Operator verifies protected endpoints after login.
+3. Operator verifies `/public` dashboard after login.
+4. Operator provides paper fill evidence with `averageFillPrice`.
+5. Claude classifies evidence as PASS / WARNING / FAIL.
+6. If any gate FAIL → keep Phase M-0B blocked; fix real bug first.
+7. If all gates PASS → mark READY_FOR_REVIEW only.
+8. Do not enable live trading.
+9. Do not enable order placement.
 
 ### Phase M-0R Done
 - [x] PART A — SERVER_EVIDENCE_LEDGER.md updated with latest operator evidence (build, restart, env, runtime files, JSON start check, endpoint unauthenticated check).
@@ -534,6 +696,75 @@
   - no runtime JSON committed.
   - no secrets committed.
   - Phase M-0B remains BLOCKED.
+
+### 2026-05-28 — Phase M-0X Codex Release Owner: Public-Health Gate Evidence Release + Plesk Verification Handoff
+- Codex:
+  - verified branch `main`.
+  - verified origin remote.
+  - pulled/rebased latest `origin/main`.
+  - reviewed Phase M-0W evidence/handoff state.
+  - ran dashboard build.
+  - staged safe files only.
+  - committed changes if any.
+  - pushed `origin main` if commit existed.
+- Pending:
+  - `/api/public-health` server verification.
+  - authenticated endpoint checks.
+  - `/public` visual check.
+  - paper fills with `averageFillPrice`.
+  - `EXCHANGE_MANUAL_APPROVAL=approved`.
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API calls.
+  - no runtime JSON committed.
+  - no secrets committed.
+  - Phase M-0B remains BLOCKED.
+
+### 2026-05-28 — Phase M-0W Operator Verification Result Intake + Public-Health Gate Closeout
+- Updated: `PROJECT_MAP.md` Current Stage → Phase M-0W; Phase M-0W Done/In Progress/Blocked/Next blocks added
+- Updated: `docs/SERVER_EVIDENCE_LEDGER.md` — Phase M-0W verification result intake section added (5 sub-sections: public-health probe result, protected endpoints result, /public visual result, paper evidence result, Phase M-0B gate result — all PENDING operator input)
+- Updated: `PROJECT_CONTEXT.md` §8 — Current Next Step updated to Phase M-0W workflow (9 steps)
+- Evidence: all items PENDING — awaiting Operator to submit `/api/public-health` output, authenticated endpoint results, `/public` visual, paper fill evidence
+- Gate rules: FAIL or PENDING on any gate → Phase M-0B BLOCKED; all PASS → READY_FOR_REVIEW only, not live trading
+- Validation: docs-only change, no runtime code changed, no git commands used by Claude, build not required
+- Pending: all operator evidence fields, EXCHANGE_MANUAL_APPROVAL not approved
+- Safety: LIVE_TRADING_ENABLED=false, ENABLE_ORDER_PLACEMENT=false, Phase M-0B BLOCKED, no exchange API calls, no runtime JSON modified, no secrets added
+- Files changed: PROJECT_MAP.md, PROJECT_CONTEXT.md, docs/SERVER_EVIDENCE_LEDGER.md
+
+### 2026-05-28 — Phase M-0V Public-Health Server Verification Intake + Protected Endpoint Evidence Closeout Plan
+- Updated: `PROJECT_MAP.md` Current Stage → Phase M-0V; Phase M-0V Done/In Progress/Blocked/Next blocks added
+- Updated: `docs/SERVER_EVIDENCE_LEDGER.md` — Phase M-0V evidence intake section added (5 sub-sections: public-health probe, protected endpoints authenticated, /public dashboard visual, paper evidence, gate decision — all PENDING operator input)
+- Updated: `PROJECT_CONTEXT.md` §8 — Current Next Step updated to Phase M-0V workflow (9 steps)
+- Evidence status: all items PENDING — awaiting Operator verification of `/api/public-health`, authenticated endpoints, `/public`, paper fills
+- Gate rules: if any gate FAIL → Phase M-0B BLOCKED; if all PASS → READY_FOR_REVIEW only, does not enable live trading
+- Validation: docs-only change, no runtime code changed, no git commands used by Claude, build not required
+- Pending: all operator evidence fields, EXCHANGE_MANUAL_APPROVAL
+- Safety: LIVE_TRADING_ENABLED=false, ENABLE_ORDER_PLACEMENT=false, Phase M-0B BLOCKED, no exchange API calls, no runtime JSON modified, no secrets added
+- Files changed: PROJECT_MAP.md, PROJECT_CONTEXT.md, docs/SERVER_EVIDENCE_LEDGER.md
+
+### 2026-05-27 — Phase M-0U Operator Evidence Intake After Public-Health Release + M-0B Gate Decision Preparation
+- Updated: PROJECT_MAP.md Current Stage → Phase M-0U; Phase M-0U Done/In Progress/Blocked/Next block added
+- Updated: docs/SERVER_EVIDENCE_LEDGER.md — Phase M-0U evidence intake section (6 sub-sections: Plesk deployment, public-health probe, protected endpoints, /public dashboard, paper evidence, gate decision — all PENDING operator input)
+- Updated: docs/SERVER_EVIDENCE_LEDGER.md — Evidence Classification Rules (PASS / WARNING / FAIL with explicit criteria for each)
+- Updated: PROJECT_CONTEXT.md §8 — Current Next Step updated to Phase M-0U workflow (8 steps)
+- Evidence status: all items PENDING — awaiting Operator input for `/api/public-health`, protected endpoints, `/public`, paper fills
+- Gate rules documented: if any gate FAIL → Phase M-0B BLOCKED; if all PASS → READY_FOR_REVIEW only, not live trading
+- Validation: docs-only, no runtime code changed, no git commands used by Claude, build not required
+- Pending: all operator evidence, EXCHANGE_MANUAL_APPROVAL
+- Safety: LIVE_TRADING_ENABLED=false, ENABLE_ORDER_PLACEMENT=false, Phase M-0B BLOCKED, no exchange API calls, no runtime JSON modified, no secrets added
+- Files changed: PROJECT_MAP.md, PROJECT_CONTEXT.md, docs/SERVER_EVIDENCE_LEDGER.md
+
+### 2026-05-27 — Phase M-0T Public-Health Plesk Evidence Intake + Authenticated Endpoint Closeout Plan
+- Updated: PROJECT_MAP.md Current Stage → Phase M-0T; Done/In Progress/Blocked/Next block added
+- Updated: docs/SERVER_EVIDENCE_LEDGER.md — Phase M-0T evidence intake (release evidence, env/runtime confirmation, HTTP 307 classification, public-health probe status, endpoint status table, gate decision)
+- Updated: docs/SERVER_EVIDENCE_LEDGER.md — Operator Verification Commands (pull/build/restart, public-health curl, protected endpoints, /public visual)
+- Updated: PROJECT_CONTEXT.md §8 — Current Next Step updated to Phase M-0T workflow (8 steps)
+- Evidence acknowledged: Plesk env/runtime confirmed from previous session; HTTP 307 on protected endpoints = expected auth behavior
+- Validation: docs-only, no runtime code changed, no git commands used by Claude, build not required
+- Pending: Plesk pull/rebuild/restart after M-0S release, /api/public-health server HTTP 200 verification, authenticated endpoint checks, /public visual check, paper fills with averageFillPrice, EXCHANGE_MANUAL_APPROVAL
+- Safety: LIVE_TRADING_ENABLED=false, ENABLE_ORDER_PLACEMENT=false, Phase M-0B BLOCKED, no exchange API calls, no runtime JSON modified, no secrets added
+- Files changed: PROJECT_MAP.md, PROJECT_CONTEXT.md, docs/SERVER_EVIDENCE_LEDGER.md
 
 ### 2026-05-27 — Phase M-0N (session 2) Server Evidence Intake + Plesk Verification + M-0B Gate Readiness Ledger
 - Added: `docs/SERVER_EVIDENCE_LEDGER.md` — 10-section server evidence ledger (Plesk deployment, env, runtime files, endpoints, dashboard, red block classification, paper evidence, approval gate)
@@ -1321,225 +1552,4 @@ Phase M-0B remains blocked until all required evidence is confirmed by operator.
 
 **Plan Steps System**
 - `dashboard/components/plan-steps/`
-  - `buildSteps.ts` — ประกอบ steps สำหรับ UI
-  - `pickStepSet.ts` — เลือกชุด steps ตามโหมด/เงื่อนไข
-  - `timelineHelpers.ts` — helper (เช่น 2-liner Price vs OI / timeline logic)
-  - `types.ts` — types ของ steps/log/status
-  - `sets/` — ชุดกติกาแต่ละโหมด (GRID / TREND / NO_TRADE)
-    - `gridSweepPipeline.ts`
-    - `modeLockedTrend.ts`
-    - `modeLockedTrendUp.ts`
-    - `modeLockedNoTrade.ts`
-    - `breakoutSwitchMode.ts`
-
-**Lib**
-- `dashboard/lib/readLatest.ts` — อ่านไฟล์ latest/snapshot/decision (ควรยึด root เป็นหลัก)
-- `dashboard/lib/publicSummaryTH.ts` — สรุปไทยสำหรับหน้า public
-- `dashboard/lib/planSteps/*` — wording/stepSets ที่ใช้ประกอบข้อความ/steps
-
----
-
-### B) Server / Routes (Node) — Root
-- `server.cjs` — entrypoint ของ Node server
-- `routes/newsContext.cjs` — สร้าง/อัปเดต `news_context.json` (news risk overlay)
-
----
-
-### C) VS Code Extension (Optional tooling) — `bingx-agent-runner/`
-- โปรเจคแยกสำหรับ extension
-- ไฟล์หลัก: `bingx-agent-runner/src/extension.ts`
-
-> หมายเหตุ: ส่วนนี้มีไว้เป็น tooling ช่วยรัน/ควบคุม workflow ไม่ใช่แกน trading logic
-
----
-
-## 4) Data / Runtime Files (ไฟล์ที่ “ระบบสร้างระหว่างรัน”)
-
-> คุณตั้งใจ push ขึ้น repo เพื่อให้ดู state ได้ง่าย (ยอมรับว่า diff จะเยอะ)
-
-**Root runtime/caches**
-- `market_snapshot.json`
-- `latest_decision.json`
-- `news_context.json`
-- `derivatives_history_cache.json`, `oi_history_cache.json`
-- `volatility_baseline_cache.json`
-- `plan_status_state.json`, `plan_status_log.jsonl`
-- `latest_step2.txt`
-- อื่น ๆ: `*_snapshot.json`, `*_cache.json`, `latest_*.tmp`
-
-**Dashboard mirror (ถ้ามีใช้)**
-- `dashboard/app/public/data/`
-  - `latest_decision.json`
-  - `market_snapshot.json`
-  - `plan_history.jsonl`
-  - `plan_status.json`
-
----
-
-## 5) เส้นทางสำคัญ (Endpoints)
-- Dashboard UI page: `/public`
-- Trigger snapshot: `/run_full_snapshot`
-- Get plan status: `/api/plan-status`
-- Latest payload: `/api/latest`
-- Plan logs: `/api/plan-log`
-
----
-
-## 6) จุดที่มักจะ “เพิ่มฟีเจอร์” ต่อ (Extension Guide)
-- เพิ่มการ์ดใหม่ในหน้า `/public`
-  - แก้ `dashboard/app/public/page.tsx`
-  - สร้าง component ใน `dashboard/components/`
-  - เติม data ใน `dashboard/app/api/plan-status/route.ts`
-- เพิ่ม logic แสดง steps ใหม่
-  - เพิ่ม/แก้ set ใน `dashboard/components/plan-steps/sets/`
-  - ปรับการเลือกชุดใน `pickStepSet.ts`
-- เพิ่มข้อมูลที่ UI ต้องอ่านจาก root
-  - ปรับ reader ที่ `dashboard/lib/readLatest.ts`
-  - ปรับ payload ที่ `dashboard/app/api/plan-status/route.ts`
-- เพิ่ม pipeline news
-  - แก้ `routes/newsContext.cjs` และ mapping ที่ dashboard ใช้
-
----
-
-## 7) TODO / Next upgrades
-- [ ] ทำให้ `readLatest.ts` อ่านจาก root 100% (source of truth) และลดการพึ่ง `dashboard/app/public/data/`
-- [ ] ตั้งระบบ “snapshot commit policy” (จะ commit runtime ทุกครั้ง หรือเฉพาะตอนสำคัญ)
-- [ ] เพิ่ม release notes/changelog สั้น ๆ เมื่อเพิ่มฟีเจอร์ใหญ่
-
----
-
-## 8) Documentation refs
-Full tree: `docs/tree_full.txt`  
-Dashboard tree: `docs/tree_dashboard.txt`  
-Routes tree: `docs/tree_routes.txt`  
-Repo files list: `docs/repo_files.txt`
-Runtime Git policy: `docs/RUNTIME_FILES_GIT_POLICY.md`
-Operator evidence pack: `docs/M0B_OPERATOR_EVIDENCE_PACK.md`
-
----
-
-## 9) Agent Work Rules
-
-> กฎสำหรับ Claude/Codex เมื่อทำงานในโปรเจคนี้
-
-1. **อ่าน PROJECT_MAP.md ก่อนเสมอ** — โดยเฉพาะ section 0.1 (Current Stage, Next Stage, Blocked)
-2. **อย่าแก้ source of truth แบบเงียบ** — `latest_decision.json`, `market_snapshot.json` ห้ามแก้โดยไม่ตั้งใจ
-3. **ห้ามเปิด live trading** — `LIVE_TRADING_ENABLED`, `ENABLE_ORDER_PLACEMENT`, `PRODUCTION_TRADING_READY` ต้อง false เสมอ จนกว่าจะมี manual approval และ migration gate ผ่าน
-4. **ห้าม commit runtime JSON** — ไฟล์ runtime ทุกชนิดต้องอยู่ใน `.gitignore`
-5. **ห้าม expose secret** — ห้ามใส่ API key/secret ลง repo หรือ client-side
-6. **ห้ามใช้ `typescript.ignoreBuildErrors = true`** — ต้องแก้ error จริง
-7. **ทุก phase ต้อง build ผ่าน** — รัน `tsc --noEmit` หรือ `npm run build` ก่อน commit
-8. **Claude ห้ามทำ git** — ดูกฎใน section 0.2 และ 0.3
-9. **ทุก session ต้องจบด้วย closing format** — ดู section 0.4
-
----
-
-## 10) Changelog
-
-> See section 0.1 — Project Status for full changelog history (phases A through M-0S)
-
----
-
-## 11) Project Status (Quick Reference)
-
-> See section 0.1 for full current status
-
-- **Current Stage**: Phase M-0S — Public-Safe Health Endpoint + Auth-Aware Evidence Release
-- **Live Trading**: No
-- **Production Trading**: Not yet
-- **Phase M-0B**: BLOCKED — pending Plesk deploy + public/authenticated endpoint evidence + operator approval
-
----
-
-## 12) Agent Operating Protocol
-
-> โปรโตคอลสำหรับ agent ทุกตัวที่ทำงานในโปรเจคนี้
-
-1. อ่าน `PROJECT_MAP.md` section 0.1 ก่อนเริ่มทุกครั้ง
-2. ระบุ Current Stage, Source of Truth, Next Stage, งานค้าง
-3. ห้ามแก้ไฟล์ที่ไม่ได้อยู่ใน scope ของ phase ปัจจุบัน
-4. ทุก code change ต้องผ่าน build/typecheck
-5. จบ session ด้วย closing format (section 0.4)
-6. ห้าม git operations (Claude) — ดู section 0.2
-7. อัปเดต Current Stage และ Changelog ทุกครั้งที่ทำงานเสร็จ
-
----
-
-## 13) Snapshot Commit Policy
-
-> กำหนด Option ที่เลือกสำหรับ runtime data commit
-
-**Selected**: Option B — Never commit runtime data to git
-
-- Runtime JSON/JSONL/TXT files generated at runtime are NEVER committed
-- `.gitignore` enforces this at repo root and dashboard level
-- `docs/RUNTIME_FILES_GIT_POLICY.md` documents the full policy
-- Dashboard mirror files under `dashboard/app/public/data/` are excluded from git
-
----
-
-## 14) Production Hardening / Safety Guardrails
-
-> กฎที่ห้ามละเมิดในทุกสถานการณ์
-
-```
-LIVE_TRADING_ENABLED=false       # must remain false until migration gate passes
-ENABLE_ORDER_PLACEMENT=false     # must remain false until migration gate passes
-PRODUCTION_TRADING_READY=false   # must remain false until migration gate passes
-EXCHANGE_MANUAL_APPROVAL=        # must NOT be set to "approved" without evidence
-```
-
-- ห้าม place/cancel/replace real order ในทุก phase
-- ห้าม call BingX private API ที่มีผลต่อ account โดยไม่มี paper evidence
-- ห้าม expose API key/secret ใน repo หรือ client-side
-- ห้าม breaking change `/api/plan-status` contract
-- ห้าม fallback ไป mirror/cache แบบเงียบๆ โดยไม่บอก operator
-
----
-
-## 15) Live Validation & Monitoring
-
-> checklist สำหรับ operator ก่อน phase M-0B จะเริ่มได้
-
-- [ ] Codex push latest working tree to GitHub main
-- [ ] Plesk: `git pull origin main` + `npm run build` EXIT:0 + restart Node app
-- [ ] `BINGX_AGENT_DIR=/var/www/vhosts/ob-gate.com/httpdocs` set in Plesk env
-- [ ] `/api/public-health` returns HTTP 200 JSON without login
-- [ ] `/api/health` returns structured JSON after login
-- [ ] `/api/plan-status` returns structured JSON after login
-- [ ] `/api/paper-performance` returns paper metrics after login
-- [ ] `/api/operator-evidence` returns evidence pack after login
-- [ ] `/api/m0b-preflight` returns preflight status after login
-- [ ] `/api/exchange-readiness` returns readiness checks after login
-- [ ] `/api/runtime-audit` returns runtime file audit after login
-- [ ] `/public` dashboard visible, no crash, DashboardDiagnosticsCard visible
-- [ ] Paper journal has entries with `averageFillPrice` set
-- [ ] `paperDataQuality.hasAverageFillPrice: true` in paper-performance
-- [ ] Operator manually reviews paper results
-- [ ] `EXCHANGE_MANUAL_APPROVAL=approved` set after evidence review
-- [ ] Phase M-0B can begin
-
----
-
-## 16) Roadmap — Next Phases
-
-> See section 0.1 Project Status for detailed Phase M-0S/M-0B blocking conditions.
-
-### Priority Matrix
-| Priority | Task |
-|----------|------|
-| P0 | Codex push working tree to GitHub main |
-| P0 | Operator Plesk deploy + BINGX_AGENT_DIR + endpoint checks |
-| P0 | Paper fill evidence (`averageFillPrice`) |
-| P0 | No live trading / no real orders / no secret exposure |
-| P1 | Phase M-0B — Read-only Exchange API Implementation (after gate) |
-| P2 | Phase M-0C+ — Further exchange integration |
-
-### Roadmap Rules
-- ทุก phase ต้องเริ่มจากอ่าน PROJECT_MAP.md
-- ทุก phase ต้องไม่เปลี่ยน source of truth แบบเงียบ
-- ทุก phase ต้อง update Project Status + Changelog
-- ทุก phase ต้องมี validation
-- ทุก phase ต้องแยก paper/live ให้ชัด
-- ทุก phase ต้อง default safe mode
-- ห้าม phase ใดเปิด live trading โดยไม่มี manual approval และ migration gate
+  - `buildSteps.ts`

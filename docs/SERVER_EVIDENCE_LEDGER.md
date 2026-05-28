@@ -29,7 +29,7 @@ Reason:
 - paper fill evidence pending
 - EXCHANGE_MANUAL_APPROVAL not approved
 
-Current Stage: Phase M-0S — Public-Safe Health Endpoint + Auth-Aware Evidence Release
+Current Stage: Phase M-0U — Operator Evidence Intake After Public-Health Release + M-0B Gate Decision Preparation
 
 ---
 
@@ -74,6 +74,662 @@ Evidence Fields:
 - Runtime raw payload exposed: yes/no
 - Result: PASS / FAIL
 - Notes:
+
+---
+
+## Latest Phase M-0W Operator Verification Result Intake
+
+> This section is for Operator to fill in after running verification commands on Plesk.
+> Claude cowork does not fill evidence values — Operator fills actual results only.
+> Classification rules are in the Evidence Classification section below.
+> Phase M-0W Purpose: Record and classify operator verification results; close out gate evidence for Phase M-0B decision.
+
+### 1) Public Health Probe Result (`/api/public-health`)
+
+> Command: `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000`
+> Run **without login** — this endpoint must be publicly accessible.
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| HTTP status | 200 | | PENDING |
+| Content-Type | application/json | | PENDING |
+| Redirect to /login | NO | | PENDING |
+| Secret / API key exposed | NO | | PENDING |
+| Stack trace exposed | NO | | PENDING |
+| Raw runtime JSON in response | NO | | PENDING |
+| Exchange API called | NO | | PENDING |
+| Runtime state mutated | NO | | PENDING |
+| `phase` field | `M-0B_BLOCKED` | | PENDING |
+| `liveTradingEnabled` | `false` | | PENDING |
+| `orderPlacementEnabled` | `false` | | PENDING |
+| `productionReady` | `false` | | PENDING |
+| `exchangeManualApproval` | `not_approved` | | PENDING |
+| `runtimeCoreFiles` summary | present, existence only | | PENDING |
+| `blockers` field | present | | PENDING |
+| `warnings` field | present | | PENDING |
+| `nextActions` field | present | | PENDING |
+
+**Decision: PENDING**
+
+Classification rules:
+- **PASS** = HTTP 200 JSON, no redirect, no secret, no stack trace, all expected fields present
+- **WARNING** = JSON ok but expected blockers present (e.g. paper evidence pending, phase blocked)
+- **FAIL** = redirect to /login, HTML response, stack trace, secret exposed, raw runtime JSON
+- **PENDING** = operator has not yet submitted evidence
+
+Operator evidence timestamp (ICT):
+Notes:
+
+---
+
+### 2) Protected Endpoint Result After Login
+
+> Open each URL in a **logged-in** browser session.
+> HTTP 307 on unauthenticated access = expected auth behavior — not a bug.
+
+| Endpoint | JSON Response | Stack Trace | Secret Exposed | ok/status field | Result |
+|----------|---------------|-------------|----------------|-----------------|--------|
+| `/api/health` | | | | | PENDING |
+| `/api/plan-status` | | | | | PENDING |
+| `/api/runtime-audit` | | | | | PENDING |
+| `/api/operator-evidence` | | | | | PENDING |
+| `/api/m0b-preflight` | | | | | PENDING |
+| `/api/paper-performance` | | | | | PENDING |
+| `/api/exchange-readiness` | | | | | PENDING |
+| `/api/winrate` | | | | | PENDING |
+| `/api/ob-stats` | | | | | PENDING |
+| `/api/plan-log` | | | | | PENDING |
+
+**Decision: PENDING_AUTHENTICATED_CHECK**
+
+Classification rules:
+- **PASS** = all endpoints return structured JSON, no stack trace, no secret
+- **WARNING** = JSON ok, expected blockers present in response
+- **FAIL** = any endpoint returns HTML error, raw 500, stack trace, or exposes secret
+- **PENDING** = operator has not yet verified after login
+
+Operator evidence timestamp (ICT):
+Browser used:
+Notes:
+
+---
+
+### 3) Public Dashboard Visual Result (`/public`)
+
+> Open in **logged-in** browser: `https://ob-gate.com/public`
+
+| Check | Expected | Result |
+|-------|----------|--------|
+| Page renders without crash | YES | PENDING |
+| No white screen / component error | YES | PENDING |
+| DashboardDiagnosticsCard visible | YES | PENDING |
+| OperatorEvidenceCard visible | YES | PENDING |
+| M0BPreflightCard visible | YES | PENDING |
+| ExchangeReadinessCard visible | YES or N/A | PENDING |
+| PaperPerformanceCard visible | YES | PENDING |
+| LiveMigrationGateCard visible | YES | PENDING |
+| MarketRegimeMiniChart or waiting state | YES | PENDING |
+| Raw stack trace visible to user | NO | PENDING |
+| Secret / API key exposed to user | NO | PENDING |
+| Red blocks classified as expected blockers | YES | PENDING |
+
+Expected red blocks (not real bugs):
+- `EXCHANGE_MANUAL_APPROVAL` not approved
+- Phase M-0B blocked
+- paper fills missing `averageFillPrice`
+- paper sample insufficient
+- read-only exchange sync not yet approved
+- `news_context.json` missing while NO_NEWS mode active
+
+Real bugs (must fix before proceeding):
+- TypeError / Cannot read properties of undefined or null
+- JSON parse error
+- endpoint returns HTML instead of JSON
+- raw stack trace visible on page
+- secret exposed to user
+- dashboard crash / white screen
+
+**Decision: PENDING_VISUAL_CHECK**
+
+Operator evidence timestamp (ICT):
+Screenshot attached: yes / no
+Notes:
+
+---
+
+### 4) Paper Evidence Result
+
+| Check | Required | Actual | Result |
+|-------|----------|--------|--------|
+| `averageFillPrice` in paper fills | YES | | PENDING |
+| `fillQty` in paper fills | YES | | PENDING |
+| Entry/exit or open/close timestamps | YES | | PENDING |
+| `mode` tag (NEUTRAL/LONG/SHORT) | YES | | PENDING |
+| `regime` tag | if available | | PENDING |
+| `session` tag | if available | | PENDING |
+| `paperDataQuality` != `insufficient` | YES | | PENDING |
+| Enough closed paper cycles | operator judgment | | PENDING |
+
+**Decision: PENDING**
+
+> Paper PnL is NOT live PnL. Paper evidence unlocks READY_FOR_REVIEW only — not live trading.
+
+Operator evidence timestamp (ICT):
+Source (file/log/dashboard):
+Notes:
+
+---
+
+### 5) Phase M-0B Gate Result
+
+| Gate | Status |
+|------|--------|
+| `/api/public-health` HTTP 200 JSON (no secret, no redirect) | PENDING |
+| Protected endpoints JSON after login (no secret, no stack trace) | PENDING |
+| `/public` renders without crash, no secret, no stack trace | PENDING |
+| Paper evidence (`averageFillPrice`, `fillQty`, closed cycles) | PENDING |
+| `EXCHANGE_MANUAL_APPROVAL=approved` | NOT_APPROVED |
+| **Phase M-0B** | **BLOCKED** |
+
+**Gate Rules:**
+- If `/api/public-health` = FAIL → Phase M-0B BLOCKED
+- If any required evidence = PENDING → Phase M-0B BLOCKED
+- If protected endpoints = FAIL → Phase M-0B BLOCKED
+- If `/public` has real bug → Phase M-0B BLOCKED
+- If paper evidence insufficient → Phase M-0B BLOCKED
+- If `EXCHANGE_MANUAL_APPROVAL` not approved → Phase M-0B BLOCKED
+- If all evidence = PASS → mark **READY_FOR_REVIEW only**
+- **READY_FOR_REVIEW does not enable live trading**
+- **READY_FOR_REVIEW does not enable order placement**
+
+Operator final decision:
+Timestamp (ICT):
+
+---
+
+## Latest Phase M-0V Public-Health / Endpoint / Dashboard Evidence Intake
+
+> This section is for Operator to fill in after the M-0V verification round.
+> Claude cowork does not fill this — Operator fills evidence fields only.
+> Classification rules are in the Evidence Classification section below.
+> Phase M-0V Purpose: Close out the public-health probe verification and protected endpoint evidence so Phase M-0B gate decision can be made.
+
+### 1) Public Health Probe (`/api/public-health`)
+
+> Verify **without login**: `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000`
+> Or open in browser (no login required): `https://ob-gate.com/api/public-health`
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| HTTP status | 200 | | PENDING |
+| Content-Type | application/json | | PENDING |
+| Redirect to /login | NO | | PENDING |
+| Secret / API key exposed | NO | | PENDING |
+| Stack trace exposed | NO | | PENDING |
+| Raw runtime JSON in response | NO | | PENDING |
+| `phase` field | `M-0B_BLOCKED` | | PENDING |
+| `liveTradingEnabled` | `false` | | PENDING |
+| `orderPlacementEnabled` | `false` | | PENDING |
+| `productionReady` | `false` | | PENDING |
+| `exchangeManualApproval` | `not_approved` | | PENDING |
+| `runtimeCoreFiles` summary | present, file existence only | | PENDING |
+| `blockers` field | present | | PENDING |
+| `warnings` field | present | | PENDING |
+| `nextActions` field | present | | PENDING |
+
+**Decision: PENDING**
+
+> If `/api/public-health` returns HTTP 307 → real bug.
+> Check: `dashboard/app/api/public-health/route.ts`, `middleware.ts` auth allowlist.
+> Report to Claude before proceeding.
+
+---
+
+### 2) Protected Endpoint Evidence (Authenticated Browser Session)
+
+> Open each URL in a **logged-in** browser session.
+> HTTP 307 without login = expected auth behavior — not a bug.
+> Only verify after login.
+
+| Endpoint | JSON Response | Stack Trace Visible | Secret Exposed | ok/status field | Result |
+|----------|---------------|---------------------|----------------|-----------------|--------|
+| `/api/health` | | | | | PENDING |
+| `/api/plan-status` | | | | | PENDING |
+| `/api/runtime-audit` | | | | | PENDING |
+| `/api/operator-evidence` | | | | | PENDING |
+| `/api/m0b-preflight` | | | | | PENDING |
+| `/api/paper-performance` | | | | | PENDING |
+| `/api/exchange-readiness` | | | | | PENDING |
+| `/api/winrate` | | | | | PENDING |
+| `/api/ob-stats` | | | | | PENDING |
+| `/api/plan-log` | | | | | PENDING |
+
+**Decision: PENDING_AUTHENTICATED_CHECK**
+
+- Evidence timestamp (ICT):
+- Browser used:
+- Notes:
+
+---
+
+### 3) Public Dashboard Visual Evidence (`/public`)
+
+> Open in **logged-in** browser: `https://ob-gate.com/public`
+
+| Check | Expected | Result |
+|-------|----------|--------|
+| Page renders without crash | YES | PENDING |
+| No white screen / component error | YES | PENDING |
+| DashboardDiagnosticsCard visible | YES | PENDING |
+| OperatorEvidenceCard visible | YES | PENDING |
+| M0BPreflightCard visible | YES | PENDING |
+| ExchangeReadinessCard visible | YES or N/A | PENDING |
+| PaperPerformanceCard visible | YES | PENDING |
+| LiveMigrationGateCard visible | YES | PENDING |
+| MarketRegimeMiniChart or waiting state | YES | PENDING |
+| Raw stack trace visible to user | NO | PENDING |
+| Secret / API key exposed to user | NO | PENDING |
+| Red blocks classified (expected blocker, not real bug) | YES | PENDING |
+
+**Decision: PENDING_VISUAL_CHECK**
+
+- Evidence timestamp (ICT):
+- Screenshot attached: yes / no
+- Notes:
+
+---
+
+### 4) Paper Evidence
+
+| Check | Required | Actual | Result |
+|-------|----------|--------|--------|
+| `averageFillPrice` in paper fills | YES | | PENDING |
+| `fillQty` in paper fills | YES | | PENDING |
+| Entry/exit or open/close timestamps | YES | | PENDING |
+| `mode` tag (NEUTRAL/LONG/SHORT) | YES | | PENDING |
+| `regime` tag | if available | | PENDING |
+| `session` tag | if available | | PENDING |
+| `paperDataQuality` != `insufficient` | YES | | PENDING |
+| Enough closed paper cycles | operator judgment | | PENDING |
+
+**Decision: PENDING**
+
+- Evidence timestamp (ICT):
+- Source file / log:
+- Notes:
+
+---
+
+### 5) Phase M-0V Gate Decision
+
+| Gate | Status |
+|------|--------|
+| `/api/public-health` HTTP 200 JSON (no secret, no redirect) | PENDING |
+| Protected endpoints return JSON after login (no secret, no stack trace) | PENDING |
+| `/public` renders without crash, no secret, no stack trace | PENDING |
+| Paper evidence (averageFillPrice, fillQty, closed cycles) | PENDING |
+| `EXCHANGE_MANUAL_APPROVAL=approved` | NOT_APPROVED |
+| **Phase M-0B** | **BLOCKED** |
+
+**Gate Rules:**
+- If `/api/public-health` fails → Phase M-0B BLOCKED
+- If any protected endpoint after login returns raw stack trace or secret → Phase M-0B BLOCKED
+- If `/public` crashes or exposes secret → Phase M-0B BLOCKED
+- If paper evidence insufficient (`paperDataQuality=insufficient`) → Phase M-0B BLOCKED
+- If `EXCHANGE_MANUAL_APPROVAL` is not approved → Phase M-0B BLOCKED
+- If all evidence PASS → mark READY_FOR_REVIEW only
+- READY_FOR_REVIEW does not enable live trading or order placement
+
+**Operator decision recorded by:**
+**Timestamp (ICT):**
+**Decision:**
+
+---
+
+## Phase M-0U Operator Evidence Intake
+
+> This section is for Operator to fill in after verifying the M-0S release on Plesk.
+> Claude cowork does not fill this — Operator fills evidence fields only.
+> Classification rules are in the Evidence Classification section below.
+
+### 1) Plesk Deployment After M-0S Release
+
+| Item | Status |
+|------|--------|
+| `git pull origin main` completed | PENDING |
+| `rm -rf dashboard/.next` completed | PENDING |
+| `npm install` completed (EXIT:0) | PENDING |
+| `npm run build` completed (EXIT:0) | PENDING |
+| Node.js App restarted in Plesk | PENDING |
+
+- Evidence timestamp (ICT):
+- Notes:
+
+---
+
+### 2) Public Health Probe (`/api/public-health`)
+
+> Verify without login: `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000`
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| HTTP status | 200 | | PENDING |
+| Content-Type | application/json | | PENDING |
+| Redirect to /login | NO | | PENDING |
+| Secret exposed | NO | | PENDING |
+| Stack trace exposed | NO | | PENDING |
+| `phase` field | `M-0B_BLOCKED` | | PENDING |
+| `liveTradingEnabled` | `false` | | PENDING |
+| `orderPlacementEnabled` | `false` | | PENDING |
+| `productionReady` | `false` | | PENDING |
+| `exchangeManualApproval` | `not_approved` | | PENDING |
+| `runtimeCoreFiles` summary | present, no raw JSON | | PENDING |
+| `blockers` field | present | | PENDING |
+| `warnings` field | present | | PENDING |
+| `nextActions` field | present | | PENDING |
+
+**Decision: PENDING**
+
+> If `/api/public-health` returns 307 → real bug. Check: `dashboard/app/api/public-health/route.ts`, `proxy.ts`, `middleware.ts` auth allowlist.
+
+---
+
+### 3) Protected Endpoint Evidence (Authenticated Browser Session)
+
+> Open each URL in a **logged-in** browser. HTTP 307 without login = expected auth behavior.
+
+| Endpoint | JSON Response | Stack Trace | Secret Exposed | ok/status | Result |
+|----------|---------------|-------------|----------------|-----------|--------|
+| `/api/health` | | | | | PENDING |
+| `/api/plan-status` | | | | | PENDING |
+| `/api/runtime-audit` | | | | | PENDING |
+| `/api/operator-evidence` | | | | | PENDING |
+| `/api/m0b-preflight` | | | | | PENDING |
+| `/api/paper-performance` | | | | | PENDING |
+| `/api/exchange-readiness` | | | | | PENDING |
+| `/api/winrate` | | | | | PENDING |
+| `/api/ob-stats` | | | | | PENDING |
+| `/api/plan-log` | | | | | PENDING |
+
+**Decision: PENDING_AUTHENTICATED_CHECK**
+
+---
+
+### 4) Public Dashboard Evidence (`/public`)
+
+| Check | Expected | Result |
+|-------|----------|--------|
+| Page renders without crash | YES | PENDING |
+| DashboardDiagnosticsCard visible | YES | PENDING |
+| OperatorEvidenceCard visible | YES | PENDING |
+| M0BPreflightCard visible | YES | PENDING |
+| ExchangeReadinessCard visible | YES or N/A | PENDING |
+| PaperPerformanceCard visible | YES | PENDING |
+| LiveMigrationGateCard visible | YES | PENDING |
+| MarketRegimeMiniChart or waiting state | YES | PENDING |
+| Raw stack trace visible | NO | PENDING |
+| Secret exposed to user | NO | PENDING |
+| Red blocks classified (expected vs real bug) | YES | PENDING |
+
+**Decision: PENDING_VISUAL_CHECK**
+
+---
+
+### 5) Paper Evidence
+
+| Check | Required | Result |
+|-------|----------|--------|
+| `averageFillPrice` in paper fills | YES | PENDING |
+| `fillQty` in paper fills | YES | PENDING |
+| Entry/exit or open/close timestamps | YES | PENDING |
+| `mode` tag (NEUTRAL/LONG/SHORT) | YES | PENDING |
+| `regime` tag | if available | PENDING |
+| `session` tag | if available | PENDING |
+| `paperDataQuality` != `insufficient` | YES | PENDING |
+| Enough closed paper cycles | operator judgment | PENDING |
+
+**Decision: PENDING**
+
+---
+
+### 6) Phase M-0U Gate Decision
+
+| Gate | Status |
+|------|--------|
+| Plesk deployment (M-0S release) | PENDING |
+| `/api/public-health` HTTP 200 JSON (no secret, no redirect) | PENDING |
+| Protected endpoints return JSON after login | PENDING |
+| `/public` renders without crash | PENDING |
+| Paper evidence (averageFillPrice, closed cycles) | PENDING |
+| `EXCHANGE_MANUAL_APPROVAL=approved` | NOT_APPROVED |
+| **Phase M-0B** | **BLOCKED** |
+
+**Gate Rules:**
+- If `/api/public-health` fails → Phase M-0B BLOCKED
+- If protected endpoints fail after login → Phase M-0B BLOCKED
+- If `/public` has real bug (crash / stack trace / secret) → Phase M-0B BLOCKED
+- If paper evidence insufficient → Phase M-0B BLOCKED
+- If `EXCHANGE_MANUAL_APPROVAL` is not approved → Phase M-0B BLOCKED
+- If all evidence PASS → mark READY_FOR_REVIEW only — does not enable live trading
+
+---
+
+## Evidence Classification Rules
+
+### PASS
+- Expected behavior confirmed
+- JSON response present and structured
+- No secret or API key exposed
+- No stack trace visible
+- No live/order flag enabled
+- No runtime JSON mutation
+- Required evidence fields present
+
+### WARNING (expected blocker — not a real bug)
+- `news_context.json` missing while NO_NEWS mode is active
+- `scheduler_heartbeat.json` missing (expected if scheduler not running)
+- Expected phase blocker visible with clear `nextActions`
+- Paper sample small but all required fields present
+- `EXCHANGE_MANUAL_APPROVAL` not approved (by design until all gates pass)
+- Paper fills count = 0 (expected pre-paper-run)
+
+### FAIL (real bug — must fix before proceeding)
+- `/api/public-health` redirects to `/login` (307 or 302)
+- `/api/public-health` returns HTML instead of JSON
+- Protected endpoint after login returns HTML or raw error
+- Raw stack trace visible in response or on `/public`
+- Secret or API key exposed in any response or UI
+- `/public` dashboard crashes (white screen, component error)
+- `latest_decision.json` missing or invalid JSON
+- `market_snapshot.json` missing or invalid JSON
+- `LIVE_TRADING_ENABLED=true`
+- `ENABLE_ORDER_PLACEMENT=true`
+- `EXCHANGE_MANUAL_APPROVAL=approved` set before all evidence is complete
+- Paper fills missing `averageFillPrice` entirely
+
+---
+
+## Phase M-0T Evidence Intake
+
+### Release Evidence
+| Item | Status |
+|------|--------|
+| Codex M-0S release (build + push origin main) | DONE |
+| `/api/public-health` implemented | YES |
+| Public-safe JSON response contract | YES |
+| Auth allowlist updated for `/api/public-health` only | YES |
+| Dashboard build before push (EXIT:0) | PASSED |
+| Push origin main | DONE |
+
+### Operator/Plesk Environment (Previously Confirmed)
+| Item | Status |
+|------|--------|
+| DATA_DIR=/var/www/vhosts/ob-gate.com/httpdocs | CONFIRMED |
+| BINGX_AGENT_DIR=/var/www/vhosts/ob-gate.com/httpdocs | CONFIRMED |
+| AGENT_DIR=/var/www/vhosts/ob-gate.com/httpdocs | CONFIRMED |
+| LIVE_TRADING_ENABLED=false | CONFIRMED |
+| ENABLE_ORDER_PLACEMENT=false | CONFIRMED |
+| PRODUCTION_TRADING_READY=false | CONFIRMED |
+| EXCHANGE_MANUAL_APPROVAL=not_approved | CONFIRMED |
+
+### Runtime Core Files (Previously Confirmed)
+| File | Status |
+|------|--------|
+| latest_decision.json | EXISTS — likely valid JSON |
+| market_snapshot.json | EXISTS — likely valid JSON |
+| klines.json | EXISTS |
+| orderbook_snapshot.json | EXISTS |
+| open_interest_snapshot.json | EXISTS |
+| scheduler_heartbeat.json | EXISTS |
+| plan_status.json | EXISTS |
+| news_context.json | MISSING — expected if NO_NEWS mode active |
+
+> news_context.json missing = **expected blocker** if NO_NEWS mode is active. Not a real bug.
+
+### HTTP 307 Auth Redirect Classification
+Unauthenticated requests to protected `/api/*` endpoints → HTTP 307 redirect to login.
+**Classification: Expected auth behavior — not an endpoint failure.**
+Protected endpoints must be verified via authenticated browser session only.
+
+### Public Health Probe (`/api/public-health`)
+| Item | Status |
+|------|--------|
+| Endpoint implemented | YES (M-0S release) |
+| Unauthenticated access | EXPECTED (no login required) |
+| Expected response | HTTP 200 JSON |
+| Secret exposure allowed | NO |
+| Exchange API call allowed | NO |
+| Runtime JSON mutation allowed | NO |
+| Server verification | **PENDING** |
+
+### Protected Endpoint Verification
+| Item | Status |
+|------|--------|
+| `/api/health` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/plan-status` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/runtime-audit` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/operator-evidence` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/m0b-preflight` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/paper-performance` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/exchange-readiness` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/winrate` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/ob-stats` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+| `/api/plan-log` | PENDING_AUTHENTICATED_BROWSER_CHECK |
+
+### Public Dashboard Verification
+| Item | Status |
+|------|--------|
+| `/public` visual check | PENDING_VISUAL_CHECK |
+
+### Paper Evidence
+| Item | Status |
+|------|--------|
+| averageFillPrice in paper fills | PENDING |
+| fillQty in paper fills | PENDING |
+| Closed paper cycles | PENDING |
+| paperDataQuality != insufficient | PENDING |
+
+### Gate Decision
+| Gate | Status |
+|------|--------|
+| `/api/public-health` server verification | PENDING |
+| Protected endpoints authenticated verification | PENDING |
+| `/public` visual verification | PENDING |
+| Paper evidence (averageFillPrice) | PENDING |
+| EXCHANGE_MANUAL_APPROVAL=approved | NOT_APPROVED |
+| **Phase M-0B** | **BLOCKED** |
+
+---
+
+## Operator Verification Commands — Phase M-0T
+
+### 1) Pull / Clean / Build / Restart (after M-0S release)
+
+```bash
+cd /var/www/vhosts/ob-gate.com/httpdocs
+git pull origin main
+cd dashboard
+rm -rf .next
+npm install
+npm run build
+```
+
+Then **restart Node.js App** in Plesk control panel.
+
+### 2) Verify `/api/public-health` without login
+
+**Preferred — Scheduled Task / curl:**
+```bash
+curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000
+```
+
+**Or open in browser (no login needed):**
+```
+https://ob-gate.com/api/public-health
+```
+
+**Expected response:**
+- HTTP 200
+- `Content-Type: application/json`
+- No redirect to `/login`
+- `phase = "M-0B_BLOCKED"`
+- `liveTradingEnabled: false`
+- `orderPlacementEnabled: false`
+- `productionReady: false`
+- `exchangeManualApproval: "not_approved"`
+- Runtime core file existence only (no raw JSON content)
+- No secrets
+- No stack trace
+
+**If `/api/public-health` returns 307 redirect → login:**
+This is a real bug. Check:
+- `dashboard/app/api/public-health/route.ts` exists
+- `proxy.ts` / `middleware.ts` auth allowlist includes `/api/public-health`
+- Report to Claude for fix analysis before proceeding.
+
+### 3) Verify protected endpoints after login
+
+Open these in a **logged-in browser session**:
+```
+/api/health
+/api/plan-status
+/api/runtime-audit
+/api/operator-evidence
+/api/m0b-preflight
+/api/paper-performance
+/api/exchange-readiness
+/api/winrate
+/api/ob-stats
+/api/plan-log
+```
+
+**Expected:**
+- JSON response (not HTML login page)
+- No raw stack trace in response
+- No secret/API key in response
+- Structured `ok` / `status` / `warnings` / `blockers` / `nextActions` where applicable
+- HTTP 307 without login = expected auth behavior (not a bug)
+
+### 4) Verify `/public` dashboard after login
+
+**Open in logged-in browser:**
+```
+/public
+```
+
+**Expected visible cards:**
+- DashboardDiagnosticsCard
+- OperatorEvidenceCard
+- M0BPreflightCard
+- ExchangeReadinessCard (if present)
+- PaperPerformanceCard
+- LiveMigrationGateCard
+- MarketRegimeMiniChart or waiting state
+
+**Expected behavior:**
+- No crash / no white screen
+- No raw stack trace visible to user
+- Red blocks classified as expected-blocker (not real bugs)
 
 ---
 
@@ -419,21 +1075,4 @@ Create `/api/public-health` — a minimal no-auth endpoint for Scheduled Task or
 - Auth exclusion: route handler simply does NOT call `requireAuth()` / auth check — no middleware change needed since Next.js Edge Middleware is empty (confirmed via manifest)
 - `PROJECT_MAP.md`, `docs/SERVER_EVIDENCE_LEDGER.md`
 
-**Implementation note:** Since middleware manifest is empty (`"middleware": {}`), a new route at `/api/public-health` with no auth guard in the handler will be publicly accessible without middleware changes.
-
-**Recommendation:** Use Option A first (zero code change). Only implement Option B if Scheduled Task monitoring is required for ongoing server health proof.
-
-### Current Gate Result (Phase M-0R)
-
-| Gate | Status |
-|------|--------|
-| Plesk deployment (build + restart) | ✅ PASS |
-| BINGX_AGENT_DIR / DATA_DIR env path | ✅ PASS |
-| Safety flags (LIVE=false, ORDER=false, PROD=false) | ✅ PASS |
-| EXCHANGE_MANUAL_APPROVAL=not_approved | ✅ PASS (must stay not_approved until gate clears) |
-| Runtime core files exist + JSON start check | ✅ PASS |
-| news_context.json | ⚠️ MISSING (Expected Blocker if NO_NEWS mode) |
-| Endpoint JSON correctness (authenticated) | ⏳ PENDING |
-| /public visual verification | ⏳ PENDING |
-| Paper fill evidence (averageFillPrice) | ⏳ PENDING |
-| Phase M-0B gate | 🔒 BLOCKED |
+**Implementation note:** Since middleware manifest

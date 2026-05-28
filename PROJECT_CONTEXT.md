@@ -97,15 +97,15 @@ Never:
 
 Claude must not perform Git. Claude ends every session with a Codex Git Handoff Required block.
 
-Current stage: Phase M-0S — Public-Safe Health Endpoint + Auth-Aware Evidence Release
+Current stage: Phase M-0W — Operator Verification Result Intake + Public-Health Gate Closeout
 
 Next correct work:
 1. Claude does not perform Git.
-2. Codex implements/releases `/api/public-health` if needed.
-3. Operator pulls latest main on Plesk.
-4. Operator rebuilds/restarts Node.js App.
-5. Operator verifies `/api/public-health` without login.
-6. Operator verifies protected endpoints after login.
-7. Operator verifies `/public` dashboard after login.
-8. Operator collects paper fill evidence with `averageFillPrice`.
-9. Keep Phase M-0B blocked until all evidence and EXCHANGE_MANUAL_APPROVAL pass.
+2. Operator sends `/api/public-health` verification output (curl or browser, no login required).
+3. Operator sends protected endpoint evidence after login (JSON / no-stack-trace / no-secret per endpoint).
+4. Operator sends `/public` dashboard visual evidence after login (renders, cards visible, no crash, no secret).
+5. Operator sends paper fill evidence with `averageFillPrice`, `fillQty`, closed cycles, mode/regime/session tags.
+6. Claude classifies each evidence item as PASS / WARNING / FAIL / PENDING (see docs/SERVER_EVIDENCE_LEDGER.md).
+7. Keep Phase M-0B blocked if any gate is PENDING or FAIL.
+8. If all gates PASS → mark READY_FOR_REVIEW only — does not enable live trading or order placement.
+9. READY_FOR_REVIEW does not mean live trading is permitted — `EXCHANGE_MANUAL_APPROVAL` must be set by Operator after independent review of all evidence.

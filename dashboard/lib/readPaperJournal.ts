@@ -231,6 +231,9 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
 
   // scan files
   const openOrderKeys = new Set<string>();
+  // Phase M-0Z-6 (S1 fix): track filled-order keys so a filled order is counted once
+  // across ORDER_FILLED and FILL_RESULT events (FILL_RESULT was previously never counted).
+  const filledOrderKeys = new Set<string>();
 
   for (const filePath of jsonlFiles) {
     try {
@@ -260,8 +263,25 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
           openOrderKeys.add(key);
         }
 
-        if (eventType === "ORDER_FILLED") {
-          totalOrderFilled++;
+        // Phase M-0Z-6 (S1 fix): count a filled order once across ORDER_FILLED and
+        // FILL_RESULT (the post-syncState actual-fill event). Previously only ORDER_FILLED
+        // incremented totalOrderFilled, so a runner emitting FILL_RESULT-only reported 0 fills
+        // even though extractFills() consumed those fills. Dedupe by key to avoid double-count
+        // when both events fire for the same order.
+        if (eventType === "ORDER_FILLED" || eventType === "FILL_RESULT") {
+          const payloadObj = event.payload as Record<string, unknown> | undefined;
+          const fillKey =
+            event.eventKey ??
+            (typeof payloadObj?.orderId === "string" ? payloadObj.orderId : null);
+          if (fillKey) {
+            if (!filledOrderKeys.has(fillKey)) {
+              filledOrderKeys.add(fillKey);
+              totalOrderFilled++;
+            }
+          } else {
+            // no stable key — count to avoid undercounting (matches prior ORDER_FILLED behavior)
+            totalOrderFilled++;
+          }
         }
 
         if (eventType === "ORDER_CANCELED") {

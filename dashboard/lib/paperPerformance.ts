@@ -805,9 +805,12 @@ function computePaperDataQuality(
   const missing: string[] = [];
   const actions: string[] = [];
 
-  // hasAverageFillPrice: ตรวจว่า ORDER_FILLED/SIMULATED events มีราคาจริง
+  // hasAverageFillPrice: ตรวจว่า ORDER_FILLED/SIMULATED/FILL_RESULT events มีราคาจริง
+  // Phase M-0Z-6 (S3 fix): include FILL_RESULT — it carries the post-syncState averageFillPrice
+  // that extractFills() already trusts; omitting it reported hasAverageFillPrice=false on
+  // FILL_RESULT-only runs.
   const filledEvents = events.filter((e) =>
-    e.type === "ORDER_FILLED" || e.type === "ORDER_SIMULATED"
+    e.type === "ORDER_FILLED" || e.type === "ORDER_SIMULATED" || e.type === "FILL_RESULT"
   );
   const hasAverageFillPrice =
     filledEvents.length > 0 &&

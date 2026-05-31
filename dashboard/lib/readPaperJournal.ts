@@ -197,16 +197,31 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
       const entries = await fs.readdir(dir);
       const found = entries
         .filter((e) => e.endsWith(".jsonl"))
-        .map((e) => path.join(dir, e))
-        .slice(0, MAX_FILES_TO_SCAN);
+        .map((e) => path.join(dir, e));
       jsonlFiles = jsonlFiles.concat(found);
     } catch {
       // directory doesn't exist or unreadable — safe to skip
     }
   }
 
-  // deduplicate
-  jsonlFiles = [...new Set(jsonlFiles)].slice(0, MAX_FILES_TO_SCAN);
+  // deduplicate, then keep the NEWEST files first so recent paper events are never
+  // starved by old fixtures when the directory holds more than MAX_FILES_TO_SCAN files.
+  {
+    const uniqueFiles = [...new Set(jsonlFiles)];
+    const withMtime = await Promise.all(
+      uniqueFiles.map(async (fp) => {
+        let mtimeMs = 0;
+        try {
+          mtimeMs = (await fs.stat(fp)).mtimeMs;
+        } catch {
+          mtimeMs = 0;
+        }
+        return { fp, mtimeMs };
+      })
+    );
+    withMtime.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    jsonlFiles = withMtime.slice(0, MAX_FILES_TO_SCAN).map((x) => x.fp);
+  }
 
   if (jsonlFiles.length === 0) {
     return {

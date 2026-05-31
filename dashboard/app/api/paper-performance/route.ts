@@ -44,6 +44,13 @@ export async function GET() {
       {
         version: PAPER_PERFORMANCE_VERSION,
         ...report,
+        // legacy field — derived from costGate so UI ที่ยังอ่าน gridSpacingCheck ไม่พัง
+        gridSpacingCheck: {
+          spacingPct: report.costGate?.gridSpacingPct ?? null,
+          roundTripCostPct: report.costGate?.roundTripCostPct ?? null,
+          passes: report.costGate?.pass ?? null,
+          note: report.costGate?.nextAction ?? "",
+        },
       },
       { status: 200 }
     );

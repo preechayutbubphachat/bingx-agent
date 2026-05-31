@@ -68,7 +68,7 @@ type PaperPerformanceData = {
   unknownFailurePct: number | null;
   noTradeDiagnostics: NoTradeDiagnostics;
   // legacy
-  gridSpacingCheck: {
+  gridSpacingCheck?: {
     spacingPct: number | null;
     roundTripCostPct: number | null;
     passes: boolean | null;
@@ -546,12 +546,12 @@ export default function PaperPerformanceCard() {
           />
           <MetricRow
             label="Round-trip cost"
-            value={data.gridSpacingCheck.roundTripCostPct !== null
+            value={data.gridSpacingCheck?.roundTripCostPct != null
               ? `${data.gridSpacingCheck.roundTripCostPct.toFixed(3)}%`
               : "—"}
           />
         </div>
-        <p className="mt-1 text-xs text-neutral-600">{data.gridSpacingCheck.note}</p>
+        <p className="mt-1 text-xs text-neutral-600">{data.gridSpacingCheck?.note ?? ""}</p>
       </div>
 
       {/* ── L+: Cost Gate ── */}

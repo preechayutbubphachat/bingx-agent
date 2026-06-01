@@ -18,6 +18,7 @@ SYMBOL="${SYMBOL:-BTC-USDT}"
 QUANTITY="${PAPER_CYCLE_QUANTITY:-0.001}"
 BASE_URL="${PAPER_EXECUTION_BASE_URL:-${OBGATE_PAPER_BASE_URL:-${OBGATE_RUN_CYCLE_BASE_URL:-https://ob-gate.com}}}"
 EXECUTION_URL="${PAPER_EXECUTION_URL:-${BASE_URL%/}/api/internal/execution-runner}"
+CURL_EXTRA_FLAGS="${CURL_EXTRA_FLAGS:-}"
 
 DECISION_FILE="${LATEST_DECISION_PATH:-$ROOT_DIR/latest_decision.json}"
 ORDERBOOK_FILE="${ORDERBOOK_SNAPSHOT_PATH:-$ROOT_DIR/orderbook_snapshot.json}"
@@ -179,6 +180,33 @@ json_str_or_null() {
   fi
 }
 
+build_curl_flags() {
+  local flags=()
+  local ca_file=""
+
+  if [ -n "$CURL_EXTRA_FLAGS" ]; then
+    # shellcheck disable=SC2206
+    flags=($CURL_EXTRA_FLAGS)
+  fi
+
+  if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+    ca_file="/etc/ssl/certs/ca-certificates.crt"
+  elif [ -f /etc/pki/tls/certs/ca-bundle.crt ]; then
+    ca_file="/etc/pki/tls/certs/ca-bundle.crt"
+  elif [ -f /usr/share/ssl/certs/ca-bundle.crt ]; then
+    ca_file="/usr/share/ssl/certs/ca-bundle.crt"
+  fi
+
+  if [ -n "$ca_file" ]; then
+    flags+=(--cacert "$ca_file")
+  elif [[ "$EXECUTION_URL" == https://ob-gate.com/* ]]; then
+    # Plesk/chroot CA bundle fallback for internal self-call only.
+    flags+=(--insecure)
+  fi
+
+  printf '%s\n' "${flags[@]}"
+}
+
 KEY="$(read_setting "${RUN_CYCLE_TRIGGER_KEY:-}" RUN_CYCLE_TRIGGER_KEY INTERNAL_API_KEY REFRESH_ENDPOINT_KEY || true)"
 if [ -z "$KEY" ]; then
   log "missing RUN_CYCLE_TRIGGER_KEY/INTERNAL_API_KEY/REFRESH_ENDPOINT_KEY"
@@ -298,8 +326,11 @@ if [ -z "$BODY" ]; then
   exit 1
 fi
 
+mapfile -t CURL_FLAGS < <(build_curl_flags)
+
 response="$(
   curl -sS -w "\nHTTP_STATUS=%{http_code}" \
+    "${CURL_FLAGS[@]}" \
     -X POST "$EXECUTION_URL" \
     -H "content-type: application/json" \
     -H "x-run-cycle-key: $KEY" \

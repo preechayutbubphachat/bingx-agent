@@ -34,6 +34,7 @@ function mapSafety(ph: AnyObj): SafetyVM {
 function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const journal = obj(status.paperJournal);
   const edge = obj(perf.edgeDiagnostics);
+  const costGate = obj(perf.costGate);
   const totalOrderFilled = num(journal.totalOrderFilled);
   const closedCycles = num(edge.closedCycles);
   const sampleRaw = str(edge.sampleSizeStatus || perf.sampleSizeStatus, "");
@@ -52,7 +53,16 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     sampleStatus,
     paperModeDetected: bool(journal.paperModeDetected),
     edgeStatus,
+    costGateStatus: mapCostGateStatus(str(costGate.status, "")),
   };
+}
+
+function mapCostGateStatus(status: string): PaperVM["costGateStatus"] {
+  const normalized = status.toUpperCase();
+  if (normalized === "PASS") return "PASS";
+  if (normalized === "WARNING" || normalized === "WARN") return "WARNING";
+  if (normalized === "FAIL" || normalized === "FAILED") return "FAIL";
+  return "UNKNOWN";
 }
 
 function mapLog(status: AnyObj): LogEntry[] {

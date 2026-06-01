@@ -19,7 +19,7 @@ import AdvancedDebugCard from "./AdvancedDebugCard";
 export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAgentHQViewModel }) {
   const router = useRouter();
   const { vm, state, error, refresh } = useTradingAgentHQ(initialVm);
-  const [selected, setSelected] = useState<AgentId | null>(null);
+  const [selected, setSelected] = useState<AgentId | null>("risk_manager");
   const [hovered, setHovered] = useState<AgentId | null>(null);
   const [lowPower, setLowPower] = useState(false);
   const [debug, setDebug] = useState(false);
@@ -53,7 +53,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
         <TopHud vm={vm} />
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[86px_minmax(0,1fr)_360px]">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
           <CommandRail vm={vm} selected={selected} onSelect={(id) => setSelected(id)} />
 
           <section className="min-w-0 rounded-lg border border-[#3a2c21]/10 bg-[#fff4df] p-2 shadow-sm">
@@ -80,20 +80,18 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             />
           </section>
 
-          <div className="hidden min-h-[260px] space-y-3 lg:block">
+          <div className="hidden min-h-[260px] space-y-3 xl:block">
             <RightInspector agent={selectedAgent} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
             <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
           </div>
         </div>
 
-        {selectedAgent && (
-          <div className="fixed inset-0 z-[200] lg:hidden">
-            <button type="button" aria-label="Close" className="absolute inset-0 bg-black/30" onClick={() => setSelected(null)} />
-            <div className="absolute inset-x-0 bottom-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white p-1 shadow-2xl">
-              <RightInspector agent={selectedAgent} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
-            </div>
+        <div className="grid grid-cols-1 gap-3 xl:hidden">
+          <RightInspector agent={selectedAgent} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
+          <div className="hidden md:block">
+            <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
           </div>
-        )}
+        </div>
 
         <BottomWidgetDock vm={vm} onPick={(id) => setSelected(id)} />
         <BottomLogBar log={vm.bottomLog} onPick={(id) => setSelected(id)} selected={selected} />

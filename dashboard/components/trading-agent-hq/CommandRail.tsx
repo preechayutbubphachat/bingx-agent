@@ -25,8 +25,8 @@ export default function CommandRail({
   ).length;
 
   return (
-    <aside className="flex flex-row gap-2 overflow-x-auto rounded-lg border border-[#3a2c21]/15 bg-[#fff8ec] p-2 shadow-sm lg:flex-col lg:overflow-visible">
-      <div className="hidden border-b border-[#3a2c21]/10 pb-2 text-center lg:block">
+    <aside className="flex flex-row gap-2 overflow-x-auto rounded-lg border border-[#3a2c21]/15 bg-[#fff8ec] p-2 shadow-sm xl:flex-col xl:overflow-visible">
+      <div className="hidden border-b border-[#3a2c21]/10 pb-2 text-center xl:block">
         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-[#2f241b] text-sm font-black text-[#f8d37b]">
           THQ
         </div>
@@ -37,7 +37,7 @@ export default function CommandRail({
         <button
           key={item.key}
           type="button"
-          className="min-w-[74px] rounded-lg border border-[#3a2c21]/10 bg-white px-2 py-2 text-left transition hover:border-[#b8792b]/40 hover:bg-[#fff3dd] lg:min-w-0"
+          className="min-w-[74px] rounded-lg border border-[#3a2c21]/10 bg-white px-2 py-2 text-left transition hover:border-[#b8792b]/40 hover:bg-[#fff3dd] xl:min-w-0"
           title={item.hint}
         >
           <span className="block text-xs font-bold text-[#2f241b]">{item.label}</span>
@@ -45,9 +45,9 @@ export default function CommandRail({
         </button>
       ))}
 
-      <div className="hidden flex-1 lg:block" />
+      <div className="hidden flex-1 xl:block" />
 
-      <div className="flex gap-1 lg:flex-col">
+      <div className="flex gap-1 xl:flex-col">
         {AGENT_PLACEMENTS.map((placement) => {
           const isSelected = selected === placement.id;
           const agent = vm.agents[placement.id];
@@ -73,7 +73,7 @@ export default function CommandRail({
         })}
       </div>
 
-      <div className="min-w-[94px] rounded-lg bg-[#2f241b] px-2 py-2 text-[#f7ead8] lg:min-w-0">
+      <div className="min-w-[94px] rounded-lg bg-[#2f241b] px-2 py-2 text-[#f7ead8] xl:min-w-0">
         <div className="text-[10px] uppercase text-[#d8b66f]">Crew awake</div>
         <div className="text-lg font-black">{activeAgents}/6</div>
       </div>

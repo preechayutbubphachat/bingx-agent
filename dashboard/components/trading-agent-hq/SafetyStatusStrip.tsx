@@ -36,7 +36,7 @@ export default function SafetyStatusStrip({
   return (
     <section className="rounded-lg border border-[#4a3525]/20 bg-[#2b2118] px-3 py-3 text-[#f8ead3] shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="mr-auto min-w-[220px]">
+        <div className="w-full min-w-0 sm:mr-auto sm:w-auto sm:min-w-[220px]">
           <div className="text-[11px] font-bold uppercase tracking-wide text-[#d8b66f]">Trading Caffe Command Center</div>
           <h1 className="text-xl font-black leading-tight sm:text-2xl">Agent HQ</h1>
         </div>

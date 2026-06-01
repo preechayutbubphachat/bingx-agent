@@ -23,10 +23,15 @@ export default function RightInspector({
   onClose: () => void;
   onDebug: () => void;
 }) {
+  const closedCycleLabel = paper.closedCycles === 0 ? "DATA_GAP" : "EVIDENCE";
+
   if (!agent) {
     return (
-      <div className="hidden h-full min-h-[260px] w-full flex-col items-center justify-center rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-4 text-center text-xs text-[#8a735d] shadow-sm lg:flex">
-        Select an agent desk to inspect the read-only state.
+      <div className="flex h-full min-h-[220px] w-full flex-col items-center justify-center rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-4 text-center text-xs text-[#8a735d] shadow-sm">
+        <span className="text-sm font-black text-[#2f241b]">Select an agent desk to inspect the read-only state.</span>
+        <span className="mt-2 max-w-[280px] leading-relaxed">
+          No live/order/approval controls are available here. Use the agent buttons or cafe desks to inspect status only.
+        </span>
       </div>
     );
   }
@@ -55,8 +60,9 @@ export default function RightInspector({
       <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-900">
         <div className="font-black uppercase">Paper evidence honesty</div>
         <div className="mt-1">
-          fills={paper.totalOrderFilled} | closedCycles={paper.closedCycles} | edge={paper.edgeStatus}
+          paper fills only={paper.totalOrderFilled} | closedCycles={paper.closedCycles} / {closedCycleLabel} | edge={paper.edgeStatus}
         </div>
+        <div className="mt-1">cost: {paper.costGateStatus} | not edge | not ready</div>
         {paper.closedCycles === 0 ? <div className="mt-1 font-bold">DATA_GAP: closed cycle evidence is still missing.</div> : null}
       </div>
 

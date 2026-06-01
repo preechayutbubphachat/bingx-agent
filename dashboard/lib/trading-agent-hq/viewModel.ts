@@ -55,6 +55,8 @@ export interface PaperVM {
   paperModeDetected: boolean;
   /** DATA_GAP when closedCycles === 0 */
   edgeStatus: "DATA_GAP" | "REAL_FILLS_ACCUMULATING" | "UNKNOWN";
+  /** cost gate status from public-safe performance payload; never means edge/live-ready */
+  costGateStatus: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
 }
 
 export interface TopHudVM {

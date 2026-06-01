@@ -25,6 +25,7 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
     sampleStatus: "INSUFFICIENT_SAMPLE",
     paperModeDetected: true,
     edgeStatus: "DATA_GAP", // closedCycles===0 → never edge PASS
+    costGateStatus: "PASS",
   },
   topHud: {
     marketMood: "UNKNOWN",

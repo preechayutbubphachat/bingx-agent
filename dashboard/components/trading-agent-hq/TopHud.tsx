@@ -49,14 +49,24 @@ export default function TopHud({ vm }: { vm: TradingAgentHQViewModel }) {
       />
       <Stat label="Risk Heat" value={vm.topHud.riskHeat} caption="Safety posture" tone={vm.topHud.riskHeat === "CALM" ? "ok" : "warn"} />
       <Stat label="Agents Active" value={`${vm.topHud.agentsActive}/6`} caption="Visual workers" />
-      <Stat label="Paper Fills" value={`${vm.paper.totalOrderFilled}`} caption="Not profitability" tone={vm.paper.totalOrderFilled > 0 ? "ok" : "warn"} />
+      <Stat
+        label="Paper Fills"
+        value={`${vm.paper.totalOrderFilled}`}
+        caption="paper fills only / not profitability"
+        tone={vm.paper.totalOrderFilled > 0 ? "ok" : "warn"}
+      />
       <Stat
         label="Closed Cycles"
-        value={`${vm.paper.closedCycles}`}
-        caption={vm.paper.closedCycles === 0 ? "DATA_GAP, not edge" : "Evidence present"}
+        value={`${vm.paper.closedCycles} / ${vm.paper.closedCycles === 0 ? "DATA_GAP" : "EVIDENCE"}`}
+        caption={vm.paper.closedCycles === 0 ? "sample_insufficient, not edge" : "Evidence present"}
         tone={vm.paper.closedCycles === 0 ? "warn" : "ok"}
       />
-      <Stat label="Gate" value={safety.phase} caption={`approval: ${safety.exchangeManualApproval}`} tone="danger" />
+      <Stat
+        label="Cost Gate"
+        value={`cost: ${vm.paper.costGateStatus}`}
+        caption={`${safety.phase}; not edge; approval: ${safety.exchangeManualApproval}`}
+        tone={safety.phase === "M-0B_BLOCKED" ? "danger" : "warn"}
+      />
     </div>
   );
 }

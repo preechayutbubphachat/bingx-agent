@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/viewModel";
+import { buildAgentProgressions } from "@/lib/trading-agent-hq/progression";
 import { useTradingAgentHQ } from "@/lib/trading-agent-hq/useTradingAgentHQ";
 import { useAgentAnimations } from "@/lib/trading-agent-hq/useAgentAnimations";
 import SceneCanvas from "./SceneCanvas";
@@ -25,7 +26,9 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
   const [debug, setDebug] = useState(false);
 
   const animKeys = useAgentAnimations(vm.agents);
+  const progressions = buildAgentProgressions(vm);
   const selectedAgent = selected ? vm.agents[selected] : null;
+  const selectedProgression = selected ? progressions[selected] : null;
   const live = vm.meta.source === "public-safe-api" && state === "ready";
 
   useEffect(() => {
@@ -81,19 +84,19 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           </section>
 
           <div className="hidden min-h-[260px] space-y-3 xl:block">
-            <RightInspector agent={selectedAgent} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
+            <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
             <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 xl:hidden">
-          <RightInspector agent={selectedAgent} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
+          <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
           <div className="hidden md:block">
             <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
           </div>
         </div>
 
-        <BottomWidgetDock vm={vm} onPick={(id) => setSelected(id)} />
+        <BottomWidgetDock vm={vm} progressions={progressions} onPick={(id) => setSelected(id)} />
         <BottomLogBar log={vm.bottomLog} onPick={(id) => setSelected(id)} selected={selected} />
 
         <p className="px-1 text-[11px] text-[#cbb799]">

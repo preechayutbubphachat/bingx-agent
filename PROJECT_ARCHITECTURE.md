@@ -1402,3 +1402,95 @@ Phase M-0B (read-only Exchange API implementation) remains **BLOCKED** until all
 6. `EXCHANGE_MANUAL_APPROVAL=approved` set by operator
 
 No agent may unblock Phase M-0B unilaterally. Manual operator approval is required.
+
+---
+
+## 99) Paper Execution Pipeline — LIVE on Production (2026-05-31)
+
+> ส่วนนี้คือ "ของจริงที่เดินอยู่บน production" ของชั้น paper execution
+> สถานะ: real paper fills ทำงานแล้ว · closed cycles ยังสะสม · Phase M-0B ยัง BLOCKED
+
+### 99.1) Dual-host architecture (สำคัญ — แยกให้ชัด)
+
+```text
+api.ob-gate.com   → Express (server.cjs, Passenger)  → snapshot/decision producer + source-of-truth JSON
+ob-gate.com       → Next.js 16 dashboard (Passenger) → /api/* routes, paper engine, /public, /api/public-health
+```
+
+- snapshot/run-cycle ยิงที่ **api host**; paper execution + dashboard อยู่ที่ **dashboard host**
+- cron ต้องแยก base url: `BASE_URL` (snapshot=api) vs `RUN_CYCLE_BASE_URL`/run-cycle (dashboard) ผ่าน `OBGATE_RUN_CYCLE_BASE_URL`
+
+### 99.2) Paper fill data flow (end-to-end จริง)
+
+```text
+cron (*/5 min)
+  └─ paper_cycle.sh  [bash-only, chroot-safe: builtins + grep + curl เท่านั้น]
+       อ่าน: latest_decision.json (mode, grid_upper/lower)
+             orderbook_snapshot.json (bestBid/bestAsk/midPrice)
+             funding_snapshot.json (markPrice/indexPrice)
+       side = BUY ถ้า mid < grid_mid · else SELL   (เทียบ integer-part, ไม่มี awk)
+       POST plannedEntry{ side, quantity, entryPrice:null, reason } → MARKET
+         ↓
+  /api/internal/execution-runner  (PAPER mode, verifyAuth via RUN_CYCLE_TRIGGER_KEY)
+       normalizePlannedEntry → entryPrice:null = MARKET (ไม่ default เป็น last)
+         ↓
+  paperExecutionEngine.runPaperExecution
+       RUNNER_REQUESTED → PLAN_EVALUATED → RISK_EVALUATED → INTENT_CREATED
+       → ORDER_SIMULATED → (syncState: MARKET trigger → fillOrder) → FILL_RESULT
+       → RECONCILE_RESULT → RUNNER_COMPLETED   (mode=PAPER ทุก event)
+         ↓
+  PaperBrokerAdapter
+       placeOrder → openOrders · orderShouldTrigger(MARKET)=true
+       fillOrder → update intentIndex{ averageFillPrice, filledQuantity }  ← จุดที่ทำให้ engine เขียน FILL_RESULT ได้
+         ↓
+  audit JSONL → <cwd>/tmp/execution-runner/   (writer = process.cwd()/tmp/execution-runner)
+         ↓
+  readPaperJournal  (EXECUTION_AUDIT_ROOT_DIR=.../httpdocs/dashboard)
+       sort ทุกไฟล์ตาม mtime ก่อน slice 30  ← กันไฟล์ fixture เก่าบังไฟล์ fill ใหม่
+       นับ FILL_RESULT → totalOrderFilled · hasAverageFillPrice
+         ↓
+  paperPerformance / /api/paper-status → totalOrderFilled, averageFillPrice, closedCycles
+```
+
+### 99.3) Engine layer (เคย untracked — ตอนนี้ tracked แล้ว)
+
+จุดที่เคยทำให้ server รัน engine เก่า (ไม่มี FILL_RESULT) ทั้งที่ local ถูก — เพราะ git **ไม่ track**:
+
+```text
+dashboard/lib/broker/PaperBrokerAdapter.ts        (placeOrder/syncState/fillOrder/getIntentResult/intentIndex)
+dashboard/lib/execution/paperExecutionEngine.ts   (lifecycle + FILL_RESULT emit block)
+dashboard/app/api/internal/execution-runner/route.ts  (PAPER harness + normalizePlannedEntry)
+```
+
+→ fix: `git add` ชั้นนี้ → commit `34c4a8f` → deploy (ย้าย copy เก่า `.old` ออกก่อน pull เลี่ยง untracked-overwrite)
+→ บทเรียน: **untracked dir ไม่เคย deploy ผ่าน git pull** — ทุก layer ที่ต้อง run บน server ต้องอยู่ใน git
+
+### 99.4) สถานะ gate ปัจจุบัน
+
+```text
+PASS : release · deploy · runtime source-of-truth · /api/public-health · paper fill จริง (averageFillPrice จริง)
+WAIT : closedCycles=0 (ราคายังไม่ข้าม grid mid ให้เกิด SELL) · sample<30 · /public visual · operator review
+LOCK : EXCHANGE_MANUAL_APPROVAL=not_approved · Phase M-0B BLOCKED · live/order placement DISABLED
+```
+
+---
+
+## Layer 13 — TradingAgentHQ Experience Layer (frontend mode)
+
+> Canonical: **TradingAgentHQ** · codename **Trading Caffe HQ** · read-only presentation layer
+> สถานะ: APPROVED FOR ARCHITECTURE DESIGN + READ-ONLY FRONTEND PLANNING (production = PENDING BUILD/QA)
+> Full spec: `docs/TRADING_AGENT_HQ_ARCHITECTURE.md` · plan: `docs/TRADING_AGENT_HQ_IMPLEMENTATION_PLAN.md` · assets: `docs/TRADING_AGENT_HQ_ASSET_SPEC.md`
+
+**Core rule:** TradingAgentHQ is a *renderer* of existing bot state, not a producer of trading decisions.
+
+cozy pixel-art AI Agent Command Center ที่ map สถานะบอทจริง (paper evidence/risk/regime/alerts/6 agent roles) เป็นฉาก game-like อ่านง่าย — เพิ่ม operator awareness โดยไม่แตะ trading logic
+
+**Modes:** Classic `/public` (เดิม, source of operational truth) · TradingAgentHQ `/agent-hq` (ใหม่ read-only) · Advanced/Debug (ปุ่มกลับ `/public`) · Low Power toggle
+
+**6 agents:** Grid Bot · Trend Bot · Risk Manager · News Analyst · Market Regime Analyst · Memory/Second Brain
+
+**Hard boundaries:** presentation only · read-only · ไม่แตะ source-of-truth · ไม่ place order · ไม่ approve risk · ไม่เปิด live trading · ไม่ mark readiness · ไม่แทน `/public` diagnostics
+
+**Source-of-truth คงเดิม:** `<ROOT>/latest_decision.json` + `<ROOT>/market_snapshot.json`; paper audit `<ROOT>/dashboard/tmp/execution-runner/*.jsonl` (via `EXECUTION_AUDIT_ROOT_DIR=<ROOT>/dashboard`) · public/cache JSON = display only ห้ามถือเป็นจริง
+
+**M-0B impact: none** — พัฒนาขนานได้ ไม่ปลดล็อก M-0B · live/order/approval คง disabled

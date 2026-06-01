@@ -27,7 +27,172 @@ Reason:
 - Paper fill evidence pending (missing `averageFillPrice`, `fillQty`, closed cycles)
 - `EXCHANGE_MANUAL_APPROVAL` not approved
 
-Current Stage: **Phase M-0Z-4 — Build Release Verification + Post-Deploy Evidence Intake + Paper Fill Liveness Audit** (2026-05-28)
+Current Stage: **Phase M-0Z-6 — Evidence Intake Execution + Post-Deploy Triage + Paper Liveness Decision** (2026-05-29)
+
+---
+
+## Phase M-0Z-6 Evidence Snapshot — LIVE (2026-05-31)
+
+> Updated: 2026-05-31
+> Stage: **Paper Execution LIVE + Evidence Accumulation** (supersedes 2026-05-29 snapshot below)
+> Claude does not fill evidence values — values below reflect operator/server-reported results to date.
+
+| Evidence Item | Status | Owner | Evidence |
+|---|---|---|---|
+| Git release (`34c4a8f` engine + `59472f8` fix/docs) | **PASS** | Codex | pushed origin main |
+| Safe staging | **PASS** | Codex | no runtime/secret staged |
+| `npm run build` (EXIT:0) | **PASS** | Codex | server build incl. engine layer |
+| Plesk deploy + rebuild + restart | **POST_DEPLOY_PASS** | Operator | served, routes present |
+| `BINGX_AGENT_DIR` | **PASS** | Operator | `/var/www/vhosts/ob-gate.com/httpdocs` |
+| Runtime source-of-truth | **POST_DEPLOY_PASS** | Operator | public-health: latest_decision/market_snapshot/heartbeat exists, phase=M-0B_BLOCKED, no leak |
+| `/api/public-health` post-deploy | **POST_DEPLOY_PASS** | Operator | HTTP 200 JSON, safe flags |
+| env safety flags (LIVE/ORDER/PROD_READY=false) | **PASS** | Operator | verified |
+| paper engine layer tracked/deployed | **PASS** | Claude | broker/execution/internal now in git (root cause fixed) |
+| `paper_cycle.sh` cron (*/5) | **PASS** | Operator | runs every 5 min |
+| `/api/paper-performance` endpoint | **PASS** | Claude | + hotfix `gridSpacingCheck` (pending commit/deploy — see DEPLOY_FIXES doc) |
+| `totalOrderFilled` | **REAL_FILLS_ACCUMULATING** | System | ~30, increasing |
+| `FILL_RESULT.averageFillPrice` | **REAL_FILLS_ACCUMULATING** | System | real e.g. 74115.3 / 74129.6 |
+| paper fill quality | **REAL_FILLS_ACCUMULATING** | System | ≠ edge proof |
+| closed cycles | **DATA_GAP** | System | 0 — BUY only (price < grid mid); need price > mid for SELL |
+| sample size | **DATA_GAP** | System | < 30 closed cycles |
+| `/public` visual (16-item) | **PENDING_EXTERNAL** | Operator | low-res candidate logged 2026-05-31; full-res authenticated checklist required |
+| operator independent review | **PENDING_EXTERNAL** | Operator | not done |
+| `EXCHANGE_MANUAL_APPROVAL` | **NOT_APPROVED** | Operator | all gates PASS first |
+| Phase M-0B | **BLOCKED** | — | closed cycles + sample + visual + review + approval required |
+
+**Semantics:** REAL_FILLS_ACCUMULATING ≠ PASS · `closedCycles=0` = DATA_GAP · gross PnL ≠ edge (net expectancy only) · screenshot = candidate, not auto-PASS.
+
+**Final Decision (2026-05-31): Phase M-0B remains BLOCKED. Live trading DISABLED. Order placement DISABLED. EXCHANGE_MANUAL_APPROVAL not_approved.**
+
+---
+
+## Phase M-0Z-6 Evidence Snapshot — (superseded 2026-05-29)
+
+> Updated: 2026-05-29
+> Stage: Evidence Intake Execution + Post-Deploy Triage + Paper Liveness Decision
+> Claude does not fill evidence values — Operator/Codex fills actual results only.
+
+| Evidence Item | Status | Owner | Evidence Required |
+|---|---|---|---|
+| `npm run build` (EXIT:0) | **PASS** | Codex | 2026-05-28: exited 0 on actual machine |
+| Fix 1 (`readPaperJournal.ts` ORDER_FILLED parse) | **INSTRUMENTATION_FIXED** | Claude | Syntax PASS 2026-05-28; pending deploy |
+| Fix 2 (`paperPerformance.ts` FILL_RESULT in extractFills) | **INSTRUMENTATION_FIXED** | Claude | Syntax PASS 2026-05-28; pending deploy |
+| Env safety flags (LIVE/ORDER/PRODUCTION=false) | **PASS** | Codex | Verified 2026-05-28 |
+| Protected endpoints (authenticated) | **SAFE_W_BLOCKERS** | Operator | `api.txt` 2026-05-28 — safe JSON, expected blockers |
+| Safe Git release (commit hash + push) | **PENDING** | Codex | Commit SHA + branch=main + push confirm + staged files list |
+| Plesk deploy + rebuild + restart | **PENDING** | Operator | After Codex push; no deploy error |
+| `BINGX_AGENT_DIR` / runtime root | **PENDING** | Operator | `echo $BINGX_AGENT_DIR` = project root/httpdocs |
+| Runtime source-of-truth files | **PENDING** | Operator | `latest_decision.json` + `market_snapshot.json` at `$BINGX_AGENT_DIR/` |
+| `/api/public-health` (post-deploy) | **PENDING** | Operator | curl → HTTP 200, JSON valid, no secret, no stack trace |
+| `/public` visual verification | **PENDING** | Operator | 11-point checklist (authenticated browser) |
+| `/api/paper-performance` output | **PENDING** | Operator | curl → fields present, totalOrderFilled |
+| Paper fills (`averageFillPrice`, `fillQty`, closed cycles) | **DATA_GAP** | System | Fix 1+2 pending deploy; 0 fills yet; natural accumulation required |
+| `EXCHANGE_MANUAL_APPROVAL` | **NOT_APPROVED** | Operator | All gates PASS first |
+| Phase M-0B gate | **BLOCKED** | — | All above PASS required |
+
+### Phase M-0Z-6 Gate Decision
+
+| Gate | Status | Owner | Next Action |
+|---|---|---|---|
+| Build (`npm run build` EXIT:0) | **PASS** | Codex | Done ✓ |
+| Env safety flags | **PASS** | Codex | Done ✓ |
+| Protected endpoints | **SAFE_W_BLOCKERS** | Operator | Re-verify only if deploy changes behavior |
+| Fix 1+2 instrumentation | **INSTRUMENTATION_FIXED** | Claude | Pending Codex push + Plesk deploy |
+| Git release (commit + push) | **PENDING** | Codex | Stage safe files → build → commit → push |
+| Plesk deploy + restart | **PENDING** | Operator | After Codex push: pull → rebuild → restart |
+| BINGX_AGENT_DIR verify | **PENDING** | Operator | `echo $BINGX_AGENT_DIR` → report |
+| Runtime files verify | **PENDING** | Operator | `ls -la $BINGX_AGENT_DIR/latest_decision.json` + `market_snapshot.json` |
+| /api/public-health post-deploy | **PENDING** | Operator | curl → report to Claude |
+| /public visual (authenticated) | **PENDING** | Operator | 11-point checklist → report to Claude |
+| /api/paper-performance | **PENDING** | Operator | curl → report to Claude |
+| Paper fills + closed cycles | **DATA_GAP** | System | Natural accumulation; if 0 after deploy → run 8-step Liveness Audit |
+| EXCHANGE_MANUAL_APPROVAL | **NOT_APPROVED** | Operator | After all gates PASS only |
+| Phase M-0B | **BLOCKED** | — | All gates PASS required |
+
+**Gate Summary: 2 PASS / 1 SAFE_W_BLOCKERS / 2 INSTRUMENTATION_FIXED / 7 PENDING / 1 DATA_GAP / 1 NOT_APPROVED**
+
+**Final Decision: Phase M-0B remains BLOCKED. Live trading remains DISABLED. Order placement remains DISABLED.**
+
+### Phase M-0Z-6 Liveness Audit Trigger
+
+If paper fills remain 0 after Plesk deploy confirms Fix 1+2 are live, run before any code change:
+
+```
+8-Step Paper Fill Liveness Audit:
+Step 1 — Scheduler heartbeat: is snapshot scheduler running? (server.cjs logs)
+Step 2 — plan_status_state.json: mode = PAPER? timestamp fresh?
+Step 3 — latest_decision.json: timestamp < 15 min old?
+Step 4 — market_snapshot.json: timestamp < 15 min old?
+Step 5 — Paper mode flag: is PAPER_TRADING_MODE=true or equivalent in env?
+Step 6 — Journal path: does $BINGX_AGENT_DIR/tmp/ exist and writable?
+Step 7 — Events written: any *.jsonl in tmp/ with schema_version=execution_audit_v1 in last 24h?
+Step 8 — API path alignment: /api/paper-performance auditRootDir = $BINGX_AGENT_DIR/tmp/?
+
+If all 8 pass but still 0 fills → run optional steps 9-14 (grid range / conditions / simulation logic / timezone / deployed code version).
+→ Classify root cause → report to Claude → Claude proposes minimal fix only if real bug confirmed.
+```
+
+---
+
+## Phase M-0Z-5 Evidence Snapshot
+
+> Updated: 2026-05-29
+> Stage: Post-Release Evidence Intake + Gate Classification + Paper Fill Liveness Root-Cause Plan
+> Claude does not fill evidence values — Operator/Codex fills actual results only.
+
+| Evidence Item | Status | Owner | Evidence Required |
+|---|---|---|---|
+| `npm run build` (EXIT:0) | **PASS** | Codex | 2026-05-28: exited 0 on actual machine |
+| Fix 1 (`readPaperJournal.ts` ORDER_FILLED parse) | **INSTRUMENTATION_FIXED** | Claude | Syntax PASS 2026-05-28 |
+| Fix 2 (`paperPerformance.ts` FILL_RESULT in extractFills) | **INSTRUMENTATION_FIXED** | Claude | Syntax PASS 2026-05-28 |
+| Env safety flags (LIVE/ORDER/PRODUCTION=false) | **PASS** | Codex | Verified 2026-05-28 |
+| Protected endpoints (authenticated) | **SAFE_W_BLOCKERS** | Operator | `api.txt` 2026-05-28 — safe JSON, expected blockers |
+| Safe Git release | **PENDING** | Codex | Confirm commit hash + push origin main |
+| Plesk deploy + restart | **PENDING** | Operator | After Codex push |
+| `BINGX_AGENT_DIR` / runtime root | **PENDING** | Operator | `echo $BINGX_AGENT_DIR` = project root |
+| `/api/public-health` (post-deploy) | **PENDING** | Operator | curl → HTTP 200 JSON, no secret, no stack trace |
+| `/public` visual verification | **PENDING** | Operator | 11-point checklist (authenticated browser) |
+| Paper fills (`averageFillPrice`, `fillQty`, closed cycles) | **DATA_GAP** | System | Fix 1+2 deployed; 0 fills yet; natural accumulation required |
+| `EXCHANGE_MANUAL_APPROVAL` | **NOT_APPROVED** | Operator | All gates PASS first |
+| Phase M-0B gate | **BLOCKED** | — | All above PASS required |
+
+### Phase M-0Z-5 Gate Decision
+
+| Gate | Status | Next Action |
+|---|---|---|
+| Build (`npm run build` EXIT:0) | **PASS** | Done |
+| Fix 1+2 instrumentation | **INSTRUMENTATION_FIXED** | Pending deploy to confirm effect |
+| Env safety flags | **PASS** | Done |
+| Protected endpoints | **SAFE_W_BLOCKERS** | Re-verify only if new deploy changes behavior |
+| Git release | **PENDING** | Codex: confirm commit hash + push |
+| Plesk deploy | **PENDING** | Operator: pull → rebuild → restart |
+| BINGX_AGENT_DIR verify | **PENDING** | Operator: `echo $BINGX_AGENT_DIR` → report |
+| /api/public-health post-deploy | **PENDING** | Operator: curl → send result to Claude |
+| /public visual | **PENDING** | Operator: 11-point checklist (authenticated) |
+| Paper evidence | **DATA_GAP** | System: natural accumulation; if 0 after deploy → run 8-step Liveness Audit |
+| EXCHANGE_MANUAL_APPROVAL | **NOT_APPROVED** | Operator: after all gates PASS only |
+| Phase M-0B | **BLOCKED** | All gates PASS required |
+
+**Gate Summary: 2 PASS / 1 SAFE_W_BLOCKERS / 2 INSTRUMENTATION_FIXED / 5 PENDING / 1 DATA_GAP / 1 NOT_APPROVED**
+
+**Final Decision: Phase M-0B remains BLOCKED. Live trading remains DISABLED. Order placement remains DISABLED.**
+
+### Phase M-0Z-5 Liveness Audit Trigger
+
+If paper fills remain 0 after Plesk deploy confirms Fix 1+2 are live:
+
+```
+8-Step Paper Fill Liveness Audit (run before any code change):
+Step 1 — Scheduler health: is snapshot scheduler running? (server.cjs logs)
+Step 2 — plan_status state: is plan_status_state.json mode = PAPER?
+Step 3 — market_snapshot age: is market_snapshot.json < 15 min old?
+Step 4 — Paper mode flag: is PAPER_TRADING_MODE=true or equivalent in env?
+Step 5 — Journal path: does BINGX_AGENT_DIR/tmp/ exist and writable?
+Step 6 — Events written: any *.jsonl in tmp/ with schema_version=execution_audit_v1 in last 24h?
+Step 7 — API path: curl /api/paper-performance → does auditRootDir resolve correctly?
+Step 8 — Dashboard vs backend: does totalPaperEvents in /api/paper-performance match file count?
+→ Report each step result to Claude before any code change.
+```
 
 ---
 
@@ -1672,3 +1837,37 @@ Create `/api/public-health` — a minimal no-auth endpoint for Scheduled Task or
 - `PROJECT_MAP.md`, `docs/SERVER_EVIDENCE_LEDGER.md`
 
 **Implementation note:** Since middleware manifest
+
+---
+
+## Pre-Deploy Static Findings — 2026-05-29 (Phase M-0Z-6D, offline)
+
+> Source: Claude offline static audit (read-only). No Git, no deploy, no runtime edit.
+> Status: PRE-DEPLOY / STATIC — does NOT upgrade any gate to post-deploy PASS.
+
+### Finding 1 — Paper reader path resolution = CORRECT (not a bug)
+- `dashboard/lib/paperPerformance.ts` → `resolvePnlLogPath()` resolves `paper_pnl.jsonl` from `process.env.BINGX_AGENT_DIR ?? process.env.DATA_DIR`, then `path.resolve(rootDir, "paper_pnl.jsonl")`.
+- `dashboard/lib/readPaperJournal.ts` → `resolveAuditRootDir()` resolves from `EXECUTION_AUDIT_LOG_PATH`, else `EXECUTION_AUDIT_ROOT_DIR ?? BINGX_AGENT_DIR` + `/tmp` (execution-runner default), else `cwd/tmp`.
+- Conclusion: readers honor source-of-truth root. NOT a path/source-of-truth bug.
+
+### Finding 2 — `/api/paper-performance` route = SAFE
+- `route.ts` wraps `computePaperPerformance()` in try/catch and always returns HTTP 200 with safe fallback `status:"no_data"`, `edgeStatus:"unproven"`, `paperDataQuality.qualityStatus:"insufficient"`. No crash, no secret, no stack-trace leak by design.
+
+### Finding 3 — Writer of `paper_pnl.jsonl` NOT present in this checkout
+- `engine/state_machine/io.ts` writes only: `sm_state.json`, `plan_status.json`, `plan_update_request.json`, `plan_history.jsonl` — NOT paper fills.
+- Repo-wide scan (excluding node_modules/.next): `paper_pnl.jsonl` referenced only by readers (`paperPerformance.ts`, `liveReadiness.ts`, `PaperPerformanceCard.tsx`) + docs + `.gitignore`. No producer found in `engine/`, `routes/`, root `*.cjs`, cron scripts, `.patchq`, or `bingx-agent-runner/src`.
+- Inference: the paper-fill producer is an EXTERNAL execution-runner process writing to `<root>/paper_pnl.jsonl` and/or `<root>/tmp/*.jsonl`, gated by `PAPER_TRADING_ENABLED` and located via `EXECUTION_AUDIT_ROOT_DIR` / `EXECUTION_AUDIT_LOG_PATH`.
+
+### Finding 4 — Env wiring gap (env-class, not code bug)
+- `.env.example` defines only `DATA_DIR` and `BINGX_AGENT_DIR`. It does NOT document `PAPER_TRADING_ENABLED`, `EXECUTION_AUDIT_ROOT_DIR`, or `EXECUTION_AUDIT_LOG_PATH` that the paper readers depend on.
+
+### Finding 5 — Local working-copy liveness (LOCAL only, not authoritative)
+- Local runtime files (`latest_decision.json`, `market_snapshot.json`, `scheduler_heartbeat.json`, `plan_status.json`) stale ~66h (2026-05-26). `scheduler_heartbeat.json` shows `last_status:"error"`, `last_success_at:null`. No `paper_pnl.jsonl` / paper journals in local checkout.
+- Must be re-confirmed against authoritative Plesk runtime post-deploy.
+
+### Liveness root-cause narrowing (offline)
+Leading candidate for 0 paper fills = **paper engine / execution-runner not running** OR **`PAPER_TRADING_ENABLED` unset** OR **`EXECUTION_AUDIT_ROOT_DIR` mismatch** → ops/env class, NOT a dashboard code bug. Reader paths verified correct. No code change proposed (Minimal Fix Policy threshold not met).
+
+### Gate impact
+No gate upgraded. Paper fill remains DATA_GAP. Phase M-0B remains BLOCKED.
+

@@ -17,10 +17,59 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0Z-4 — Build Release Verification + Post-Deploy Evidence Intake + Paper Fill Liveness Audit** — Fix 1+2 IMPLEMENTED (syntax PASS); `npm run build` PASS on actual machine; Phase M-0Z-4 roadmap DESIGNED (7-Checkpoint plan, Evidence Gate Matrix 11 rows, Paper Liveness Audit, Codex Handoff, Operator Checklist, M-0B Pre-Plan); Plesk deploy PENDING (Operator); `/public` visual PENDING; paper fills 0 (data gap); Phase M-0B remains BLOCKED, 2026-05-28
+**Phase M-0Z-6 — Paper Execution LIVE + Evidence Accumulation** (2026-05-31) — Deploy + engine layer fixed; **paper fill จริงทำงานบน production แล้ว** (real decision → real market → paper MARKET fill → FILL_RESULT averageFillPrice จริง → reader นับได้; cron `paper_cycle.sh` ทุก 5 นาที สะสม fills, `totalOrderFilled` เพิ่มต่อเนื่อง). PASS post-deploy: release(`34c4a8f`/`59472f8`) · staging · build · Plesk deploy · BINGX_AGENT_DIR · runtime files · `/api/public-health` · paper-performance endpoint · env safety flags. **เหลือ:** closed cycles=0 (รอราคาแกว่ง 2 ทาง) · sample<30 cycles · `/public` visual(16-item) · operator review · `EXCHANGE_MANUAL_APPROVAL` NOT_APPROVED. **Phase M-0B remains BLOCKED.**
 
 ### Next Stage
-**Phase M-0B — Read-only Exchange API Implementation** (🔒 BLOCKED — pending: (1) **Operator** Plesk git pull/rebuild/restart, (2) `BINGX_AGENT_DIR` set on Plesk, (3) runtime file verification, (4) endpoint checks on server, (5) `/public` visual verification, (6) paper fill evidence, (7) `EXCHANGE_MANUAL_APPROVAL=approved`)
+**Paper Evidence Accumulation → M-0B** (🔒 M-0B BLOCKED) — รอ: (1) closed cycles สะสม (ราคาต้องข้าม grid mid ให้เกิด SELL), (2) sample ~30 closed cycles เพื่อประเมิน edge, (3) `/public` 16-item visual PASS, (4) operator independent review, (5) `EXCHANGE_MANUAL_APPROVAL=approved` (หลังทุก gate PASS). M-0B = Read-only Exchange API Implementation ยัง BLOCKED จนกว่า paper evidence + approval ครบ
+
+### Phase M-0Z-6 — Paper Execution LIVE (2026-05-30 → 31) ✅
+**สำเร็จ: paper fill จริงทำงานบน production** — ไล่จาก deploy/cron/engine พังหมด จนเดินครบวงจร
+
+- [x] Git release commit `59472f8` (Fix1/2 + .env.example paper keys + docs) push origin main
+- [x] Plesk deploy + rebuild + restart — PASS post-deploy
+- [x] Runtime source-of-truth verified ผ่าน `/api/public-health` (latest_decision/market_snapshot/schedulerHeartbeat = exists, phase=M-0B_BLOCKED, no leak)
+- [x] `BINGX_AGENT_DIR=/var/www/vhosts/ob-gate.com/httpdocs` verified
+- [x] env paper keys: `PAPER_TRADING_ENABLED=true`, `EXECUTION_AUDIT_ROOT_DIR=.../httpdocs/dashboard`
+- [x] cron run-cycle fix: host (api→ob-gate.com via `OBGATE_RUN_CYCLE_BASE_URL`), CRLF→LF (`cron_scheduler_chain.sh`), key match
+- [x] `run_cycle.js` ported: เลิก hardcode `C:\bingx-agent` + `localhost:3000`→`SNAPSHOT_BASE_URL=https://api.ob-gate.com`
+- [x] **`paper_cycle.sh` (ใหม่)**: อ่าน decision/orderbook/funding จริง → MARKET paper order (`entryPrice:null`) → `/api/internal/execution-runner` → fill
+- [x] **Root cause สุดท้าย**: `dashboard/lib/broker/` + `lib/execution/` + `app/api/internal/` เคย **untracked ใน git** → server รัน engine เก่าไม่มี FILL_RESULT block → fill เกิดแต่ไม่ surface
+- [x] **Fix**: `git add` engine layer + commit `34c4a8f` + deploy (ย้าย copy เก่า `.old` ออกก่อน pull เลี่ยง untracked-overwrite) → server fill ได้
+- [x] `readPaperJournal.ts`: S1 (นับ FILL_RESULT) + S3 (hasAverageFillPrice รวม FILL_RESULT) + sort mtime ก่อน slice 30
+- [x] dev verification: debug route พิสูจน์ broker fill MARKET (averageFillPrice 73800) + engine emit FILL_RESULT — debug route ลบแล้ว ไม่ commit
+- [x] Plesk cron `paper_cycle.sh` `*/5 * * * *` — สะสม fills อัตโนมัติ
+- [x] **ผลยืนยัน (31 พ.ค.)**: `totalOrderFilled=30`, FILL_RESULT averageFillPrice=74115.3/74129.6 (ราคาจริง), paperModeDetected=true
+- [x] docs: M0Z6_PAPER_LOOP_A1_STATUS.md, M0Z6_SERVER_DEPLOY_FIXES_2026-05-30.md + M0Z6 offline control pack (6D–6J + Owner packets)
+- [x] No live trading / order placement enabled · EXCHANGE_MANUAL_APPROVAL=not_approved · Phase M-0B remains BLOCKED
+
+### Phase M-0Z-6 — Remaining (ก่อน M-0B)
+- [ ] closed cycles > 0 — รอราคาแกว่งข้าม grid mid ให้เกิด SELL (ตอนนี้ fill BUY หมด, ราคา < mid)
+- [ ] sample ~30 closed cycles เพื่อประเมิน expectancy/edge
+- [ ] `/public` 16-item visual verification (authenticated) — **visual evidence candidate logged (2026-05-31, low-res screenshot) = PENDING_EXTERNAL**; รอ full-res authenticated 16-item checklist
+- [ ] operator independent review
+- [ ] EXCHANGE_MANUAL_APPROVAL=approved (หลังทุก gate PASS เท่านั้น)
+- [ ] (watch) ถ้า closed cycles ไม่เกิดใน 1-2 วัน → review side logic ของ `paper_cycle.sh`
+
+### Parallel Track — TradingAgentHQ (frontend mode, ไม่ปลดล็อก M-0B)
+> cozy pixel-art AI Agent Command Center (codename Trading Caffe HQ) — read-only visual layer เหนือ bot state
+> Architecture: `PROJECT_ARCHITECTURE.md` Layer 13 · Full: `docs/TRADING_AGENT_HQ_ARCHITECTURE.md` / `_IMPLEMENTATION_PLAN.md` / `_ASSET_SPEC.md`
+> สถานะ: APPROVED FOR DESIGN + READ-ONLY PLANNING · production = PENDING BUILD/QA · **M-0B impact = none**
+
+- [x] THQ-0 asset & idea inventory (จาก `TradingAgentHQ/`)
+- [x] THQ-1 architecture docs integration (Layer 13 + 3 docs + map ref)
+- [x] THQ-2 asset pipeline: sprite sheets (24-frame, color-keyed transparent) + café background art + manifest/frame map
+- [x] THQ-3 route `/agent-hq` + ModeSwitch (คง `/public` เดิม) + ลิงก์จาก `/public`
+- [x] THQ-4 static scene prototype (bg + 6 agents)
+- [x] THQ-5 real bot state adapter (public-safe endpoints → ViewModel, fallback→mock)
+- [x] THQ-6 animation state resolver (priority/minHold/cooldown) + frame-cycling + CSS transforms
+- [x] THQ-7 interaction layer (hover/click/double-click/ESC/log-highlight/mobile bottom-sheet)
+- [x] THQ-8 UI overlay (TopHud + bottom log + RightInspector + source/freshness)
+- [x] THQ-9 visual QA gate 16/16 PASS → `docs/TRADING_AGENT_HQ_VISUAL_QA.md`
+- [~] THQ-10 perf/low-power (Low Power + reduced-motion ✅; ยังไม่ profile หนัก)
+- [ ] THQ-11 frontend production readiness (รอ operator commit + build PASS + mobile/tablet sanity)
+- ห้าม: order button / approval control / live flag / runtime write / private API · TradingAgentHQ **ไม่ใช่** source-of-truth · **ไม่ปลดล็อก M-0B**
+
+---
 
 ### Phase M-0S Done
 - [x] `/api/public-health` implemented.
@@ -337,6 +386,102 @@
 10. Do NOT enable live trading.
 11. Do NOT enable order placement.
 12. Do NOT set `EXCHANGE_MANUAL_APPROVAL=approved` until all 7 checkpoints PASS.
+
+---
+
+### Phase M-0Z-5 Done
+- [x] Phase M-0Z-5 roadmap DESIGNED: 5-Checkpoint evidence intake plan, 12-row Evidence Gate Matrix (PASS/FAIL/PENDING/DATA_GAP/NOT_APPROVED/BLOCKED classification rules), 8-step Paper Fill Liveness Audit (scheduler → plan_status → market_snapshot → paper mode → journal path → events written → API path → dashboard vs backend), Minimal Fix Policy (6 bug class taxonomy with file/validation/rollback/Codex handoff decision), Codex Git Handoff block, Operator 11-point post-deploy checklist, M-0B gate pre-decision (BLOCKED — 2/11 gates PASS).
+- [x] `PROJECT_CONTEXT.md` Current Snapshot updated to Phase M-0Z-5 (confirmed/pending/gate summary/next actions).
+- [x] No Git commands used by Claude.
+- [x] No exchange API called.
+- [x] No runtime JSON modified.
+- [x] No secrets exposed.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0Z-5 In Progress
+- Codex: confirm commit hash + push `origin main` + report staged files list.
+- Operator: Plesk `git pull origin main` + rebuild + restart Node.js App.
+- Operator: `echo $BINGX_AGENT_DIR` — verify = project root.
+- Operator: `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000` — post-deploy verify.
+- Operator: Login → open `/public` → run 11-point visual checklist.
+- Operator: `curl -k -sS https://ob-gate.com/api/paper-performance | head -c 3000` → report result.
+- Claude: classify each gate result → PASS / FAIL / PENDING / DATA_GAP.
+- System: paper fills accumulating naturally (no force-fill).
+
+### Phase M-0Z-5 Blocked / Pending
+- Safe Git release — PENDING (Codex must confirm commit + push).
+- Plesk deploy / restart — PENDING (Operator, after Codex push).
+- `BINGX_AGENT_DIR` verification — PENDING (Operator post-deploy).
+- `/api/public-health` post-deploy — PENDING (Operator curl verify).
+- `/public` visual verification — PENDING (authenticated browser/session required).
+- Paper fills (`averageFillPrice`, `fillQty`, closed cycles) — DATA_GAP (0 fills; Fix 1+2 deployed; natural accumulation required).
+- `EXCHANGE_MANUAL_APPROVAL` — NOT_APPROVED.
+- Phase M-0B implementation — BLOCKED.
+
+### Phase M-0Z-5 Next
+1. **Codex:** Confirm commit hash + `git push origin main` + report staged files list.
+2. **Operator:** Plesk `git pull origin main` + rebuild dashboard + restart Node.js App.
+3. **Operator:** `echo $BINGX_AGENT_DIR` → verify = httpdocs root.
+4. **Operator:** `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000` → send result to Claude.
+5. **Operator:** Login → open `/public` → run 11-point visual checklist → report result.
+6. **Operator:** `curl -k -sS https://ob-gate.com/api/paper-performance | head -c 3000` → send result to Claude.
+7. **Claude:** Classify each gate result → PASS / FAIL / PENDING / DATA_GAP.
+8. If 0 fills remain after deploy: run 8-step Paper Fill Liveness Audit before any code change.
+9. Do NOT enable live trading.
+10. Do NOT enable order placement.
+11. Do NOT set `EXCHANGE_MANUAL_APPROVAL=approved` while any gate is PENDING or FAIL.
+
+---
+
+### Phase M-0Z-6 Done
+- [x] Phase M-0Z-6 roadmap DESIGNED: 7-Checkpoint evidence intake plan, 13-row Evidence Gate Matrix (PASS/FAIL/PENDING/DATA_GAP/NOT_APPROVED/BLOCKED with PASS/FAIL criteria per gate), 8-step Paper Fill Liveness Audit, optional 14-point deeper audit, 10-class liveness classification, Minimal Fix Policy (8 bug class taxonomy), Codex Git Handoff block, Operator 15-point checklist, M-0B pre-gate decision (BLOCKED — 9 PENDING/1 DATA_GAP/1 NOT_APPROVED).
+- [x] `PROJECT_CONTEXT.md` Current Snapshot updated to Phase M-0Z-6 (confirmed/pending/gate summary/12 next actions); §8 header fixed from M-0Z-4 → M-0Z-6.
+- [x] `PROJECT_MAP.md` Current Stage → M-0Z-6; Phase M-0Z-6 Done/In Progress/Blocked/Next added; Changelog entry added.
+- [x] `docs/SERVER_EVIDENCE_LEDGER.md` Current Stage → M-0Z-6; Phase M-0Z-6 evidence intake section added (13-row table + gate decision).
+- [x] No Git commands used by Claude.
+- [x] No exchange API called.
+- [x] No runtime JSON modified.
+- [x] No secrets exposed.
+- [x] Phase M-0B remains BLOCKED.
+
+### Phase M-0Z-6 In Progress
+- Codex: verify branch=main + build EXIT:0 + stage safe files + commit + push origin main + report hash + staged list.
+- Operator: Plesk git pull + rebuild + restart.
+- Operator: `echo $BINGX_AGENT_DIR` verify.
+- Operator: verify runtime files exist at `$BINGX_AGENT_DIR/`.
+- Operator: curl `/api/public-health` post-deploy → report to Claude.
+- Operator: Login → `/public` → 11-point visual checklist → report to Claude.
+- Operator: curl `/api/paper-performance` → report to Claude.
+- Claude: classify each result → PASS / FAIL / PENDING / DATA_GAP.
+- System: paper fills accumulating naturally (no force-fill).
+
+### Phase M-0Z-6 Blocked / Pending
+- Safe Git release — PENDING (Codex must confirm commit hash + push).
+- Plesk deploy / restart — PENDING (Operator, after Codex push).
+- `BINGX_AGENT_DIR` verification — PENDING (Operator post-deploy).
+- Runtime source-of-truth files verification — PENDING (Operator post-deploy).
+- `/api/public-health` post-deploy — PENDING (Operator curl verify).
+- `/public` visual verification — PENDING (authenticated browser/session required).
+- `/api/paper-performance` output — PENDING (Operator curl).
+- Paper fills (`averageFillPrice`, `fillQty`, closed cycles) — DATA_GAP (0 fills; Fix 1+2 pending deploy; natural accumulation required).
+- `EXCHANGE_MANUAL_APPROVAL` — NOT_APPROVED.
+- Phase M-0B implementation — BLOCKED.
+
+### Phase M-0Z-6 Next
+1. **Codex:** Verify branch=main; pull/rebase origin/main; `cd dashboard && npm run build` → EXIT:0.
+2. **Codex:** Stage safe files ONLY (readPaperJournal.ts, paperPerformance.ts, PROJECT_CONTEXT.md, PROJECT_MAP.md, docs/SERVER_EVIDENCE_LEDGER.md).
+3. **Codex:** `git commit` + `git push origin main` → report commit hash + staged files list to Claude.
+4. **Operator:** Plesk `git pull origin main` + rebuild + restart Node.js App (after Codex confirms push).
+5. **Operator:** `echo $BINGX_AGENT_DIR` → report output.
+6. **Operator:** `ls -la $BINGX_AGENT_DIR/latest_decision.json` + `market_snapshot.json` → verify exist.
+7. **Operator:** `curl -k -sS -i https://ob-gate.com/api/public-health | head -c 4000` → report to Claude.
+8. **Operator:** Login (browser only, no password in chat) → open `/public` → 11-point checklist → report.
+9. **Operator:** `curl -k -sS https://ob-gate.com/api/paper-performance | head -c 3000` → report to Claude.
+10. **Claude:** Classify each checkpoint result → PASS / FAIL / PENDING / DATA_GAP.
+11. If 0 fills after deploy: run 8-step Paper Fill Liveness Audit before any code change.
+12. Do NOT enable live trading.
+13. Do NOT enable order placement.
+14. Do NOT set `EXCHANGE_MANUAL_APPROVAL=approved` while any gate is PENDING or FAIL.
 
 ---
 
@@ -950,6 +1095,52 @@
   - no runtime JSON committed.
   - no secrets committed.
   - Phase M-0B remains BLOCKED.
+
+### 2026-05-29 — Phase M-0Z-6 Evidence Intake Execution + Post-Deploy Triage + Paper Liveness Decision
+- Designed:
+  - Phase M-0Z-6 roadmap: 7-Checkpoint evidence intake (Codex release confirm → Plesk deploy → BINGX_AGENT_DIR verify → runtime files verify → /api/public-health post-deploy → /public visual + /api/paper-performance → M-0B gate decision).
+  - 13-row Evidence Gate Matrix with PASS/FAIL criteria per gate (PASS/FAIL/PENDING/DATA_GAP/NOT_APPROVED/BLOCKED).
+  - 8-step Paper Fill Liveness Audit + optional 14-point deeper audit + 10-class liveness classification.
+  - Minimal Fix Policy: 8 bug class taxonomy (frontend display / API parsing / paper journal parsing / source-of-truth path / scheduler / deployment-env / simulation fill logic / documentation-only) each with files/validation/rollback/Codex handoff decision.
+  - Codex Git Handoff block: safe files, forbidden files, commit message, stop conditions, validation commands, report format.
+  - Operator 15-point post-deploy checklist.
+  - M-0B pre-gate decision: BLOCKED (1 PASS / 9 PENDING / 1 DATA_GAP / 1 NOT_APPROVED).
+- Updated:
+  - `PROJECT_CONTEXT.md` — Current Stage → M-0Z-6; §8 header fixed (M-0Z-4 → M-0Z-6); full snapshot rewritten (confirmed/pending/gate summary/12 next actions).
+  - `PROJECT_MAP.md` — Current Stage → M-0Z-6; Phase M-0Z-6 Done/In Progress/Blocked/Next added; Changelog entry added.
+  - `docs/SERVER_EVIDENCE_LEDGER.md` — Current Stage → M-0Z-6; Phase M-0Z-6 evidence intake section added (13-row table + gate decision + liveness trigger).
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API called.
+  - no runtime JSON modified.
+  - no secrets exposed.
+  - Phase M-0B remains BLOCKED.
+
+----
+
+### 2026-05-29 — Phase M-0Z-5 Post-Release Evidence Intake + Gate Classification + Paper Fill Liveness Root-Cause Plan
+- Designed:
+  - Phase M-0Z-5 roadmap: 5-Checkpoint evidence intake (Codex commit confirm → Plesk deploy → BINGX_AGENT_DIR verify → endpoint probes → /public visual + paper-performance).
+  - 12-row Evidence Gate Matrix with classification rules (PASS/FAIL/PENDING/DATA_GAP/NOT_APPROVED/BLOCKED).
+  - 8-step Paper Fill Liveness Audit (scheduler health → plan_status state → market_snapshot age → paper mode flag → journal path resolution → events written in last 24h → /api/paper-performance path → dashboard vs backend reconciliation).
+  - Minimal Fix Policy: 6 bug class taxonomy (path resolution / scheduler / paper mode flag / event parsing / API route / data quality) each with files, validation, rollback, Codex handoff decision.
+  - Codex Git Handoff block: Fix 1+2 code files + M-0Z-3/4/5 doc updates.
+  - Operator 11-point post-deploy checklist.
+  - M-0B pre-gate decision: BLOCKED (2/11 gates PASS — `npm run build` + env safety flags).
+- Updated:
+  - `PROJECT_CONTEXT.md` — Current Stage → M-0Z-5; full snapshot rewritten (confirmed/pending/gate summary/11 next actions).
+  - `PROJECT_MAP.md` — Current Stage → M-0Z-5; Phase M-0Z-5 Done/In Progress/Blocked/Next added; Changelog entry added.
+  - `docs/SERVER_EVIDENCE_LEDGER.md` — Current Stage → M-0Z-5; Phase M-0Z-5 evidence intake section added (12-row table + gate decision).
+- Safety:
+  - no live trading.
+  - no order placement.
+  - no exchange API called.
+  - no runtime JSON modified.
+  - no secrets exposed.
+  - Phase M-0B remains BLOCKED.
+
+----
 
 ### 2026-05-28 — Phase M-0Z-4 Build Release Verification + Post-Deploy Evidence Intake + Paper Fill Liveness Audit
 - Designed:

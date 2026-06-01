@@ -338,6 +338,12 @@ export default async function PublicPage() {
             {/* Phase F: Auto-refresh controller */}
             <AutoRefreshController intervalSec={30} defaultOn={true} />
             <RefreshPageButton />
+            <a
+              href="/agent-hq"
+              className="inline-flex items-center rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-3 py-1 text-[11px] font-medium text-fuchsia-100 hover:bg-fuchsia-500/20"
+            >
+              🎮 TradingAgentHQ
+            </a>
             <PageFreshBadge
               freshness={pageBadgeFreshness}
               decisionKind={pageBadgeDecisionKind}

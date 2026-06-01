@@ -9,6 +9,7 @@ function isPublicPath(pathname: string) {
   if (pathname === "/api/public-health") return true;
   if (pathname.startsWith("/api/internal/")) return true;
   if (pathname.startsWith("/_next")) return true;
+  if (pathname.startsWith("/assets/trading-agent-hq/")) return true;
   if (pathname.startsWith("/favicon")) return true;
   if (pathname.startsWith("/robots")) return true;
   if (pathname.startsWith("/sitemap")) return true;

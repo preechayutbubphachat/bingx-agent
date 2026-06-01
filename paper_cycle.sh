@@ -181,12 +181,13 @@ json_str_or_null() {
 }
 
 build_curl_flags() {
-  local flags=()
   local ca_file=""
+
+  CURL_FLAGS=()
 
   if [ -n "$CURL_EXTRA_FLAGS" ]; then
     # shellcheck disable=SC2206
-    flags=($CURL_EXTRA_FLAGS)
+    CURL_FLAGS=($CURL_EXTRA_FLAGS)
   fi
 
   if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
@@ -198,13 +199,11 @@ build_curl_flags() {
   fi
 
   if [ -n "$ca_file" ]; then
-    flags+=(--cacert "$ca_file")
+    CURL_FLAGS+=(--cacert "$ca_file")
   elif [[ "$EXECUTION_URL" == https://ob-gate.com/* ]]; then
     # Plesk/chroot CA bundle fallback for internal self-call only.
-    flags+=(--insecure)
+    CURL_FLAGS+=(--insecure)
   fi
-
-  printf '%s\n' "${flags[@]}"
 }
 
 KEY="$(read_setting "${RUN_CYCLE_TRIGGER_KEY:-}" RUN_CYCLE_TRIGGER_KEY INTERNAL_API_KEY REFRESH_ENDPOINT_KEY || true)"
@@ -326,7 +325,8 @@ if [ -z "$BODY" ]; then
   exit 1
 fi
 
-mapfile -t CURL_FLAGS < <(build_curl_flags)
+CURL_FLAGS=()
+build_curl_flags
 
 response="$(
   curl -sS -w "\nHTTP_STATUS=%{http_code}" \
@@ -334,7 +334,7 @@ response="$(
     -X POST "$EXECUTION_URL" \
     -H "content-type: application/json" \
     -H "x-run-cycle-key: $KEY" \
-    --data-binary "$BODY"
+    --data-raw "$BODY"
 )"
 status="${response##*HTTP_STATUS=}"
 

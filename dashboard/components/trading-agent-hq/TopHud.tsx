@@ -1,46 +1,62 @@
-// dashboard/components/trading-agent-hq/TopHud.tsx
 "use client";
 
 import type { TradingAgentHQViewModel } from "@/lib/trading-agent-hq/viewModel";
 
-function Stat({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "warn" | "danger" | "ok" }) {
+function Stat({
+  label,
+  value,
+  caption,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  caption?: string;
+  tone?: "neutral" | "warn" | "danger" | "ok";
+}) {
   const toneCls =
-    tone === "danger" ? "text-red-700" : tone === "warn" ? "text-amber-700" : tone === "ok" ? "text-emerald-700" : "text-neutral-800";
+    tone === "danger"
+      ? "text-red-800"
+      : tone === "warn"
+        ? "text-amber-800"
+        : tone === "ok"
+          ? "text-emerald-800"
+          : "text-[#2f241b]";
+
   return (
-    <div className="flex min-w-[88px] flex-col">
-      <span className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</span>
-      <span className={`text-sm font-semibold ${toneCls}`}>{value}</span>
+    <div className="min-h-[92px] rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-3 shadow-sm">
+      <span className="block text-[10px] font-bold uppercase tracking-wide text-[#8a735d]">{label}</span>
+      <span className={`mt-1 block text-xl font-black leading-tight ${toneCls}`}>{value}</span>
+      {caption && <span className="mt-1 block text-[11px] leading-snug text-[#7a6550]">{caption}</span>}
     </div>
   );
 }
 
 export default function TopHud({ vm }: { vm: TradingAgentHQViewModel }) {
-  const s = vm.safety;
-  return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl bg-white/80 px-4 py-3 ring-1 ring-black/10">
-      <Stat label="Market Mood" value={vm.topHud.marketMood} tone="warn" />
-      <Stat label="Sim Equity" value={vm.topHud.simEquity == null ? "—" : String(vm.topHud.simEquity)} />
-      <Stat label="Daily PnL" value={vm.topHud.dailyPnl == null ? "—" : String(vm.topHud.dailyPnl)} />
-      <Stat label="Risk Heat" value={vm.topHud.riskHeat} tone="warn" />
-      <Stat label="Agents Active" value={`${vm.topHud.agentsActive}/6`} />
-      <Stat label="Last Update" value={vm.meta.lastUpdate} />
+  const safety = vm.safety;
 
-      {/* truthfulness badges — always honest, never live-ready */}
-      <div className="ml-auto flex flex-wrap items-center gap-1.5">
-        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">{s.phase}</span>
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
-          live: {s.liveTradingEnabled ? "ON" : "OFF"}
-        </span>
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
-          orders: {s.orderPlacementEnabled ? "ON" : "OFF"}
-        </span>
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-          approval: {s.exchangeManualApproval}
-        </span>
-        {vm.meta.source === "mock" && (
-          <span className="rounded-full bg-fuchsia-100 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-700">MOCK DATA</span>
-        )}
-      </div>
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+      <Stat label="Market Mood" value={vm.topHud.marketMood} caption="Public-safe signal only" tone="warn" />
+      <Stat
+        label="Paper Equity"
+        value={vm.topHud.simEquity == null ? "Unavailable" : String(vm.topHud.simEquity)}
+        caption="No account balance exposed"
+      />
+      <Stat
+        label="Paper PnL"
+        value={vm.topHud.dailyPnl == null ? "Unavailable" : String(vm.topHud.dailyPnl)}
+        caption="Not live PnL"
+      />
+      <Stat label="Risk Heat" value={vm.topHud.riskHeat} caption="Safety posture" tone={vm.topHud.riskHeat === "CALM" ? "ok" : "warn"} />
+      <Stat label="Agents Active" value={`${vm.topHud.agentsActive}/6`} caption="Visual workers" />
+      <Stat label="Paper Fills" value={`${vm.paper.totalOrderFilled}`} caption="Not profitability" tone={vm.paper.totalOrderFilled > 0 ? "ok" : "warn"} />
+      <Stat
+        label="Closed Cycles"
+        value={`${vm.paper.closedCycles}`}
+        caption={vm.paper.closedCycles === 0 ? "DATA_GAP, not edge" : "Evidence present"}
+        tone={vm.paper.closedCycles === 0 ? "warn" : "ok"}
+      />
+      <Stat label="Gate" value={safety.phase} caption={`approval: ${safety.exchangeManualApproval}`} tone="danger" />
     </div>
   );
 }

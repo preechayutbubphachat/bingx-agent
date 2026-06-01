@@ -16,7 +16,7 @@ export default function AgentHqRoute() {
   // THQ-5: server provides mock as initial; client hydrates from public-safe endpoints.
   // Do NOT fetch private/runtime data here.
   return (
-    <main className="min-h-screen bg-[#faf6ee]">
+    <main className="min-h-screen bg-[#21170f]">
       <TradingAgentHQPage initialVm={MOCK_VIEW_MODEL} />
     </main>
   );

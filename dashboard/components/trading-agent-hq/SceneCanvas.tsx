@@ -22,7 +22,7 @@ interface Props {
 export default function SceneCanvas({ vm, animKeys, selected, hovered, lowPower, debug, onHover, onSelect, onDouble }: Props) {
   return (
     <div
-      className="relative mx-auto w-full overflow-hidden rounded-2xl ring-1 ring-black/10"
+      className="relative mx-auto w-full overflow-hidden rounded-lg border border-[#3a2c21]/10 shadow-sm"
       style={{
         aspectRatio: `${SCENE.width} / ${SCENE.height}`,
         ...(BACKGROUND_SRC
@@ -32,7 +32,7 @@ export default function SceneCanvas({ vm, animKeys, selected, hovered, lowPower,
               backgroundPosition: "center",
             }
           : { background: "linear-gradient(160deg,#f6ecd9 0%,#efe2cf 38%,#e7d6bd 100%)" }),
-        maxWidth: 1100,
+        maxWidth: 1180,
       }}
     >
       {!BACKGROUND_SRC && <div className="absolute inset-x-0 bottom-0 h-1/3 bg-[#e0cdac]/40" />}

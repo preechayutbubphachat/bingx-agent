@@ -1494,3 +1494,159 @@ cozy pixel-art AI Agent Command Center ที่ map สถานะบอทจ
 **Source-of-truth คงเดิม:** `<ROOT>/latest_decision.json` + `<ROOT>/market_snapshot.json`; paper audit `<ROOT>/dashboard/tmp/execution-runner/*.jsonl` (via `EXECUTION_AUDIT_ROOT_DIR=<ROOT>/dashboard`) · public/cache JSON = display only ห้ามถือเป็นจริง
 
 **M-0B impact: none** — พัฒนาขนานได้ ไม่ปลดล็อก M-0B · live/order/approval คง disabled
+
+---
+
+## Layer 13.1 — TradingAgentHQ Agent Progression & Mission Layer
+
+> Canonical reference: `docs/TRADING_AGENT_HQ_AGENT_PROGRESSION.md`
+> Scope: docs-only architecture for future read-only frontend gamification.
+
+### Purpose
+
+- Turn system evidence into a readable game-like progression system.
+- Help the operator understand which subsystem is improving, blocked, or missing evidence.
+- Make evidence gaps visible as missions instead of hiding them behind optimistic UI.
+- Keep `/agent-hq` engaging without implying trading readiness, profitability, approval, or live readiness.
+
+### Hard Boundaries
+
+- Read-only.
+- Visualization only.
+- Does not change bot behavior.
+- Does not change trading decisions.
+- Does not change risk logic.
+- Does not place, cancel, replace, or simulate real exchange orders.
+- Does not approve risk.
+- Does not enable live trading or order placement.
+- Does not mark M-0B `READY_FOR_REVIEW`.
+- Does not use profit as XP unless sufficient closed-cycle evidence and positive net expectancy exist.
+
+**Core rule:** Agent levels are visual evidence indicators only. Agent XP does not control trading.
+
+### Agent Progression Model
+
+```ts
+type AgentProgression = {
+  agentId: string;
+  role: string;
+  level: number;
+  xp: number;
+  xpToNextLevel: number;
+  missions: Mission[];
+  skills: Skill[];
+  badges: Badge[];
+  mood: "calm" | "focused" | "blocked" | "warning" | "unknown";
+  status: "active" | "watching" | "data_gap" | "blocked" | "unknown";
+  evidenceQuality: "strong" | "partial" | "data_gap" | "stale" | "unknown";
+  safetyState: "safe" | "warning" | "blocked";
+  blockedReasons: string[];
+  lastUpdated: string;
+};
+```
+
+Suggested visual level formula:
+
+```text
+level = floor(sqrt(totalXp / 100)) + 1
+```
+
+XP may come from:
+
+- `evidenceCompletenessXP`
+- `safetyConsistencyXP`
+- `dataQualityXP`
+- `uptimeXP`
+- `reviewXP`
+- `closedCycleXP` only after real closed cycles exist
+
+XP penalties:
+
+- `missingEvidencePenalty`
+- `falseReadinessPenalty`
+- `staleDataPenalty`
+- `safetyWarningPenalty`
+
+Forbidden XP sources:
+
+- raw profit before sufficient sample
+- raw number of trades
+- fake paper PnL
+- live-ready claims
+- approval status
+
+### Mission Categories
+
+1. Daily Safety Missions
+   - Keep live OFF.
+   - Keep orders OFF.
+   - Keep approval `not_approved` until every gate passes.
+   - No secret exposure.
+   - No stack trace.
+
+2. Paper Evidence Missions
+   - Collect paper fills with `averageFillPrice`.
+   - Maintain `costGate=PASS`.
+   - Collect the first closed cycle.
+   - Collect 30 closed cycles.
+   - Compute net expectancy after fees and slippage.
+
+3. Data Quality Missions
+   - `hasGridSpacing=true`
+   - `hasModeTags=true`
+   - `hasRegimeTags=true`
+   - `hasSessionTags=true`
+   - `hasClosedTrades=true`
+   - `hasNoTradeReasons=true`
+
+4. Visual QA Missions
+   - `/public` visual PASS.
+   - `/agent-hq` visual PASS.
+   - No false live-ready claim.
+   - Mobile/tablet sanity.
+
+5. Operator Review Missions
+   - Independent evidence review.
+   - Approval only after every gate PASS.
+
+Mission status labels:
+
+- `DONE`
+- `IN_PROGRESS`
+- `DATA_GAP`
+- `BLOCKED`
+- `NOT_APPROVED`
+- `WARNING`
+- `FAIL`
+
+### Skill Mapping
+
+| Agent | Example skills |
+|---|---|
+| Grid Bot | Grid Spacing Awareness; Fill Quality Tracking; Closed Cycle Pairing; Cost Gate Discipline |
+| Trend Bot | Momentum Scan; Regime Confirmation; Signal Patience; False Breakout Awareness |
+| Risk Manager | Kill Switch Awareness; Approval Discipline; Drawdown Guard; Safety Gate Integrity |
+| News Analyst | Event Risk Detection; News Context Coverage; No-Trade Reason Logging; Sentiment Awareness |
+| Market Regime Analyst | Range Detection; Trend Detection; Volatility State; Session Context |
+| Memory / Second Brain | Journal Completeness; Evidence Recall; Lessons Learned; Attribution Coverage |
+
+### Data Binding Rules
+
+Progression may map only from safe evidence inputs:
+
+- `/api/public-health`
+- authenticated `/api/paper-performance`
+- safe frontend view model
+- visual QA status
+- operator evidence status
+
+Rules:
+
+- Missing data = `DATA_GAP`.
+- `closedCycles=0` cannot give Edge XP.
+- `costGate=PASS` can give Cost Discipline XP, not Edge XP.
+- Paper fills can give Fill Evidence XP, not Profit XP.
+- Levels must not claim profitability.
+- No fake PnL.
+- Stale data reduces confidence and mood.
+- M-0B remains blocked until all real gates pass.

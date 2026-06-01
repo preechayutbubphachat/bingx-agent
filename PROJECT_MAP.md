@@ -69,6 +69,12 @@
 - [ ] THQ-11 frontend production readiness (รอ operator commit + build PASS + mobile/tablet sanity)
 - ห้าม: order button / approval control / live flag / runtime write / private API · TradingAgentHQ **ไม่ใช่** source-of-truth · **ไม่ปลดล็อก M-0B**
 
+- [ ] THQ-FE-6 — Agent Progression & Missions
+   - Status: PLANNED
+   - Scope: read-only frontend gamification and evidence-progress visualization
+   - M-0B impact: none
+   - Safety: no trading controls, no approval controls, no live toggles
+
 ---
 
 ### Phase M-0S Done

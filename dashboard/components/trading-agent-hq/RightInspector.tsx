@@ -72,7 +72,7 @@ export default function RightInspector({
           <p className="text-[11px] text-[#8a735d]">{progression?.role ?? place?.role ?? "Agent desk"}</p>
         </div>
         <button type="button" onClick={onClose} className="rounded px-2 py-0.5 text-xs text-[#8a735d] hover:bg-white">
-          Close
+          Reset
         </button>
       </div>
 

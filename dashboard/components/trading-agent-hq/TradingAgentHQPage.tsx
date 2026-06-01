@@ -16,29 +16,31 @@ import SafetyStatusStrip from "./SafetyStatusStrip";
 import BottomWidgetDock from "./BottomWidgetDock";
 import AdvancedDebugCard from "./AdvancedDebugCard";
 
+const DEFAULT_AGENT_ID: AgentId = "risk_manager";
+
 // THQ-5: starts from server-provided initial (mock), then hydrates from public-safe endpoints.
 export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAgentHQViewModel }) {
   const router = useRouter();
   const { vm, state, error, refresh } = useTradingAgentHQ(initialVm);
-  const [selected, setSelected] = useState<AgentId | null>("risk_manager");
+  const [selected, setSelected] = useState<AgentId>(DEFAULT_AGENT_ID);
   const [hovered, setHovered] = useState<AgentId | null>(null);
   const [lowPower, setLowPower] = useState(false);
   const [debug, setDebug] = useState(false);
 
   const animKeys = useAgentAnimations(vm.agents);
   const progressions = buildAgentProgressions(vm);
-  const selectedAgent = selected ? vm.agents[selected] : null;
-  const selectedProgression = selected ? progressions[selected] : null;
+  const effectiveSelected = vm.agents[selected] ? selected : DEFAULT_AGENT_ID;
+  const selectedAgent = vm.agents[effectiveSelected] ?? initialVm.agents[effectiveSelected] ?? null;
+  const selectedProgression = progressions[effectiveSelected] ?? progressions[DEFAULT_AGENT_ID] ?? null;
   const live = vm.meta.source === "public-safe-api" && state === "ready";
 
   useEffect(() => {
-    if (!selected) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelected(null);
+      if (event.key === "Escape") setSelected(DEFAULT_AGENT_ID);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selected]);
+  }, []);
 
   const goDebug = () => router.push("/public");
 
@@ -57,7 +59,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         <TopHud vm={vm} />
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
-          <CommandRail vm={vm} selected={selected} onSelect={(id) => setSelected(id)} />
+          <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />
 
           <section className="min-w-0 rounded-lg border border-[#3a2c21]/10 bg-[#fff4df] p-2 shadow-sm">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
@@ -73,7 +75,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             <SceneCanvas
               vm={vm}
               animKeys={animKeys}
-              selected={selected}
+              selected={effectiveSelected}
               hovered={hovered}
               lowPower={lowPower}
               debug={debug}
@@ -84,20 +86,20 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           </section>
 
           <div className="hidden min-h-[260px] space-y-3 xl:block">
-            <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
+            <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(DEFAULT_AGENT_ID)} onDebug={goDebug} />
             <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 xl:hidden">
-          <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(null)} onDebug={goDebug} />
+          <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(DEFAULT_AGENT_ID)} onDebug={goDebug} />
           <div className="hidden md:block">
             <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
           </div>
         </div>
 
         <BottomWidgetDock vm={vm} progressions={progressions} onPick={(id) => setSelected(id)} />
-        <BottomLogBar log={vm.bottomLog} onPick={(id) => setSelected(id)} selected={selected} />
+        <BottomLogBar log={vm.bottomLog} onPick={(id) => setSelected(id)} selected={effectiveSelected} />
 
         <p className="px-1 text-[11px] text-[#cbb799]">
           TradingAgentHQ is a read-only visual layer. It does not send orders, approve risk, enable live trading, or write runtime JSON.

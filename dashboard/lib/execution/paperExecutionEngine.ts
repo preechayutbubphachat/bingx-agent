@@ -61,12 +61,33 @@ export type PaperExecutionIdempotency = {
   processedKeys?: string[];
 };
 
+export const PAPER_OBSERVABILITY_SCHEMA_VERSION = "m0z6-observability-v1";
+
+export type PaperObservabilityContext = {
+  paperObservabilitySchemaVersion: typeof PAPER_OBSERVABILITY_SCHEMA_VERSION;
+  schemaVersion: typeof PAPER_OBSERVABILITY_SCHEMA_VERSION;
+  gridSpacingPct?: number | null;
+  gridLower?: number | null;
+  gridUpper?: number | null;
+  gridMid?: number | null;
+  currentPrice?: number | null;
+  side?: BrokerSide | null;
+  mode?: string | null;
+  regime?: string | null;
+  session?: string | null;
+  symbol?: string | null;
+  eventTs?: number | null;
+  paperModeDetected?: boolean | null;
+  noTradeReason?: string | null;
+};
+
 export type PaperExecutionContext = {
   symbol: string;
   machineState: PlanMachineState;
   riskOverlay: RiskOverlay;
   market: MarketSnapshot;
   plannedEntry?: PaperExecutionEntry | null;
+  observability?: PaperObservabilityContext | null;
   reduceQuantity?: number | null;
   closeReason?: string | null;
   idempotency?: PaperExecutionIdempotency | null;
@@ -138,6 +159,15 @@ function buildEventKey(ctx: PaperExecutionContext) {
     `${ctx.symbol}:${ctx.machineState}:${ctx.market.closeTs5m ?? ctx.market.price.updatedAtMs ?? "na"}`;
 
   return raw;
+}
+
+function buildObservabilityPayload(ctx: PaperExecutionContext) {
+  if (!ctx.observability) return null;
+  return {
+    ...ctx.observability,
+    paperObservabilitySchemaVersion: PAPER_OBSERVABILITY_SCHEMA_VERSION,
+    schemaVersion: PAPER_OBSERVABILITY_SCHEMA_VERSION,
+  };
 }
 
 function alreadyProcessed(ctx: PaperExecutionContext, key: string | null) {
@@ -531,6 +561,7 @@ export async function runPaperExecution(
   const openOrders = await broker.getOpenOrders(ctx.symbol);
   const decision = decidePaperExecution(ctx, position, openOrders);
   const mode = broker.getIdentity().mode;
+  const observability = buildObservabilityPayload(ctx);
   const gate = evaluateTradingModeGate({
     mode,
     action: gateActionForDecision(ctx.machineState, decision),
@@ -622,6 +653,7 @@ export async function runPaperExecution(
           decision: auditPayloadFromDecision(decision),
           gate: auditPayloadFromGate(gate),
           reconcile: auditPayloadFromReconcile(sync),
+          context: observability,
         },
       })
     );
@@ -635,6 +667,7 @@ export async function runPaperExecution(
           payload: {
             gate: auditPayloadFromGate(gate),
             decision: auditPayloadFromDecision(decision),
+            context: observability,
           },
         })
       );
@@ -671,6 +704,7 @@ export async function runPaperExecution(
       payload: {
         decision: auditPayloadFromDecision(decision),
         gate: auditPayloadFromGate(gate),
+        context: observability,
       },
     })
   );
@@ -693,6 +727,7 @@ export async function runPaperExecution(
       candleKey: ctx.idempotency?.candleKey ?? null,
       payload: {
         results: auditPayloadFromBrokerResults(results),
+        context: observability,
       },
     })
   );
@@ -794,6 +829,7 @@ export async function runPaperExecution(
                 fills: Array.isArray(fr.fills) ? fr.fills : null,
                 liveOrder: false,
                 source: "paper_fill",
+                context: observability,
               },
             })
           );

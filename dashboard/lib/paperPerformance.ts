@@ -457,7 +457,8 @@ function tripsFromPnlLog(entries: PnlLogEntry[]): RoundTrip[] {
 type FillRecord = {
   ts: number; side: "BUY" | "SELL";
   price: number; quantity: number;
-  mode: TradingMode; session: TradingSession;
+  mode: TradingMode; regime: MarketRegime; session: TradingSession;
+  gridSpacingPct: number | null;
 };
 
 function extractFills(events: PaperEventSummary[]): FillRecord[] {
@@ -476,8 +477,10 @@ function extractFills(events: PaperEventSummary[]): FillRecord[] {
       ts: ev.ts,
       side: ev.side.toUpperCase() === "SELL" ? "SELL" : "BUY",
       price, quantity: qty,
-      mode: deriveMode(ev.mode ?? null),
-      session: deriveSession(ev.ts),
+      mode: deriveMode(ev.strategyMode ?? ev.mode ?? null),
+      regime: deriveRegime(ev.regime),
+      session: ev.session ? (ev.session.toUpperCase() as TradingSession) : deriveSession(ev.ts),
+      gridSpacingPct: ev.gridSpacingPct,
     });
   }
   return fills.sort((a, b) => a.ts - b.ts);
@@ -503,8 +506,10 @@ function pairFills(fills: FillRecord[]): RoundTrip[] {
       entryTs: buy.ts, exitTs: fill.ts,
       grossPnl, fee, slippage, funding, netPnl,
       holdingTimeSec: holdSec,
-      mode: buy.mode, regime: "UNKNOWN", session: buy.session,
-      gridSpacingPct: null,
+      mode: buy.mode,
+      regime: buy.regime !== "UNKNOWN" ? buy.regime : fill.regime,
+      session: buy.session,
+      gridSpacingPct: buy.gridSpacingPct ?? fill.gridSpacingPct,
       failureReason: netPnl < 0 ? "unknown_failure" : null,
     });
   }
@@ -680,14 +685,17 @@ function computeEdgeStatus(
 
 function computeCostGate(
   trips: RoundTrip[],
-  metrics: Metrics
+  metrics: Metrics,
+  observedGridSpacingPct: number | null = null
 ): CostGate {
   const roundTripCostPct = (MAKER_FEE_PCT + TAKER_FEE_PCT + SLIPPAGE_PCT * 2) * 100;
   const requiredMinSpacingPct = roundTripCostPct * GRID_SPACING_MULTIPLIER;
 
   // Try to get gridSpacingPct from trips
   const spacings = trips.filter((t) => t.gridSpacingPct !== null).map((t) => t.gridSpacingPct!);
-  const gridSpacingPct = spacings.length > 0 ? spacings.reduce((a, b) => a + b, 0) / spacings.length : null;
+  const gridSpacingPct = spacings.length > 0
+    ? spacings.reduce((a, b) => a + b, 0) / spacings.length
+    : observedGridSpacingPct;
 
   if (gridSpacingPct === null) {
     return {
@@ -749,7 +757,8 @@ function computeNoTradeDiagnostics(
   pnlEntries: PnlLogEntry[],
   sampleStatus: SampleSizeStatus,
   edgeStatus: EdgeStatus,
-  costDrag: CostDragStatus
+  costDrag: CostDragStatus,
+  eventNoTradeReasons: NoTradeReason[] = []
 ): { reasons: NoTradeReason[]; readiness: "ready" | "not_ready" | "unknown"; diagnostics: NoTradeDiagnostics } {
   // Extract no-trade reasons from pnl log
   const observedReasons = new Set<NoTradeReason>(
@@ -757,6 +766,7 @@ function computeNoTradeDiagnostics(
       .filter((e) => e.noTradeReason)
       .map((e) => e.noTradeReason as NoTradeReason)
   );
+  for (const reason of eventNoTradeReasons) observedReasons.add(reason);
 
   const hasNoTradeLogs = observedReasons.size > 0;
   const coverage = [...observedReasons];
@@ -796,6 +806,23 @@ function computeNoTradeDiagnostics(
 
 // ─── Paper Data Quality ──────────────────────────────────────────────────────
 
+function averageGridSpacingFromEvents(events: PaperEventSummary[]): number | null {
+  const values = events
+    .map((event) => event.gridSpacingPct)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0);
+  return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+}
+
+function noTradeReasonsFromEvents(events: PaperEventSummary[]): NoTradeReason[] {
+  const valid = new Set<NoTradeReason>(REQUIRED_NO_TRADE_REASONS);
+  const reasons = events
+    .map((event) => event.noTradeReason)
+    .filter((reason): reason is string => typeof reason === "string" && reason.trim().length > 0)
+    .map((reason) => reason.trim() as NoTradeReason)
+    .filter((reason) => valid.has(reason));
+  return [...new Set(reasons)];
+}
+
 function computePaperDataQuality(
   trips: RoundTrip[],
   events: PaperEventSummary[],
@@ -832,7 +859,8 @@ function computePaperDataQuality(
   const hasModeTags =
     trips.length > 0
       ? modeTaggedTrips / trips.length >= 0.3  // ≥30% มี tag ถือว่า partially OK
-      : pnlEntries.some((e) => e.mode && e.mode.toUpperCase() !== "UNKNOWN");
+      : pnlEntries.some((e) => e.mode && e.mode.toUpperCase() !== "UNKNOWN") ||
+        events.some((e) => e.strategyMode && e.strategyMode.toUpperCase() !== "UNKNOWN");
   if (!hasModeTags) {
     missing.push("mode_tags");
     actions.push("เพิ่ม mode field (NEUTRAL_GRID/LONG_GRID/SHORT_GRID) ใน paper audit events");
@@ -843,7 +871,8 @@ function computePaperDataQuality(
   const hasRegimeTags =
     trips.length > 0
       ? regimeTaggedTrips / trips.length >= 0.3
-      : pnlEntries.some((e) => e.regime && e.regime.toUpperCase() !== "UNKNOWN");
+      : pnlEntries.some((e) => e.regime && e.regime.toUpperCase() !== "UNKNOWN") ||
+        events.some((e) => e.regime && e.regime.toUpperCase() !== "UNKNOWN");
   if (!hasRegimeTags) {
     missing.push("regime_tags");
     actions.push("เพิ่ม regime field (RANGE/UPTREND/DOWNTREND/etc.) ใน paper_pnl.jsonl");
@@ -857,7 +886,8 @@ function computePaperDataQuality(
   // hasGridSpacing: trips หรือ pnl log มี gridSpacingPct
   const hasGridSpacing =
     trips.some((t) => t.gridSpacingPct !== null) ||
-    pnlEntries.some((e) => typeof e.gridSpacingPct === "number");
+    pnlEntries.some((e) => typeof e.gridSpacingPct === "number") ||
+    events.some((e) => typeof e.gridSpacingPct === "number" && Number.isFinite(e.gridSpacingPct));
   if (!hasGridSpacing) {
     missing.push("gridSpacingPct");
     actions.push("เพิ่ม gridSpacingPct field ใน paper_pnl.jsonl เพื่อให้ cost gate คำนวณได้");
@@ -871,7 +901,9 @@ function computePaperDataQuality(
   }
 
   // hasNoTradeReasons: pnl log มี noTradeReason field
-  const hasNoTradeReasons = pnlEntries.some((e) => e.noTradeReason && e.noTradeReason.length > 0);
+  const hasNoTradeReasons =
+    pnlEntries.some((e) => e.noTradeReason && e.noTradeReason.length > 0) ||
+    events.some((e) => e.noTradeReason && e.noTradeReason.length > 0);
   if (!hasNoTradeReasons) {
     missing.push("no_trade_reasons");
     actions.push("เพิ่ม no-trade decision logging ใน paper pipeline เพื่อ no-trade diagnostics");
@@ -966,6 +998,9 @@ export async function computePaperPerformance(): Promise<PaperPerformanceReport>
   const totalEvents = journal.totalPaperEvents;
   const totalPaperOrders = journal.totalOrderSimulated;
   const totalPaperFills = journal.totalOrderFilled;
+  const recentEvents = journal.recentEvents ?? [];
+  const observedGridSpacingPct = averageGridSpacingFromEvents(recentEvents);
+  const eventNoTradeReasons = noTradeReasonsFromEvents(recentEvents);
   warnings.push(...journal.warnings);
 
   // 2. Try PnL log (preferred source)
@@ -1033,7 +1068,7 @@ export async function computePaperPerformance(): Promise<PaperPerformanceReport>
   }
 
   // 7. Cost gate
-  const costGate = computeCostGate(trips, metrics);
+  const costGate = computeCostGate(trips, metrics, observedGridSpacingPct);
 
   // 8. Edge status & diagnostics
   const edgeStatus = computeEdgeStatus(trips.length, metrics, sampleSizeStatus, costDragStatus);
@@ -1069,10 +1104,10 @@ export async function computePaperPerformance(): Promise<PaperPerformanceReport>
 
   // 11. No-trade diagnostics
   const { reasons: noTradeReasons, readiness: noTradeReadiness, diagnostics: noTradeDiagnostics } =
-    computeNoTradeDiagnostics(pnlEntries, sampleSizeStatus, edgeStatus, costDragStatus);
+    computeNoTradeDiagnostics(pnlEntries, sampleSizeStatus, edgeStatus, costDragStatus, eventNoTradeReasons);
 
   // 11b. Paper data quality
-  const paperDataQuality = computePaperDataQuality(trips, journal.recentEvents ?? [], pnlEntries, pnlSource);
+  const paperDataQuality = computePaperDataQuality(trips, recentEvents, pnlEntries, pnlSource);
   if (paperDataQuality.qualityStatus === "insufficient") {
     warnings.push("Paper data quality: insufficient — ไม่มี closed trades หรือ averageFillPrice จริง");
     nextActions.push(...paperDataQuality.nextActions.slice(0, 2));

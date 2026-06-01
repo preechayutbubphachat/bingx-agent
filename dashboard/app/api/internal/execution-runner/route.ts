@@ -15,7 +15,9 @@ import type {
 } from "@/lib/broker/types";
 import type { BingxCancelOrderRequest, BingxOrderPayload, BingxPlaceOrderRequest, BingxPositionPayload } from "@/lib/broker/bingxTypes";
 import {
+  PAPER_OBSERVABILITY_SCHEMA_VERSION,
   runPaperExecution,
+  type PaperObservabilityContext,
   type PaperExecutionContext,
   type PaperExecutionEntry,
   type PaperExecutionRunResult,
@@ -72,6 +74,7 @@ type RunnerRequest = {
   machineState?: PlanMachineState | null;
   market?: Partial<MarketSnapshot> | null;
   plannedEntry?: Partial<PaperExecutionEntry> | null;
+  context?: Partial<PaperObservabilityContext> | Record<string, unknown> | null;
   riskOverlay?: Partial<RiskOverlay> | null;
   gateInput?: Partial<Omit<TradingModeGateInput, "mode" | "action" | "symbol" | "riskOverlay" | "exposure">> | null;
   limitedCaps?: TradingModeCaps | null;
@@ -91,6 +94,7 @@ type RunnerConfig = {
   machineState: PlanMachineState;
   market: MarketSnapshot;
   plannedEntry: PaperExecutionEntry | null;
+  observability: PaperObservabilityContext | null;
   riskOverlay: RiskOverlay;
   gateInput: Partial<Omit<TradingModeGateInput, "mode" | "action" | "symbol" | "riskOverlay" | "exposure">>;
   limitedCaps: TradingModeCaps | null;
@@ -163,6 +167,80 @@ function normalizeBool(value: unknown, fallback = false) {
     if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
   }
   return fallback;
+}
+
+function optionalText(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  return text ? text : null;
+}
+
+function optionalFinite(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function optionalSide(value: unknown): BrokerSide | null {
+  const normalized = optionalText(value)?.toUpperCase();
+  if (normalized === "BUY" || normalized === "SELL") return normalized;
+  return null;
+}
+
+function normalizeObservabilityContext(
+  value: unknown,
+  input: {
+    symbol: string;
+    market: MarketSnapshot;
+    plannedEntry: PaperExecutionEntry | null;
+  }
+): PaperObservabilityContext | null {
+  const raw =
+    typeof value === "object" && value !== null
+      ? (value as Record<string, unknown>)
+      : {};
+
+  const gridLower = optionalFinite(raw.gridLower);
+  const gridUpper = optionalFinite(raw.gridUpper);
+  const gridMid = optionalFinite(raw.gridMid);
+  const currentPrice =
+    optionalFinite(raw.currentPrice) ??
+    optionalFinite(input.market.price.last) ??
+    optionalFinite(input.market.price.mark) ??
+    optionalFinite(input.market.price.index);
+  const providedSpacing = optionalFinite(raw.gridSpacingPct);
+  const computedSpacing =
+    providedSpacing ??
+    (gridLower !== null && gridUpper !== null && gridMid !== null && gridMid > 0
+      ? Math.abs(gridUpper - gridLower) / gridMid * 100
+      : null);
+
+  const context: PaperObservabilityContext = {
+    paperObservabilitySchemaVersion: PAPER_OBSERVABILITY_SCHEMA_VERSION,
+    schemaVersion: PAPER_OBSERVABILITY_SCHEMA_VERSION,
+    gridSpacingPct: computedSpacing,
+    gridLower,
+    gridUpper,
+    gridMid,
+    currentPrice,
+    side: optionalSide(raw.side) ?? input.plannedEntry?.side ?? null,
+    mode: optionalText(raw.mode),
+    regime: optionalText(raw.regime),
+    session: optionalText(raw.session),
+    symbol: optionalText(raw.symbol) ?? input.symbol,
+    eventTs: optionalFinite(raw.eventTs) ?? Date.now(),
+    paperModeDetected:
+      typeof raw.paperModeDetected === "boolean" ? raw.paperModeDetected : true,
+    noTradeReason: optionalText(raw.noTradeReason),
+  };
+
+  const hasUsefulField = Object.entries(context).some(([key, val]) =>
+    key !== "paperObservabilitySchemaVersion" &&
+    key !== "schemaVersion" &&
+    val !== null &&
+    val !== undefined
+  );
+
+  return hasUsefulField ? context : null;
 }
 
 function getAuthToken(req: NextRequest) {
@@ -686,6 +764,11 @@ function buildConfig(body: RunnerRequest, operatorKillSwitchActive = false): Run
   const market = mergeMarket(baseline.market, body.market);
   const riskOverlay = mergeRiskOverlay(baseline.riskOverlay, body.riskOverlay);
   const plannedEntry = normalizePlannedEntry(market, body.plannedEntry ?? baseline.plannedEntry);
+  const observability = normalizeObservabilityContext(body.context ?? null, {
+    symbol,
+    market,
+    plannedEntry,
+  });
   const auditFileName =
     toText(body.auditFileName) || `execution-runner-${scenario}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jsonl`;
 
@@ -696,6 +779,7 @@ function buildConfig(body: RunnerRequest, operatorKillSwitchActive = false): Run
     machineState: normalizeMachineState(body.machineState, baseline.machineState),
     market,
     plannedEntry,
+    observability,
     riskOverlay,
     gateInput: {
       ...(baseline.gateInput ?? {}),
@@ -1101,6 +1185,7 @@ function buildPaperContext(config: RunnerConfig, auditRootDir: string): PaperExe
     riskOverlay: config.riskOverlay,
     market: config.market,
     plannedEntry: config.plannedEntry,
+    observability: config.observability,
     idempotency: {
       eventKey: config.market.eventKey ?? `${config.symbol}:${config.scenario}:${config.market.closeTs5m ?? nowMs()}`,
       candleKey: String(config.market.closeTs5m ?? nowMs()),
@@ -1255,6 +1340,7 @@ export async function POST(req: NextRequest) {
         operatorKillSwitchActive: operatorKillSwitch.state.active,
         killSwitch,
         gateInput: config.gateInput,
+        context: config.observability,
       },
     })
   );

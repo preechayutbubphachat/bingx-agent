@@ -35,6 +35,18 @@ export type PaperEventSummary = {
   type: string;
   symbol: string | null;
   mode: string;
+  strategyMode: string | null;
+  regime: string | null;
+  session: string | null;
+  gridSpacingPct: number | null;
+  gridLower: number | null;
+  gridUpper: number | null;
+  gridMid: number | null;
+  currentPrice: number | null;
+  eventTs: number | null;
+  paperModeDetected: boolean | null;
+  noTradeReason: string | null;
+  schemaVersion: string | null;
   eventKey: string | null;
   // จาก ORDER_SIMULATED payload
   orderId: string | null;
@@ -136,6 +148,44 @@ function parseLines(raw: string): AuditEvent[] {
 
 function isPaperEvent(event: AuditEvent): boolean {
   return String(event.mode ?? "").toUpperCase() === "PAPER";
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function textOrNull(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  return text ? text : null;
+}
+
+function boolOrNull(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function readObservabilityContext(
+  event: AuditEvent,
+  payload: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  const fromPayload =
+    asRecord(payload?.context) ??
+    asRecord(payload?.paperObservabilityContext) ??
+    asRecord(payload?.observabilityContext) ??
+    {};
+
+  return {
+    symbol: event.symbol,
+    mode: undefined,
+    ...fromPayload,
+  };
 }
 
 // ─── Main export ─────────────────────────────────────────────────────────────
@@ -316,6 +366,7 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
         // collect for recentEvents display
         {
           const payload = event.payload as Record<string, unknown> | undefined;
+          const context = readObservabilityContext(event, payload);
 
           // extract from ORDER_SIMULATED
           let orderId: string | null = null;
@@ -377,11 +428,27 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
             quantity = typeof payload?.quantity === "number" ? payload.quantity : null;
           }
 
+          side = side ?? textOrNull(context.side);
+
           allPaperEvents.push({
             ts: ts ?? Date.now(),
             type: eventType,
-            symbol: typeof event.symbol === "string" ? event.symbol : null,
+            symbol: textOrNull(context.symbol) ?? (typeof event.symbol === "string" ? event.symbol : null),
             mode: event.mode ?? "PAPER",
+            strategyMode: textOrNull(context.mode),
+            regime: textOrNull(context.regime),
+            session: textOrNull(context.session),
+            gridSpacingPct: numberOrNull(context.gridSpacingPct),
+            gridLower: numberOrNull(context.gridLower),
+            gridUpper: numberOrNull(context.gridUpper),
+            gridMid: numberOrNull(context.gridMid),
+            currentPrice: numberOrNull(context.currentPrice),
+            eventTs: numberOrNull(context.eventTs),
+            paperModeDetected: boolOrNull(context.paperModeDetected),
+            noTradeReason: textOrNull(context.noTradeReason),
+            schemaVersion:
+              textOrNull(context.schemaVersion) ??
+              textOrNull(context.paperObservabilitySchemaVersion),
             eventKey: event.eventKey ?? null,
             orderId,
             orderStatus,

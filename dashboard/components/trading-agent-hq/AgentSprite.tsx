@@ -174,6 +174,16 @@ export default function AgentSprite({
           </span>
         )}
 
+        {(hovered || selected) && (
+          <span
+            className={`absolute -right-1 top-1 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-black uppercase text-[#2f241b] shadow ring-1 ring-black/5 ${
+              selected && !lowPower ? "thq-mood-pulse" : ""
+            }`}
+          >
+            {vm.status}
+          </span>
+        )}
+
         {/* debug hitbox + raw state */}
         {debug && (
           <span className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-dashed border-fuchsia-500/70">

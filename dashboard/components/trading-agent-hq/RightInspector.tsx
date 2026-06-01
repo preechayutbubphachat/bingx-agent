@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { AgentVM, PaperVM } from "@/lib/trading-agent-hq/viewModel";
-import type { AgentProgression, AgentBadge, AgentSkill, MissionStatus } from "@/lib/trading-agent-hq/progression";
+import type { AgentProgression, AgentBadge, AgentSkill, Mission, MissionStatus } from "@/lib/trading-agent-hq/progression";
 import { AGENT_PLACEMENTS } from "@/lib/trading-agent-hq/sceneConfig";
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -35,6 +36,51 @@ function badgeTone(tone: AgentBadge["tone"]) {
   return "border-red-200 bg-red-50 text-red-800";
 }
 
+function DetailList({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div>
+      <div className="text-[10px] font-black uppercase text-[#8a735d]">{label}</div>
+      {items.length ? (
+        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-[#5b4432]">
+          {items.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      ) : (
+        <div className="mt-1 text-[11px] text-[#8a735d]">No gap currently recorded.</div>
+      )}
+    </div>
+  );
+}
+
+function MissionDetailPanel({ mission }: { mission: Mission }) {
+  return (
+    <div className="mt-2 rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-3 text-[11px]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="font-black text-[#2f241b]">{mission.title}</div>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusTone(mission.status)}`}>{mission.status}</span>
+      </div>
+      <div className="mt-1 text-[#6d5745]">{mission.category}</div>
+      <div className="mt-3 grid gap-2">
+        <DetailList label="Complete evidence" items={mission.completeEvidence} />
+        <DetailList label="Missing evidence" items={mission.missingEvidence} />
+        <div><span className="font-black text-[#2f241b]">Why it matters: </span>{mission.whyItMatters}</div>
+        <div><span className="font-black text-[#2f241b]">Next safe action: </span>{mission.nextSafeAction}</div>
+        <div className="rounded-md bg-amber-50 px-2 py-1.5 font-bold text-amber-900">{mission.safetyNote}</div>
+      </div>
+    </div>
+  );
+}
+
+function BadgeDetailPanel({ badge }: { badge: AgentBadge }) {
+  return (
+    <div className={`mt-2 rounded-lg border p-3 text-[11px] ${badgeTone(badge.tone)}`}>
+      <div className="font-black">{badge.name}</div>
+      <div className="mt-1">{badge.description}</div>
+      <div className="mt-2"><span className="font-black">Evidence source: </span>{badge.evidenceSource}</div>
+      <div className="mt-1"><span className="font-black">Does NOT mean: </span>{badge.doesNotMean}</div>
+    </div>
+  );
+}
+
 export default function RightInspector({
   agent,
   progression,
@@ -48,6 +94,8 @@ export default function RightInspector({
   onClose: () => void;
   onDebug: () => void;
 }) {
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
+  const [selectedBadgeName, setSelectedBadgeName] = useState<string | null>(null);
   const closedCycleLabel = paper.closedCycles === 0 ? "DATA_GAP" : "EVIDENCE";
 
   if (!agent) {
@@ -63,6 +111,8 @@ export default function RightInspector({
 
   const place = AGENT_PLACEMENTS.find((p) => p.id === agent.id);
   const activeMission = progression?.missions.find((item) => item.status !== "DONE") ?? progression?.missions[0];
+  const inspectedMission = progression?.missions.find((item) => item.id === selectedMissionId) ?? activeMission;
+  const inspectedBadge = progression?.badges.find((item) => item.name === selectedBadgeName) ?? progression?.badges[0];
 
   return (
     <div className="flex h-full max-h-[calc(100vh-220px)] min-h-[360px] w-full min-w-0 flex-col overflow-hidden rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-4 shadow-sm">
@@ -90,9 +140,16 @@ export default function RightInspector({
               <span>{progression.xp} XP</span>
               <span>{progression.xpToNextLevel} XP to next</span>
             </div>
-            <div className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-900">
-              Level = evidence maturity only. XP does not control trading.
-            </div>
+            <details className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
+              <summary className="cursor-pointer font-black">XP help</summary>
+              <div className="mt-1 space-y-0.5 font-bold">
+                <div>XP = evidence maturity only.</div>
+                <div>XP does not control trading.</div>
+                <div>Levels do not unlock live trading.</div>
+                <div>Closed cycles are required before expectancy.</div>
+                <div>Cost PASS is not edge PASS.</div>
+              </div>
+            </details>
           </div>
         ) : null}
 
@@ -102,8 +159,15 @@ export default function RightInspector({
               <span className="text-[10px] font-black uppercase text-[#8a735d]">Current mission</span>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${statusTone(activeMission.status)}`}>{activeMission.status}</span>
             </div>
-            <div className="text-xs font-black text-[#2f241b]">{activeMission.title}</div>
-            <div className="mt-1 text-[11px] leading-relaxed text-[#6d5745]">{activeMission.detail}</div>
+            <button
+              type="button"
+              onClick={() => setSelectedMissionId(activeMission.id)}
+              className="block w-full rounded-md text-left hover:bg-[#fff4df]"
+            >
+              <div className="text-xs font-black text-[#2f241b]">{activeMission.title}</div>
+              <div className="mt-1 text-[11px] leading-relaxed text-[#6d5745]">{activeMission.detail}</div>
+            </button>
+            {inspectedMission ? <MissionDetailPanel mission={inspectedMission} /> : null}
           </div>
         ) : null}
 
@@ -132,11 +196,18 @@ export default function RightInspector({
               <div className="mb-1 text-[10px] font-black uppercase text-[#8a735d]">Badges / rewards</div>
               <div className="flex flex-wrap gap-1.5">
                 {progression.badges.map((item) => (
-                  <span key={item.name} title={item.description} className={`rounded-full border px-2 py-1 text-[10px] font-black ${badgeTone(item.tone)}`}>
+                  <button
+                    key={item.name}
+                    type="button"
+                    title={item.description}
+                    onClick={() => setSelectedBadgeName(item.name)}
+                    className={`rounded-full border px-2 py-1 text-[10px] font-black transition hover:scale-[1.02] ${badgeTone(item.tone)}`}
+                  >
                     {item.name}
-                  </span>
+                  </button>
                 ))}
               </div>
+              {inspectedBadge ? <BadgeDetailPanel badge={inspectedBadge} /> : null}
             </div>
 
             <div className="mt-3 rounded-lg border border-[#3a2c21]/10 bg-white p-3 text-[11px] text-[#6d5745]">

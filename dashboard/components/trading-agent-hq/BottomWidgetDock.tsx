@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { AgentId, LogEntry, TradingAgentHQViewModel } from "@/lib/trading-agent-hq/viewModel";
 import {
@@ -7,6 +8,7 @@ import {
   listAgentProgressions,
   type AgentBadge,
   type AgentProgression,
+  type Mission,
   type MissionStatus,
 } from "@/lib/trading-agent-hq/progression";
 
@@ -89,6 +91,29 @@ function AgentProgressRow({ item, onPick }: { item: AgentProgression; onPick: (i
   );
 }
 
+function MissionDetail({ item }: { item: Mission }) {
+  return (
+    <div className="rounded-md border border-[#3a2c21]/10 bg-[#fffaf1] px-2 py-1.5 text-[11px] text-[#5b4432]">
+      <div className="font-black text-[#2f241b]">{item.title}</div>
+      <div className="mt-1">Complete: {item.completeEvidence.length ? item.completeEvidence.join("; ") : "not enough yet"}</div>
+      <div className="mt-1">Missing: {item.missingEvidence.length ? item.missingEvidence.join("; ") : "none recorded"}</div>
+      <div className="mt-1">Next: {item.nextSafeAction}</div>
+      <div className="mt-1 rounded bg-amber-50 px-2 py-1 font-bold text-amber-900">{item.safetyNote}</div>
+    </div>
+  );
+}
+
+function BadgeDetail({ item }: { item: AgentBadge }) {
+  return (
+    <div className={`rounded-md border px-2 py-1.5 text-[11px] ${badgeTone(item.tone)}`}>
+      <div className="font-black">{item.name}</div>
+      <div className="mt-1">{item.description}</div>
+      <div className="mt-1"><span className="font-black">Source: </span>{item.evidenceSource}</div>
+      <div className="mt-1"><span className="font-black">Not: </span>{item.doesNotMean}</div>
+    </div>
+  );
+}
+
 export default function BottomWidgetDock({
   vm,
   progressions,
@@ -98,12 +123,16 @@ export default function BottomWidgetDock({
   progressions: Record<AgentId, AgentProgression>;
   onPick: (id: AgentId) => void;
 }) {
+  const [openMissionId, setOpenMissionId] = useState<string | null>(null);
+  const [openBadgeName, setOpenBadgeName] = useState<string | null>(null);
   const alerts = vm.bottomLog.filter((entry) => entry.type === "ALERT");
   const fills = vm.bottomLog.filter((entry) => entry.type === "FILL_RESULT");
   const decisions = vm.bottomLog.filter((entry) => entry.type === "DECISION");
   const agentProgressions = listAgentProgressions(progressions);
   const activeMissions = listActiveMissions(progressions);
   const badges = agentProgressions.flatMap((agent) => agent.badges).filter((item, index, all) => all.findIndex((other) => other.name === item.name) === index);
+  const openMission = activeMissions.find((item) => item.id === openMissionId) ?? activeMissions[0];
+  const openBadge = badges.find((item) => item.name === openBadgeName) ?? badges[0];
   const closedCycleStatus = vm.paper.closedCycles > 0 ? "INFO" : "DATA_GAP";
   const sampleStatus = vm.paper.sampleStatus === "SUFFICIENT" ? "INFO" : "DATA_GAP";
   const costStatus = vm.paper.costGateStatus === "PASS" ? "COST_PASS" : vm.paper.costGateStatus === "UNKNOWN" ? "PENDING" : "DATA_GAP";
@@ -118,7 +147,7 @@ export default function BottomWidgetDock({
           ))}
         </div>
         <div className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-900">
-          Level = evidence maturity only. XP does not control trading.
+          XP = evidence maturity only. XP does not control trading. Levels do not unlock live trading. Closed cycles are required before expectancy. Cost PASS is not edge PASS.
         </div>
       </Widget>
 
@@ -126,30 +155,40 @@ export default function BottomWidgetDock({
         <div className="space-y-2">
           {activeMissions.map((item) => (
             <div key={item.id} className="min-w-0 rounded-md bg-white px-2 py-1.5 text-xs text-[#4d3b2d]">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="truncate font-black text-[#2f241b]">{item.title}</div>
-                  <div className="mt-0.5 text-[10px] text-[#8a735d]">{item.category}</div>
+              <button type="button" onClick={() => setOpenMissionId(item.id)} className="block w-full text-left">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate font-black text-[#2f241b]">{item.title}</div>
+                    <div className="mt-0.5 text-[10px] text-[#8a735d]">{item.category}</div>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${missionTone(item.status)}`}>{item.status}</span>
                 </div>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${missionTone(item.status)}`}>{item.status}</span>
-              </div>
-              <div className="mt-1 text-[11px] leading-relaxed text-[#6d5745]">{item.detail}</div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#ead6b9]">
-                <div className="h-full rounded-full bg-[#7d5d3c]" style={{ width: `${item.progressPct}%` }} />
-              </div>
+                <div className="mt-1 text-[11px] leading-relaxed text-[#6d5745]">{item.detail}</div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#ead6b9]">
+                  <div className="h-full rounded-full bg-[#7d5d3c]" style={{ width: `${item.progressPct}%` }} />
+                </div>
+              </button>
             </div>
           ))}
+          {openMission ? <MissionDetail item={openMission} /> : null}
         </div>
       </Widget>
 
       <Widget title="Badges / Rewards">
         <div className="flex flex-wrap gap-1.5">
           {badges.map((item) => (
-            <span key={item.name} title={item.description} className={`rounded-full border px-2 py-1 text-[10px] font-black ${badgeTone(item.tone)}`}>
+            <button
+              key={item.name}
+              type="button"
+              title={item.description}
+              onClick={() => setOpenBadgeName(item.name)}
+              className={`rounded-full border px-2 py-1 text-[10px] font-black transition hover:scale-[1.02] ${badgeTone(item.tone)}`}
+            >
               {item.name}
-            </span>
+            </button>
           ))}
         </div>
+        {openBadge ? <div className="mt-2"><BadgeDetail item={openBadge} /></div> : null}
         <div className="mt-3 space-y-1.5 text-[11px] text-[#6d5745]">
           <div className="rounded-md bg-white px-2 py-1.5">Cost PASS != edge PASS.</div>
           <div className="rounded-md bg-white px-2 py-1.5">Paper fills only / not profitability.</div>

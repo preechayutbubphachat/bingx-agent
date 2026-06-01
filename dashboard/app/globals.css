@@ -99,6 +99,14 @@ body {
 }
 @media (prefers-reduced-motion: reduce) { .thq-ring-select { animation: none !important; } }
 
+/* THQ-FE-7: light selected-agent status pulse, visual-only and disabled by reduced motion / low-power class omission */
+.thq-mood-pulse { animation: thq-mood-chip 1.8s ease-in-out infinite; }
+@keyframes thq-mood-chip {
+  0%, 100% { transform: translateY(0); box-shadow: 0 0 0 0 rgba(245,158,11,0.25); }
+  50% { transform: translateY(-1px); box-shadow: 0 0 0 5px rgba(245,158,11,0); }
+}
+@media (prefers-reduced-motion: reduce) { .thq-mood-pulse { animation: none !important; } }
+
 /* THQ-2/6: sprite-sheet frame cycling (18 columns, character stays anchored in place) */
 .thq-cycle { animation: thq-cyc 0.9s steps(18, jump-none) infinite; }
 @keyframes thq-cyc { from { background-position-x: 0%; } to { background-position-x: 100%; } }

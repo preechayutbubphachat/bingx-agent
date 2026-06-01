@@ -28,6 +28,11 @@ export interface Mission {
   detail: string;
   status: MissionStatus;
   progressPct: number;
+  completeEvidence: string[];
+  missingEvidence: string[];
+  whyItMatters: string;
+  nextSafeAction: string;
+  safetyNote: string;
 }
 
 export interface AgentSkill {
@@ -39,6 +44,8 @@ export interface AgentBadge {
   name: string;
   tone: "safe" | "info" | "warning" | "blocked";
   description: string;
+  evidenceSource: string;
+  doesNotMean: string;
 }
 
 export interface AgentProgression {
@@ -106,12 +113,36 @@ function mission(
   detail: string,
   status: MissionStatus,
   progressPct = statusProgress(status),
+  detailFields: Partial<Pick<Mission, "completeEvidence" | "missingEvidence" | "whyItMatters" | "nextSafeAction" | "safetyNote">> = {},
 ): Mission {
-  return { id, category, title, detail, status, progressPct };
+  return {
+    id,
+    category,
+    title,
+    detail,
+    status,
+    progressPct,
+    completeEvidence: detailFields.completeEvidence ?? (status === "DONE" ? [detail] : []),
+    missingEvidence: detailFields.missingEvidence ?? (status === "DONE" ? [] : ["More safe evidence is required."]),
+    whyItMatters: detailFields.whyItMatters ?? "This mission makes evidence maturity visible without changing trading behavior.",
+    nextSafeAction: detailFields.nextSafeAction ?? "Continue observing read-only evidence. Do not force outcomes.",
+    safetyNote: detailFields.safetyNote ?? "Mission progress is visual only and does not approve risk, place orders, or unlock live trading.",
+  };
 }
 
-function badge(name: string, tone: AgentBadge["tone"], description: string): AgentBadge {
-  return { name, tone, description };
+function badge(
+  name: string,
+  tone: AgentBadge["tone"],
+  description: string,
+  detailFields: Partial<Pick<AgentBadge, "evidenceSource" | "doesNotMean">> = {},
+): AgentBadge {
+  return {
+    name,
+    tone,
+    description,
+    evidenceSource: detailFields.evidenceSource ?? "Safe frontend ViewModel evidence only.",
+    doesNotMean: detailFields.doesNotMean ?? "Does not mean profitability, approval, live readiness, or order permission.",
+  };
 }
 
 function commonSafetyMissions(vm: TradingAgentHQViewModel): Mission[] {
@@ -128,6 +159,14 @@ function commonSafetyMissions(vm: TradingAgentHQViewModel): Mission[] {
       "Keep safety lock active",
       "Live OFF, orders OFF, production not ready, approval not_approved.",
       safeFlags ? "DONE" : "FAIL",
+      undefined,
+      {
+        completeEvidence: safeFlags ? ["liveTradingEnabled=false", "orderPlacementEnabled=false", "productionReady=false", "approval=not_approved"] : [],
+        missingEvidence: safeFlags ? [] : ["One or more safety flags are not locked."],
+        whyItMatters: "Safety lock keeps the visual layer honest while evidence is incomplete.",
+        nextSafeAction: "Keep flags OFF and continue evidence review.",
+        safetyNote: "Safety lock does not mean live-ready; it means controls remain disabled.",
+      },
     ),
     mission(
       "m0b-block",
@@ -135,6 +174,14 @@ function commonSafetyMissions(vm: TradingAgentHQViewModel): Mission[] {
       "Keep M-0B blocked until evidence passes",
       "READY_FOR_REVIEW is not approval; approval is not live trading.",
       vm.safety.phase.includes("BLOCKED") ? "BLOCKED" : "WARNING",
+      undefined,
+      {
+        completeEvidence: vm.safety.phase.includes("BLOCKED") ? ["phase=M-0B_BLOCKED is visible"] : [],
+        missingEvidence: ["closed-cycle sample", "operator review", "explicit manual approval after all gates pass"],
+        whyItMatters: "This prevents a UI milestone from being mistaken for trading authorization.",
+        nextSafeAction: "Keep collecting paper evidence and operator review results.",
+        safetyNote: "READY_FOR_REVIEW is not approval. Approval is not live trading.",
+      },
     ),
   ];
 }
@@ -160,6 +207,13 @@ function dataQualityMissions(vm: TradingAgentHQViewModel): Mission[] {
       "Progression reads the frontend ViewModel only; runtime JSON remains authoritative outside the UI.",
       hasPublicSafeSource && !vm.meta.isStale ? "DONE" : hasPublicSafeSource ? "WARNING" : "DATA_GAP",
       hasPublicSafeSource ? (vm.meta.isStale ? 60 : 100) : 20,
+      {
+        completeEvidence: hasPublicSafeSource ? [`source=${vm.meta.source}`, `lastUpdate=${vm.meta.lastUpdate}`] : [],
+        missingEvidence: vm.meta.isStale ? ["fresh public-safe source timestamp"] : [],
+        whyItMatters: "Fresh public-safe source evidence lets the UI stay readable without becoming source-of-truth.",
+        nextSafeAction: "Refresh the dashboard or verify server endpoints if source remains stale.",
+        safetyNote: "Public/cache JSON remains display-only and is never authoritative.",
+      },
     ),
     mission(
       "fill-evidence",
@@ -168,6 +222,13 @@ function dataQualityMissions(vm: TradingAgentHQViewModel): Mission[] {
       "Fill evidence XP is not profit XP and does not imply edge.",
       hasFills ? "DONE" : "DATA_GAP",
       hasFills ? 100 : 20,
+      {
+        completeEvidence: hasFills ? [`paper fills=${vm.paper.totalOrderFilled}`] : [],
+        missingEvidence: hasFills ? [] : ["paper fills with averageFillPrice"],
+        whyItMatters: "Paper fill quality shows the simulation path is producing evidence.",
+        nextSafeAction: "Keep the paper loop running naturally.",
+        safetyNote: "Paper fills are not profitability and are not live fills.",
+      },
     ),
     mission(
       "closed-cycle",
@@ -176,6 +237,13 @@ function dataQualityMissions(vm: TradingAgentHQViewModel): Mission[] {
       "Closed cycles are required before expectancy or edge review.",
       vm.paper.closedCycles > 0 ? "DONE" : "DATA_GAP",
       vm.paper.closedCycles > 0 ? 100 : 10,
+      {
+        completeEvidence: vm.paper.closedCycles > 0 ? [`closedCycles=${vm.paper.closedCycles}`] : [],
+        missingEvidence: vm.paper.closedCycles > 0 ? [] : ["closed round-trip BUY -> SELL pair"],
+        whyItMatters: "A closed cycle is the minimum evidence for expectancy analysis.",
+        nextSafeAction: "Keep the paper loop running; wait for natural market movement.",
+        safetyNote: "Do not force-fill or edit runtime JSON to manufacture a cycle.",
+      },
     ),
   ];
 }
@@ -243,8 +311,14 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
   const safetyMissions = commonSafetyMissions(vm);
   const dataMissions = dataQualityMissions(vm);
   const commonBadges = [
-    ...(safeXp > 0 ? [badge("Safety Lock Active", "safe", "Live/order/production flags remain OFF.")] : []),
-    ...(vm.paper.closedCycles === 0 ? [badge("Data Gap Watcher", "warning", "Closed-cycle evidence is not available yet.")] : []),
+    ...(safeXp > 0 ? [badge("Safety Lock Active", "safe", "Live/order/production flags remain OFF.", {
+      evidenceSource: "Safety flags from the TradingAgentHQ ViewModel.",
+      doesNotMean: "Does not mean live-ready or operator-approved.",
+    })] : []),
+    ...(vm.paper.closedCycles === 0 ? [badge("Data Gap Watcher", "warning", "Closed-cycle evidence is not available yet.", {
+      evidenceSource: "closedCycles=0 and sample status from safe paper evidence.",
+      doesNotMean: "Does not mean failure; it means missing evidence is visible.",
+    })] : []),
   ];
 
   const gridMissions = [
@@ -254,6 +328,14 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
       "Maintain cost gate discipline",
       "Cost PASS is cost discipline only; Cost PASS does not mean edge PASS.",
       vm.paper.costGateStatus === "PASS" ? "DONE" : vm.paper.costGateStatus === "UNKNOWN" ? "DATA_GAP" : "WARNING",
+      undefined,
+      {
+        completeEvidence: vm.paper.costGateStatus === "PASS" ? ["costGate.status=PASS"] : [],
+        missingEvidence: vm.paper.closedCycles === 0 ? ["closed cycles before edge review"] : [],
+        whyItMatters: "Cost discipline checks whether estimated costs are covered by spacing assumptions.",
+        nextSafeAction: "Keep observing paper evidence; do not treat cost PASS as edge PASS.",
+        safetyNote: "Cost PASS is not profitability, expectancy, approval, or live readiness.",
+      },
     ),
     ...dataMissions,
   ];
@@ -271,8 +353,14 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
         { name: "Cost Gate Discipline", state: vm.paper.costGateStatus === "PASS" ? "online" : "watching" },
       ],
       [
-        ...(vm.paper.costGateStatus === "PASS" ? [badge("Cost Gate Keeper", "safe", "Cost discipline is passing; this is not edge evidence.")] : []),
-        ...(vm.paper.totalOrderFilled > 0 ? [badge("Fill Evidence Started", "info", "Paper fills are accumulating with fill evidence.")] : []),
+        ...(vm.paper.costGateStatus === "PASS" ? [badge("Cost Gate Keeper", "safe", "Cost discipline is passing; this is not edge evidence.", {
+          evidenceSource: "costGate.status=PASS from paper performance evidence.",
+          doesNotMean: "Does not mean edge, profitability, approval, or production readiness.",
+        })] : []),
+        ...(vm.paper.totalOrderFilled > 0 ? [badge("Fill Evidence Started", "info", "Paper fills are accumulating with fill evidence.", {
+          evidenceSource: `totalOrderFilled=${vm.paper.totalOrderFilled} from paper evidence.`,
+          doesNotMean: "Does not mean profitable strategy or live trading evidence.",
+        })] : []),
         ...commonBadges,
       ],
     ),
@@ -291,7 +379,10 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
         { name: "Signal Patience", state: "online" },
         { name: "False Breakout Awareness", state: "watching" },
       ],
-      [badge("Signal Patience", "info", "No trading action is unlocked by visual momentum state."), ...commonBadges],
+      [badge("Signal Patience", "info", "No trading action is unlocked by visual momentum state.", {
+        evidenceSource: "Read-only mission state in TradingAgentHQ.",
+        doesNotMean: "Does not mean buy/sell signal execution.",
+      }), ...commonBadges],
     ),
     risk_manager: makeProgression(
       vm,
@@ -308,7 +399,17 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
         { name: "Drawdown Guard", state: "watching" },
         { name: "Safety Gate Integrity", state: "online" },
       ],
-      [badge("Safety Steward", "safe", "Safety flags remain locked down."), badge("No False Ready Claim", "safe", "UI does not claim live or production readiness."), ...commonBadges],
+      [
+        badge("Safety Steward", "safe", "Safety flags remain locked down.", {
+          evidenceSource: "live OFF / orders OFF / approval not_approved in safe ViewModel.",
+          doesNotMean: "Does not mean the system is approved for live trading.",
+        }),
+        badge("No False Ready Claim", "safe", "UI does not claim live or production readiness.", {
+          evidenceSource: "TradingAgentHQ safety copy and blocked phase state.",
+          doesNotMean: "Does not mean all gates passed.",
+        }),
+        ...commonBadges,
+      ],
     ),
     news_analyst: makeProgression(
       vm,
@@ -325,7 +426,10 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
         { name: "No-Trade Reason Logging", state: "watching" },
         { name: "Sentiment Awareness", state: "watching" },
       ],
-      [badge("No False News Claim", "info", "Missing news context is not treated as healthy PASS."), ...commonBadges],
+      [badge("No False News Claim", "info", "Missing news context is not treated as healthy PASS.", {
+        evidenceSource: "News/event missions remain DATA_GAP when safe evidence is missing.",
+        doesNotMean: "Does not mean news risk is clear.",
+      }), ...commonBadges],
     ),
     market_regime: makeProgression(
       vm,
@@ -342,7 +446,10 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
         { name: "Volatility State", state: "watching" },
         { name: "Session Context", state: "data_gap" },
       ],
-      [badge("Grid Context Online", "info", "Cost and grid context are visible, not authoritative trading approval."), ...commonBadges],
+      [badge("Grid Context Online", "info", "Cost and grid context are visible, not authoritative trading approval.", {
+        evidenceSource: "Safe ViewModel cost/regime context.",
+        doesNotMean: "Does not mean strategy edge or order permission.",
+      }), ...commonBadges],
     ),
     memory_brain: makeProgression(
       vm,
@@ -360,7 +467,10 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
         { name: "Attribution Coverage", state: "watching" },
       ],
       [
-        ...(vm.paper.totalOrderFilled > 0 ? [badge("Evidence Ledger Online", "info", "Recent paper evidence is visible to the UI.")] : []),
+        ...(vm.paper.totalOrderFilled > 0 ? [badge("Evidence Ledger Online", "info", "Recent paper evidence is visible to the UI.", {
+          evidenceSource: "Recent paper events surfaced through safe frontend state.",
+          doesNotMean: "Does not mean live PnL or production readiness.",
+        })] : []),
         ...commonBadges,
       ],
     ),

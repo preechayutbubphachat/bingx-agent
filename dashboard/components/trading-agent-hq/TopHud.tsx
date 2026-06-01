@@ -23,9 +23,9 @@ function Stat({
           : "text-[#2f241b]";
 
   return (
-    <div className="min-h-[92px] rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-3 shadow-sm">
+    <div className="min-h-[92px] min-w-0 overflow-hidden rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-3 shadow-sm">
       <span className="block text-[10px] font-bold uppercase tracking-wide text-[#8a735d]">{label}</span>
-      <span className={`mt-1 block text-xl font-black leading-tight ${toneCls}`}>{value}</span>
+      <span className={`mt-1 block break-words text-lg font-black leading-tight sm:text-xl ${toneCls}`}>{value}</span>
       {caption && <span className="mt-1 block text-[11px] leading-snug text-[#7a6550]">{caption}</span>}
     </div>
   );
@@ -35,7 +35,7 @@ export default function TopHud({ vm }: { vm: TradingAgentHQViewModel }) {
   const safety = vm.safety;
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
       <Stat label="Market Mood" value={vm.topHud.marketMood} caption="Public-safe signal only" tone="warn" />
       <Stat
         label="Paper Equity"

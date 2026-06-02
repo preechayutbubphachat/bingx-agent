@@ -54,10 +54,10 @@ export const VISUAL_BEHAVIOR: Record<AnimKey, VisualBehavior> = {
 export const FRAME: Record<AnimKey, { row: number; col: number; cycle?: boolean }> = {
   idle: { row: 0, col: 0 },                   // static standing frame
   guarding: { row: 0, col: 0 },               // calm static frame
-  working: { row: 2, col: 0, cycle: true },   // desk-free tablet/pointing loop
-  logging: { row: 2, col: 0, cycle: true },   // writing/knowledge loop
+  working: { row: 1, col: 0, cycle: true },   // role work loop
+  logging: { row: 1, col: 0, cycle: true },   // writing/knowledge loop
   scanning: { row: 2, col: 0, cycle: true },  // chart/tablet scanning loop
-  alert: { row: 3, col: 0 },
+  alert: { row: 3, col: 0, cycle: true },
   error: { row: 0, col: 1 },
   paused: { row: 0, col: 4 },
 };

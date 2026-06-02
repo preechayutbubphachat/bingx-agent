@@ -15,12 +15,12 @@ export const SHEET = {
 } as const;
 
 export const SHEET_SRC: Record<AgentId, string | null> = {
-  grid_bot: "/assets/trading-agent-hq/sheets/grid_bot_sheet_smooth.webp",
-  trend_bot: "/assets/trading-agent-hq/sheets/trend_bot_sheet_smooth.webp",
-  risk_manager: "/assets/trading-agent-hq/sheets/risk_manager_sheet_smooth.webp",
-  news_analyst: "/assets/trading-agent-hq/sheets/news_analyst_sheet_smooth.webp",
-  market_regime: "/assets/trading-agent-hq/sheets/market_regime_sheet_smooth.webp",
-  memory_brain: "/assets/trading-agent-hq/sheets/memory_brain_sheet_smooth.webp",
+  grid_bot: "/assets/trading-agent-hq/sheets/grid_bot_sheet_anim.webp",
+  trend_bot: "/assets/trading-agent-hq/sheets/trend_bot_sheet_anim.webp",
+  risk_manager: "/assets/trading-agent-hq/sheets/risk_manager_sheet_anim.webp",
+  news_analyst: "/assets/trading-agent-hq/sheets/news_analyst_sheet_anim.webp",
+  market_regime: "/assets/trading-agent-hq/sheets/market_regime_sheet_anim.webp",
+  memory_brain: "/assets/trading-agent-hq/sheets/memory_brain_sheet_anim.webp",
 };
 
 /** cozy café scene background (procedural art) */

@@ -111,3 +111,25 @@ body {
 .thq-cycle { animation: thq-cyc 0.9s steps(18, jump-none) infinite; }
 @keyframes thq-cyc { from { background-position-x: 0%; } to { background-position-x: 100%; } }
 @media (prefers-reduced-motion: reduce) { .thq-cycle { animation: none !important; } }
+
+/* Trading Caffee HQ: 6 x 4 character sprite sheets, presentation only. */
+.cafe-agent-sprite {
+  --cafe-sprite-row: 0%;
+  background-position: 0 var(--cafe-sprite-row);
+  background-repeat: no-repeat;
+  background-size: 600% 400%;
+  image-rendering: auto;
+  animation: cafe-agent-frame 1.1s steps(5, end) infinite;
+  transform-origin: 50% 92%;
+}
+
+@keyframes cafe-agent-frame {
+  from { background-position-x: 0%; }
+  to { background-position-x: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cafe-agent-sprite {
+    animation: none !important;
+  }
+}

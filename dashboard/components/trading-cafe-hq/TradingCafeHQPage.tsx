@@ -15,19 +15,17 @@ import DecisionLogPanel from "./DecisionLogPanel";
 import RewardsXPPanel from "./RewardsXPPanel";
 import DebugModeCard from "./DebugModeCard";
 
-const DEFAULT_AGENT_ID: CafeAgentId = "trend_bot";
-
 export default function TradingCafeHQPage({ data: initialData = TRADING_CAFE_HQ_MOCK }: { data?: TradingCafeHqMock }) {
   const { data, state, error, refresh } = useTradingCafeHQ(initialData);
-  const [selectedAgentId, setSelectedAgentId] = useState<CafeAgentId>(DEFAULT_AGENT_ID);
+  const [selectedAgentId, setSelectedAgentId] = useState<CafeAgentId | null>(null);
   const selectedAgent = useMemo(
-    () => data.agents.find((agent) => agent.id === selectedAgentId) ?? data.agents[0],
+    () => data.agents.find((agent) => agent.id === selectedAgentId) ?? null,
     [data.agents, selectedAgentId],
   );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelectedAgentId(DEFAULT_AGENT_ID);
+      if (event.key === "Escape") setSelectedAgentId(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -38,7 +36,7 @@ export default function TradingCafeHQPage({ data: initialData = TRADING_CAFE_HQ_
       <div className="mx-auto flex max-w-[1680px] flex-col gap-3">
         <TopStatusBar data={data} />
 
-        <section className="grid grid-cols-1 gap-3 xl:grid-cols-[170px_minmax(0,1fr)_330px]">
+        <section className={`grid grid-cols-1 gap-3 ${selectedAgent ? "xl:grid-cols-[170px_minmax(0,1fr)_330px]" : "xl:grid-cols-[170px_minmax(0,1fr)]"}`}>
           <SidebarNav data={data} />
 
           <div className="grid min-w-0 gap-3">
@@ -68,12 +66,19 @@ export default function TradingCafeHQPage({ data: initialData = TRADING_CAFE_HQ_
               {error ? <div className="mt-2 rounded-lg bg-red-50 px-2 py-1 text-red-800">Endpoint note: {error}</div> : null}
             </div>
 
-            <MainCafeCanvas data={data} selectedAgentId={selectedAgent.id} onSelectAgent={setSelectedAgentId} />
+            <MainCafeCanvas
+              data={data}
+              selectedAgentId={selectedAgentId}
+              onSelectAgent={setSelectedAgentId}
+              onClearSelection={() => setSelectedAgentId(null)}
+            />
           </div>
 
-          <div className="min-w-0">
-            <SelectedAgentPanel agent={selectedAgent} />
-          </div>
+          {selectedAgent ? (
+            <div className="min-w-0">
+              <SelectedAgentPanel agent={selectedAgent} onClose={() => setSelectedAgentId(null)} />
+            </div>
+          ) : null}
         </section>
 
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1fr_150px]">

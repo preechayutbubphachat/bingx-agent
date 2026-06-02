@@ -1,6 +1,8 @@
 "use client";
 
 import type { CafeAgent, CafeAgentId } from "@/lib/trading-cafe-hq/mockData";
+import { getAgentVisualConfig } from "@/lib/trading-cafe-hq/agentVisualConfig";
+import AgentSprite from "./AgentSprite";
 
 const statusLabel: Record<CafeAgent["status"], string> = {
   idle: "Idle",
@@ -22,6 +24,37 @@ export default function AgentStation({
   compact?: boolean;
   onSelect: (id: CafeAgentId) => void;
 }) {
+  const visual = getAgentVisualConfig(agent.id);
+
+  if (!compact) {
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect(agent.id);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect(agent.id);
+          }
+        }}
+        className={`absolute ${visual.sceneClass} ${visual.zIndexClass} -translate-x-1/2 -translate-y-1/2 rounded-2xl p-1 text-left transition focus:outline-none focus:ring-4 focus:ring-[#7c3aed]/40 motion-reduce:transition-none ${
+          selected ? "bg-[#fff8ec]/70 shadow-[0_0_0_5px_rgba(124,58,237,0.22)]" : "bg-transparent hover:bg-[#fff8ec]/45"
+        }`}
+        aria-pressed={selected}
+        aria-label={`Select ${agent.name}, ${agent.subtitle}`}
+      >
+        <AgentSprite agent={agent} />
+        <span className="pointer-events-none absolute left-1/2 top-full mt-1 min-w-[112px] -translate-x-1/2 rounded-lg border border-[#d4a86f] bg-[#fff8ec]/95 px-2 py-1 text-center shadow">
+          <span className="block truncate text-xs font-black text-[#2f241b]">{agent.name}</span>
+          <span className="block truncate text-[10px] font-bold text-[#6d5745]">{agent.subtitle}</span>
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -32,7 +65,7 @@ export default function AgentStation({
           onSelect(agent.id);
         }
       }}
-      className={`${compact ? "relative w-full" : `absolute ${agent.stationClass} w-[164px]`} group z-10 rounded-xl border bg-[#fff8ec]/95 p-2 text-left shadow-md transition hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-[#2f241b] motion-reduce:transition-none ${
+      className={`relative w-full group z-10 rounded-xl border bg-[#fff8ec]/95 p-2 text-left shadow-md transition hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-[#2f241b] motion-reduce:transition-none ${
         selected ? "border-[#7c3aed] ring-4 ring-[#7c3aed]/25" : agent.status === "alert" ? "border-orange-500" : "border-[#d4a86f]"
       }`}
       aria-pressed={selected}
@@ -48,13 +81,7 @@ export default function AgentStation({
         </div>
       </div>
       <div className="mt-2 flex items-end gap-2">
-        <div
-          className={`${compact ? "h-20 w-20" : "h-14 w-14"} shrink-0 bg-contain bg-center bg-no-repeat`}
-          style={{ backgroundImage: `url(${agent.sprite})` }}
-          aria-hidden="true"
-        >
-          <span className="sr-only">{agent.fallbackIcon}</span>
-        </div>
+        <AgentSprite agent={agent} size={compact ? "compact" : "station"} />
         <div className="min-w-0 flex-1">
           <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${
             agent.status === "alert"

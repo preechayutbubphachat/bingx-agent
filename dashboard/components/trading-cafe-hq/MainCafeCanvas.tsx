@@ -7,15 +7,18 @@ export default function MainCafeCanvas({
   data,
   selectedAgentId,
   onSelectAgent,
+  onClearSelection,
 }: {
   data: TradingCafeHqMock;
-  selectedAgentId: CafeAgentId;
+  selectedAgentId: CafeAgentId | null;
   onSelectAgent: (id: CafeAgentId) => void;
+  onClearSelection: () => void;
 }) {
   return (
     <>
       <section className="hidden min-h-[620px] min-w-0 overflow-hidden rounded-2xl border border-[#bd8245]/70 bg-[#7b4b24] p-2 shadow-sm md:block">
         <div
+          onClick={onClearSelection}
           className="relative h-full min-h-[596px] overflow-hidden rounded-xl bg-cover bg-center"
           style={{ backgroundImage: `linear-gradient(rgba(64,35,15,0.08), rgba(64,35,15,0.16)), url(${BACKGROUND_SRC})` }}
         >
@@ -29,7 +32,7 @@ export default function MainCafeCanvas({
           ))}
 
           <div className="absolute bottom-[7%] left-1/2 hidden -translate-x-1/2 rounded-full border border-[#d4a86f]/70 bg-[#fff8ec]/80 px-8 py-5 text-center shadow md:block">
-            <div className="text-lg font-black text-[#2f241b]">☕ TRADING CAFFEE HQ</div>
+            <div className="text-lg font-black text-[#2f241b]">COFFEE TRADING CAFFEE HQ</div>
             <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7a5532]">Read-only static UI</div>
           </div>
         </div>
@@ -40,7 +43,7 @@ export default function MainCafeCanvas({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-black text-[#2f241b]">Agents</h2>
-              <p className="text-xs font-bold text-[#7a5532]">6 / 6 Active · mock only</p>
+              <p className="text-xs font-bold text-[#7a5532]">6 / 6 Active - read-only</p>
             </div>
             <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-800">READ ONLY</span>
           </div>

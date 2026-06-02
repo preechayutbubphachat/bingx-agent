@@ -117,7 +117,7 @@ export type TradingCafeHqMock = {
   };
 };
 
-const sprite = (name: string) => `/assets/trading-agent-hq/sheets/${name}_sheet_smooth.webp`;
+const sprite = (name: string) => `/assets/trading-agent-hq/sheets/${name}_sheet.png`;
 
 export const TRADING_CAFE_HQ_MOCK: TradingCafeHqMock = {
   generatedAt: "mock-2026-06-02T00:00:00+07:00",

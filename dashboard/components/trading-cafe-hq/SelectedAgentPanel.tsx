@@ -1,15 +1,36 @@
+import Image from "next/image";
 import type { CafeAgent } from "@/lib/trading-cafe-hq/mockData";
+import { getAgentVisualConfig } from "@/lib/trading-cafe-hq/agentVisualConfig";
 
-export default function SelectedAgentPanel({ agent }: { agent: CafeAgent }) {
+export default function SelectedAgentPanel({ agent, onClose }: { agent: CafeAgent; onClose: () => void }) {
+  const visual = getAgentVisualConfig(agent.id);
+
   return (
     <aside className="rounded-2xl border border-[#bd8245]/70 bg-[#fff8ec] p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-xs font-black uppercase tracking-wide text-[#5f4935]">⭐ Selected Agent</h2>
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">read-only</span>
+        <h2 className="text-xs font-black uppercase tracking-wide text-[#5f4935]">Selected Agent</h2>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">read-only</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-[#d4a86f] bg-white px-2 py-0.5 text-[10px] font-black text-[#5f4935] hover:bg-[#f3dfbd] focus:outline-none focus:ring-2 focus:ring-[#2f241b]"
+            aria-label="Close selected agent profile"
+          >
+            Close
+          </button>
+        </div>
       </div>
-      <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 xl:grid-cols-1">
-        <div className="flex h-28 w-24 items-center justify-center rounded-xl bg-[#f3dfbd] ring-1 ring-[#d4a86f] xl:mx-auto xl:h-36 xl:w-36">
-          <div className="h-28 w-28 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${agent.sprite})` }} aria-hidden="true" />
+      <div className="grid grid-cols-[116px_minmax(0,1fr)] gap-3 xl:grid-cols-1">
+        <div className="flex h-36 w-32 items-center justify-center overflow-hidden rounded-xl bg-[#f3dfbd] ring-1 ring-[#d4a86f] xl:mx-auto xl:h-44 xl:w-44">
+          <Image
+            src={visual.portraitSrc}
+            alt={`${agent.name} portrait`}
+            width={184}
+            height={183}
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
         </div>
         <div className="min-w-0">
           <h3 className="truncate text-xl font-black text-[#2f241b]">{agent.name}</h3>

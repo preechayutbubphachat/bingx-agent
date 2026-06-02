@@ -52,12 +52,12 @@ export const VISUAL_BEHAVIOR: Record<AnimKey, VisualBehavior> = {
 // NOTE: café background already draws each desk, so we avoid row 1 (sprite-with-desk)
 // to prevent double-desk. Use standing (row 0) + tablet/pointing (row 2) + cheer (row 3).
 export const FRAME: Record<AnimKey, { row: number; col: number; cycle?: boolean }> = {
-  idle: { row: 0, col: 0, cycle: true },      // standing loop
-  guarding: { row: 0, col: 0, cycle: true },  // calm standing loop
-  working: { row: 0, col: 0, cycle: true },   // in-place standing loop
-  logging: { row: 0, col: 0, cycle: true },   // standing loop
-  scanning: { row: 0, col: 0, cycle: true },  // in-place standing loop
-  alert: { row: 0, col: 2 },
+  idle: { row: 0, col: 0 },                   // static standing frame
+  guarding: { row: 0, col: 0 },               // calm static frame
+  working: { row: 2, col: 0, cycle: true },   // desk-free tablet/pointing loop
+  logging: { row: 2, col: 0, cycle: true },   // writing/knowledge loop
+  scanning: { row: 2, col: 0, cycle: true },  // chart/tablet scanning loop
+  alert: { row: 3, col: 0 },
   error: { row: 0, col: 1 },
   paused: { row: 0, col: 4 },
 };

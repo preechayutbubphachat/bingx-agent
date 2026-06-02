@@ -107,25 +107,43 @@ body {
 }
 @media (prefers-reduced-motion: reduce) { .thq-mood-pulse { animation: none !important; } }
 
-/* THQ-2/6: sprite-sheet frame cycling (18 columns, character stays anchored in place) */
-.thq-cycle { animation: thq-cyc 0.9s steps(18, jump-none) infinite; }
+/* THQ-2/6: smooth sprite-sheet frame cycling (18 columns, character stays anchored in place) */
+.thq-cycle { animation: thq-cyc 5.8s steps(18, jump-none) infinite; }
 @keyframes thq-cyc { from { background-position-x: 0%; } to { background-position-x: 100%; } }
 @media (prefers-reduced-motion: reduce) { .thq-cycle { animation: none !important; } }
 
 /* Trading Caffee HQ: 6 x 4 character sprite sheets, presentation only. */
 .cafe-agent-sprite {
+  --cafe-sprite-x: 0%;
   --cafe-sprite-row: 0%;
-  background-position: 0 var(--cafe-sprite-row);
+  background-position: var(--cafe-sprite-x) var(--cafe-sprite-row);
   background-repeat: no-repeat;
   background-size: 600% 400%;
   image-rendering: auto;
-  animation: cafe-agent-frame 1.1s steps(5, end) infinite;
+  animation: none;
   transform-origin: 50% 92%;
 }
 
-@keyframes cafe-agent-frame {
-  from { background-position-x: 0%; }
-  to { background-position-x: 100%; }
+.cafe-agent-sprite--idle {
+  animation: cafe-agent-subtle-frame 5.6s steps(1, end) infinite;
+}
+
+.cafe-agent-sprite--working {
+  animation: cafe-agent-subtle-frame 3.8s steps(1, end) infinite;
+}
+
+.cafe-agent-sprite--happy {
+  animation: cafe-agent-subtle-frame 4.2s steps(1, end) infinite;
+}
+
+.cafe-agent-sprite--alert,
+.cafe-agent-sprite--error {
+  animation: cafe-agent-subtle-frame 3.2s steps(1, end) infinite;
+}
+
+@keyframes cafe-agent-subtle-frame {
+  0%, 62%, 100% { background-position-x: 0%; }
+  63%, 84% { background-position-x: 20%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -42,10 +42,10 @@ export interface AgentPlacement {
 export const AGENT_PLACEMENTS: AgentPlacement[] = [
   { id: "grid_bot", label: "Grid Bot", role: "Order-balancing", x: 400, y: 528, scale: 0.8, zIndex: Z.spriteUpper, accent: "#3aa676", accentSoft: "#d6f0e4" },
   { id: "trend_bot", label: "Trend Bot", role: "Momentum scout", x: 220, y: 718, scale: 0.82, zIndex: Z.spriteMiddle, accent: "#7c5cd6", accentSoft: "#e6dcf7" },
-  { id: "risk_manager", label: "Risk Manager", role: "Capital guardian", x: 392, y: 928, scale: 0.86, zIndex: Z.spriteLower, accent: "#3b6ea5", accentSoft: "#dbe7f3" },
+  { id: "risk_manager", label: "Risk Manager", role: "Capital guardian", x: 392, y: 875, scale: 0.86, zIndex: Z.spriteLower, accent: "#3b6ea5", accentSoft: "#dbe7f3" },
   { id: "news_analyst", label: "News Analyst", role: "News scout", x: 1192, y: 528, scale: 0.8, zIndex: Z.spriteUpper, accent: "#d65c93", accentSoft: "#f7dce9" },
   { id: "market_regime", label: "Market Regime", role: "Macro strategist", x: 1425, y: 723, scale: 0.82, zIndex: Z.spriteMiddle, accent: "#6a9a4a", accentSoft: "#e3f0d6" },
-  { id: "memory_brain", label: "Memory / Second Brain", role: "Logs & memory", x: 1235, y: 938, scale: 0.86, zIndex: Z.spriteLower, accent: "#a9824a", accentSoft: "#f0e6d6" },
+  { id: "memory_brain", label: "Memory / Second Brain", role: "Logs & memory", x: 1235, y: 878, scale: 0.86, zIndex: Z.spriteLower, accent: "#a9824a", accentSoft: "#f0e6d6" },
 ];
 
 /** convert scene px → percentage of background box (responsive, anchor bottom-center) */

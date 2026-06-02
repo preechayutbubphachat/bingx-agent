@@ -19,9 +19,7 @@ export function useAgentAnimations(
   tickMs = 1000,
 ): Record<AgentId, AnimKey> {
   const store = useRef<Map<AgentId, ResolvedAnim>>(new Map());
-  const [keys, setKeys] = useState<Record<AgentId, AnimKey>>(() =>
-    recompute(agents, store.current, Date.now()),
-  );
+  const [keys, setKeys] = useState<Record<AgentId, AnimKey>>(() => defaultAnimKeys(agents));
 
   // re-resolve when input agents change
   useEffect(() => {
@@ -43,6 +41,14 @@ export function useAgentAnimations(
   }, [agents, tickMs]);
 
   return keys;
+}
+
+function defaultAnimKeys(agents: Record<AgentId, AgentVM>): Record<AgentId, AnimKey> {
+  const out = {} as Record<AgentId, AnimKey>;
+  (Object.keys(agents) as AgentId[]).forEach((id) => {
+    out[id] = "idle";
+  });
+  return out;
 }
 
 function recompute(

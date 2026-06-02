@@ -1,18 +1,16 @@
 // dashboard/app/agent-hq/page.tsx
-// Trading Caffee HQ route — static mock-only UI shell.
+// TradingAgentHQ route: read-only UI shell.
 // SAFETY: presentation only. No source-of-truth. No order/approval/live flags.
-// This route does not fetch runtime/trading data in this phase.
+// This route hydrates only from public-safe endpoints inside the client shell.
 
 import type { Metadata } from "next";
-import TradingCafeHQPage from "@/components/trading-cafe-hq/TradingCafeHQPage";
-import { TRADING_CAFE_HQ_MOCK } from "@/lib/trading-cafe-hq/mockData";
+import TradingAgentHQPage from "@/components/trading-agent-hq/TradingAgentHQPage";
+import { MOCK_VIEW_MODEL } from "@/lib/trading-agent-hq/mockState";
 
 export const metadata: Metadata = {
-  title: "Trading Caffee HQ (static prototype)",
+  title: "TradingAgentHQ",
 };
 
 export default function AgentHqRoute() {
-  return (
-    <TradingCafeHQPage data={TRADING_CAFE_HQ_MOCK} />
-  );
+  return <TradingAgentHQPage initialVm={MOCK_VIEW_MODEL} />;
 }

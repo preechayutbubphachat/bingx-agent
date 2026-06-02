@@ -17,6 +17,12 @@ import BottomWidgetDock from "./BottomWidgetDock";
 import AdvancedDebugCard from "./AdvancedDebugCard";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
+const edgeStatusLabel = (status: string) =>
+  status === "DATA_GAP"
+    ? "ยังไม่มีข้อมูลรอบปิด"
+    : status === "REAL_FILLS_ACCUMULATING"
+      ? "กำลังสะสม fills จริง แต่ตัวอย่างยังไม่พอ"
+      : status;
 
 // THQ-5: starts from server-provided initial (mock), then hydrates from public-safe endpoints.
 export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAgentHQViewModel }) {
@@ -58,17 +64,37 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
         <TopHud vm={vm} />
 
+        {/* การ์ดอธิบายสถานะ (ไทย) — ช่วยให้ operator เข้าใจทันทีว่าไม่ใช่ Fail */}
+        <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[#5b4432] shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-black text-amber-900">สถานะระบบ (อ่านง่าย)</span>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">ไม่ใช่ Fail</span>
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-800">M-0B: ถูกบล็อก</span>
+          </div>
+          <p className="mt-2 text-[13px] font-bold leading-relaxed text-[#3f2f22]">
+            {vm.paper.closedCycles === 0
+              ? `ระบบ Paper ทำงานแล้วและมี fills แล้ว (${vm.paper.totalOrderFilled} ครั้ง) แต่ยังไม่มีรอบ BUY→SELL ที่ปิดครบ ดังนั้น M-0B ยังถูกบล็อกตามปกติ — ยังไม่ใช่ Fail และยังไม่พร้อมเปิดเงินจริง`
+              : `ระบบ Paper ทำงานและเริ่มมีรอบปิดครบ (${vm.paper.closedCycles} รอบ) — ยังต้องสะสมตัวอย่างให้พอและผ่าน operator review ก่อน M-0B จะปลดบล็อก`}
+          </p>
+          <p className="mt-1 text-[12px] leading-relaxed text-[#6d5745]">
+            <span className="font-black text-[#2f241b]">ขั้นตอนถัดไป: </span>
+            ปล่อย paper loop รันต่อ และตรวจ raw fills ว่ามี BUY/SELL ครบหรือยัง เป้าหมายถัดไปคือ <span className="font-black">closedCycles &gt; 0</span> ·
+            เกตต้นทุน: {vm.paper.costGateStatus === "PASS" ? "ผ่าน (ต้นทุน ไม่ใช่ edge)" : vm.paper.costGateStatus} ·
+            เงินจริง/คำสั่งจริงต้องปิดไว้เสมอจนกว่าจะอนุมัติ
+          </p>
+        </section>
+
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
           <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />
 
           <section className="min-w-0 rounded-lg border border-[#3a2c21]/10 bg-[#fff4df] p-2 shadow-sm">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
               <div>
-                <h2 className="text-sm font-black text-[#2f241b]">Cafe Floor</h2>
-                <p className="text-[11px] text-[#7a6550]">Click an agent to inspect. Double click opens the classic dashboard.</p>
+                <h2 className="text-sm font-black text-[#2f241b]">ห้องคาเฟ่ (Cafe Floor)</h2>
+                <p className="text-[11px] text-[#7a6550]">คลิกที่ Agent เพื่อดูรายละเอียด · ดับเบิลคลิกเพื่อเปิดแดชบอร์ดคลาสสิก</p>
               </div>
               <div className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">
-                closedCycles={vm.paper.closedCycles} | {vm.paper.edgeStatus}
+                closedCycles={vm.paper.closedCycles} | {edgeStatusLabel(vm.paper.edgeStatus)}
               </div>
             </div>
 
@@ -102,8 +128,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         <BottomLogBar log={vm.bottomLog} onPick={(id) => setSelected(id)} selected={effectiveSelected} />
 
         <p className="px-1 text-[11px] text-[#cbb799]">
-          TradingAgentHQ is a read-only visual layer. It does not send orders, approve risk, enable live trading, or write runtime JSON.
-          Data is {live ? "loaded from public-safe endpoints" : "mock/fallback"}; authoritative runtime files remain outside this UI.
+          TradingAgentHQ เป็นเลเยอร์แสดงผลแบบอ่านอย่างเดียว — ไม่ส่งคำสั่งเทรด ไม่อนุมัติความเสี่ยง ไม่เปิดเงินจริง และไม่เขียนไฟล์ runtime
+          ข้อมูล{live ? "ดึงจาก endpoint ปลอดภัย (public-safe)" : "เป็นข้อมูลจำลอง (mock/fallback)"} · ไฟล์ source of truth จริงอยู่นอก UI นี้
         </p>
       </div>
     </div>

@@ -20,7 +20,7 @@ export default function BottomLogBar({
 }) {
   return (
     <div className="rounded-lg border border-[#3a2c21]/10 bg-[#fff8ec] px-3 py-2 shadow-sm">
-      <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#6d5745]">Activity Log</div>
+      <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#6d5745]">บันทึกกิจกรรม</div>
       <ul className="flex flex-col gap-1">
         {log.map((entry, index) => (
           <li

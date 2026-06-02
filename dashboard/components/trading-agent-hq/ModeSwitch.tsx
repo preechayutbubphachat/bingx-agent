@@ -18,7 +18,7 @@ export default function ModeSwitch({
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#3a2c21]/10 bg-[#fff8ec] p-2 shadow-sm">
       <span className="text-sm font-black text-[#2f241b]">TradingAgentHQ</span>
-      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">read-only</span>
+      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">อ่านอย่างเดียว</span>
 
       <div className="ml-auto flex items-center gap-2">
         <button
@@ -27,7 +27,7 @@ export default function ModeSwitch({
           aria-pressed={lowPower}
           className={`${base} ${lowPower ? "bg-emerald-700 text-white ring-emerald-700" : "bg-white text-[#5b4432] ring-[#3a2c21]/15"}`}
         >
-          Low Power: {lowPower ? "ON" : "OFF"}
+          ประหยัดพลังงาน: {lowPower ? "เปิด" : "ปิด"}
         </button>
         <button
           type="button"
@@ -35,10 +35,10 @@ export default function ModeSwitch({
           aria-pressed={debug}
           className={`${base} ${debug ? "bg-[#b8792b] text-white ring-[#b8792b]" : "bg-white text-[#5b4432] ring-[#3a2c21]/15"}`}
         >
-          Debug: {debug ? "ON" : "OFF"}
+          ดีบัก: {debug ? "เปิด" : "ปิด"}
         </button>
         <Link href="/public" className={`${base} bg-[#2f241b] text-[#f8ead3] ring-[#2f241b] hover:bg-[#473527]`}>
-          Classic Dashboard
+          แดชบอร์ดคลาสสิก
         </Link>
       </div>
     </div>

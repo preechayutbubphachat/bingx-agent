@@ -93,7 +93,7 @@ export default function AgentSprite({
 
       <button
         type="button"
-        aria-label={`${placement.label} — ${vm.status}. คลิกเพื่อดูรายละเอียด, ดับเบิลคลิกเพื่อไป Classic Dashboard`}
+        aria-label={`${placement.label} — ${vm.status}. คลิกเพื่อดูรายละเอียด, ดับเบิลคลิกเพื่อไปแดชบอร์ดคลาสสิก`}
         title={`${placement.label} · ${vm.status} → ${animKey}`}
         onClick={() => onSelect(placement.id)}
         onDoubleClick={() => onDouble(placement.id)}

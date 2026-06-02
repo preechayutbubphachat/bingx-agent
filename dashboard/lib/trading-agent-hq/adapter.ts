@@ -111,20 +111,20 @@ export function mapToViewModel(
     status: paper.paperModeDetected && paper.totalOrderFilled > 0 ? "running" : "unknown",
     visualStates: paper.totalOrderFilled > 0 ? ["running", "balancing_orders"] : ["idle"],
     animation: paper.totalOrderFilled > 0 ? "grid_working" : "idle",
-    bubble: paper.totalOrderFilled > 0 ? `Filled ${paper.totalOrderFilled} (paper)` : "Idle",
-    currentTask: "Paper grid cycle",
+    bubble: paper.totalOrderFilled > 0 ? `เติม ${paper.totalOrderFilled} ครั้ง (paper)` : "ว่าง",
+    currentTask: "รอบ Paper grid",
     lastAction: str(journal.lastPaperEventType, "—"),
     metric: `fills: ${paper.totalOrderFilled}`,
-    confidence: paper.closedCycles === 0 ? "DATA_GAP (no closed cycle)" : "paper",
+    confidence: paper.closedCycles === 0 ? "ยังไม่มีรอบปิด" : "paper",
   };
   const risk: AgentVM = {
     id: "risk_manager",
     status: safety.liveTradingEnabled || safety.orderPlacementEnabled ? "alert" : "guarding",
     visualStates: ["calm"],
     animation: "idle",
-    bubble: safety.liveTradingEnabled ? "LIVE FLAG ON?!" : "Guarding (live OFF)",
-    currentTask: "Risk / safety watch",
-    lastAction: `phase ${safety.phase}`,
+    bubble: safety.liveTradingEnabled ? "พบ LIVE FLAG เปิด!?" : "เฝ้าระวัง (เงินจริงปิด)",
+    currentTask: "เฝ้าความเสี่ยง / ความปลอดภัย",
+    lastAction: `เฟส ${safety.phase}`,
     metric: `live:${safety.liveTradingEnabled ? "ON" : "OFF"} order:${safety.orderPlacementEnabled ? "ON" : "OFF"}`,
     confidence: "safe-mode",
   };
@@ -133,9 +133,9 @@ export function mapToViewModel(
     status: decisionExists ? "scanning" : "unknown",
     visualStates: decisionExists ? ["thinking"] : ["idle"],
     animation: "idle",
-    bubble: decisionExists ? "Reading regime…" : "No decision file",
-    currentTask: "Regime classify",
-    lastAction: decisionExists ? "latest_decision present" : "—",
+    bubble: decisionExists ? "กำลังอ่าน regime…" : "ไม่มีไฟล์ decision",
+    currentTask: "จำแนก regime",
+    lastAction: decisionExists ? "มี latest_decision" : "—",
     metric: null,
     confidence: null,
   };
@@ -144,22 +144,22 @@ export function mapToViewModel(
     status: num(journal.totalPaperEvents) > 0 ? "logging" : "unknown",
     visualStates: ["idle"],
     animation: "idle",
-    bubble: num(journal.totalPaperEvents) > 0 ? "Writing journal" : "No events",
-    currentTask: "Audit log",
+    bubble: num(journal.totalPaperEvents) > 0 ? "กำลังบันทึก journal" : "ไม่มีเหตุการณ์",
+    currentTask: "บันทึกตรวจสอบ (audit log)",
     lastAction: str(journal.lastPaperEventAt, "—"),
     metric: `events: ${num(journal.totalPaperEvents)}`,
     confidence: null,
   };
   const idleAgent = (id: AgentId, task: string): AgentVM => ({
     id, status: "unknown", visualStates: ["idle"], animation: "idle",
-    bubble: "No signal", currentTask: task, lastAction: "—", metric: null, confidence: null,
+    bubble: "ไม่มีสัญญาณ", currentTask: task, lastAction: "—", metric: null, confidence: null,
   });
 
   const agents: Record<AgentId, AgentVM> = {
     grid_bot: grid,
-    trend_bot: idleAgent("trend_bot", "Momentum scan"),
+    trend_bot: idleAgent("trend_bot", "สแกนโมเมนตัม"),
     risk_manager: risk,
-    news_analyst: idleAgent("news_analyst", "Headline scan"),
+    news_analyst: idleAgent("news_analyst", "สแกนข่าว"),
     market_regime: regime,
     memory_brain: memory,
   };

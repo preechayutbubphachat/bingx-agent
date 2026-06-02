@@ -4,11 +4,11 @@ import type { AgentId, TradingAgentHQViewModel } from "@/lib/trading-agent-hq/vi
 import { AGENT_PLACEMENTS } from "@/lib/trading-agent-hq/sceneConfig";
 
 const NAV_ITEMS = [
-  { key: "hq", label: "HQ", hint: "Read-only overview" },
-  { key: "agents", label: "Agents", hint: "Desk crew" },
-  { key: "paper", label: "Paper", hint: "Evidence only" },
-  { key: "events", label: "Events", hint: "Recent logs" },
-  { key: "memory", label: "Memory", hint: "Audit trail" },
+  { key: "hq", label: "ภาพรวม", hint: "อ่านอย่างเดียว" },
+  { key: "agents", label: "ทีม Agent", hint: "ทีมประจำโต๊ะ" },
+  { key: "paper", label: "หลักฐาน Paper", hint: "หลักฐานเท่านั้น" },
+  { key: "events", label: "เหตุการณ์", hint: "บันทึกล่าสุด" },
+  { key: "memory", label: "ความจำ", hint: "บันทึกตรวจสอบ" },
 ] as const;
 
 export default function CommandRail({
@@ -30,7 +30,7 @@ export default function CommandRail({
         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-[#2f241b] text-sm font-black text-[#f8d37b]">
           THQ
         </div>
-        <div className="mt-1 text-[10px] font-bold uppercase text-[#6d5745]">Read only</div>
+        <div className="mt-1 text-[10px] font-bold uppercase text-[#6d5745]">อ่านอย่างเดียว</div>
       </div>
 
       {NAV_ITEMS.map((item) => (
@@ -74,7 +74,7 @@ export default function CommandRail({
       </div>
 
       <div className="min-w-[94px] rounded-lg bg-[#2f241b] px-2 py-2 text-[#f7ead8] xl:min-w-0">
-        <div className="text-[10px] uppercase text-[#d8b66f]">Crew awake</div>
+        <div className="text-[10px] uppercase text-[#d8b66f]">ทีมที่ตื่น</div>
         <div className="text-lg font-black">{activeAgents}/6</div>
       </div>
     </aside>

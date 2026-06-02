@@ -7,6 +7,15 @@ export type MissionCategory =
   | "Visual QA"
   | "Operator Review";
 
+/** Thai display label for mission category (UI only; type stays stable) */
+export const MISSION_CATEGORY_TH: Record<MissionCategory, string> = {
+  "Daily Safety": "ความปลอดภัยประจำวัน",
+  "Paper Evidence": "หลักฐาน Paper",
+  "Data Quality": "คุณภาพข้อมูล",
+  "Visual QA": "ตรวจสอบภาพ",
+  "Operator Review": "การรีวิวโดย Operator",
+};
+
 export type MissionStatus =
   | "DONE"
   | "IN_PROGRESS"
@@ -68,12 +77,12 @@ export interface AgentProgression {
 }
 
 const AGENT_COPY: Record<AgentId, { name: string; role: string }> = {
-  grid_bot: { name: "Grid Bot", role: "Grid Evidence / Order Simulation" },
-  trend_bot: { name: "Trend Bot", role: "Momentum / Opportunity Scout" },
-  risk_manager: { name: "Risk Manager", role: "Safety Gatekeeper" },
-  news_analyst: { name: "News Analyst", role: "Event Risk / Sentiment Watch" },
-  market_regime: { name: "Market Regime Analyst", role: "Regime / Volatility Context" },
-  memory_brain: { name: "Memory / Second Brain", role: "Journal / Evidence / Lessons" },
+  grid_bot: { name: "Grid Bot", role: "หลักฐาน Grid / จำลองคำสั่ง" },
+  trend_bot: { name: "Trend Bot", role: "โมเมนตัม / สอดส่องโอกาส" },
+  risk_manager: { name: "Risk Manager", role: "ผู้คุมประตูความปลอดภัย" },
+  news_analyst: { name: "News Analyst", role: "ความเสี่ยงจากข่าว / sentiment" },
+  market_regime: { name: "Market Regime Analyst", role: "บริบท regime / ความผันผวน" },
+  memory_brain: { name: "Memory / Second Brain", role: "บันทึก / หลักฐาน / บทเรียน" },
 };
 
 const ORDER: AgentId[] = ["grid_bot", "trend_bot", "risk_manager", "news_analyst", "market_regime", "memory_brain"];
@@ -123,10 +132,10 @@ function mission(
     status,
     progressPct,
     completeEvidence: detailFields.completeEvidence ?? (status === "DONE" ? [detail] : []),
-    missingEvidence: detailFields.missingEvidence ?? (status === "DONE" ? [] : ["More safe evidence is required."]),
-    whyItMatters: detailFields.whyItMatters ?? "This mission makes evidence maturity visible without changing trading behavior.",
-    nextSafeAction: detailFields.nextSafeAction ?? "Continue observing read-only evidence. Do not force outcomes.",
-    safetyNote: detailFields.safetyNote ?? "Mission progress is visual only and does not approve risk, place orders, or unlock live trading.",
+    missingEvidence: detailFields.missingEvidence ?? (status === "DONE" ? [] : ["ต้องการหลักฐานที่ปลอดภัยเพิ่ม"]),
+    whyItMatters: detailFields.whyItMatters ?? "ภารกิจนี้แสดงระดับความสมบูรณ์ของหลักฐาน โดยไม่เปลี่ยนพฤติกรรมการเทรด",
+    nextSafeAction: detailFields.nextSafeAction ?? "สังเกตหลักฐานแบบอ่านอย่างเดียวต่อไป อย่าฝืนให้เกิดผลลัพธ์",
+    safetyNote: detailFields.safetyNote ?? "ความคืบหน้าภารกิจเป็นภาพเท่านั้น ไม่อนุมัติความเสี่ยง ไม่ส่งคำสั่ง และไม่ปลดล็อกเงินจริง",
   };
 }
 
@@ -140,8 +149,8 @@ function badge(
     name,
     tone,
     description,
-    evidenceSource: detailFields.evidenceSource ?? "Safe frontend ViewModel evidence only.",
-    doesNotMean: detailFields.doesNotMean ?? "Does not mean profitability, approval, live readiness, or order permission.",
+    evidenceSource: detailFields.evidenceSource ?? "หลักฐานจาก ViewModel ฝั่ง frontend ที่ปลอดภัยเท่านั้น",
+    doesNotMean: detailFields.doesNotMean ?? "ไม่ได้หมายถึงกำไร การอนุมัติ ความพร้อม live หรือสิทธิ์ส่งคำสั่ง",
   };
 }
 
@@ -156,31 +165,31 @@ function commonSafetyMissions(vm: TradingAgentHQViewModel): Mission[] {
     mission(
       "safety-lock",
       "Daily Safety",
-      "Keep safety lock active",
-      "Live OFF, orders OFF, production not ready, approval not_approved.",
+      "คงล็อกความปลอดภัยให้ทำงาน",
+      "เงินจริงปิด, คำสั่งจริงปิด, ยังไม่พร้อม production, ยังไม่อนุมัติ",
       safeFlags ? "DONE" : "FAIL",
       undefined,
       {
         completeEvidence: safeFlags ? ["liveTradingEnabled=false", "orderPlacementEnabled=false", "productionReady=false", "approval=not_approved"] : [],
-        missingEvidence: safeFlags ? [] : ["One or more safety flags are not locked."],
-        whyItMatters: "Safety lock keeps the visual layer honest while evidence is incomplete.",
-        nextSafeAction: "Keep flags OFF and continue evidence review.",
-        safetyNote: "Safety lock does not mean live-ready; it means controls remain disabled.",
+        missingEvidence: safeFlags ? [] : ["มี safety flag บางตัวยังไม่ถูกล็อก"],
+        whyItMatters: "ล็อกความปลอดภัยทำให้เลเยอร์แสดงผลซื่อตรงระหว่างที่หลักฐานยังไม่ครบ",
+        nextSafeAction: "คง flag เป็นปิดไว้ และรีวิวหลักฐานต่อไป",
+        safetyNote: "ล็อกความปลอดภัยไม่ได้แปลว่าพร้อม live — แปลว่าตัวควบคุมยังถูกปิดอยู่",
       },
     ),
     mission(
       "m0b-block",
       "Operator Review",
-      "Keep M-0B blocked until evidence passes",
-      "READY_FOR_REVIEW is not approval; approval is not live trading.",
+      "คง M-0B ให้ถูกบล็อกจนกว่าหลักฐานจะผ่าน",
+      "READY_FOR_REVIEW ไม่ใช่การอนุมัติ; การอนุมัติไม่ใช่การเปิดเงินจริง",
       vm.safety.phase.includes("BLOCKED") ? "BLOCKED" : "WARNING",
       undefined,
       {
-        completeEvidence: vm.safety.phase.includes("BLOCKED") ? ["phase=M-0B_BLOCKED is visible"] : [],
-        missingEvidence: ["closed-cycle sample", "operator review", "explicit manual approval after all gates pass"],
-        whyItMatters: "This prevents a UI milestone from being mistaken for trading authorization.",
-        nextSafeAction: "Keep collecting paper evidence and operator review results.",
-        safetyNote: "READY_FOR_REVIEW is not approval. Approval is not live trading.",
+        completeEvidence: vm.safety.phase.includes("BLOCKED") ? ["เห็น phase=M-0B_BLOCKED"] : [],
+        missingEvidence: ["ตัวอย่างรอบปิด", "การรีวิวโดย operator", "การอนุมัติด้วยมือหลังผ่านทุก gate"],
+        whyItMatters: "ป้องกันไม่ให้ milestone บน UI ถูกเข้าใจผิดว่าเป็นการอนุญาตให้เทรด",
+        nextSafeAction: "เก็บหลักฐาน paper และผลการรีวิวของ operator ต่อไป",
+        safetyNote: "READY_FOR_REVIEW ไม่ใช่การอนุมัติ การอนุมัติไม่ใช่การเปิดเงินจริง",
       },
     ),
   ];
@@ -188,11 +197,11 @@ function commonSafetyMissions(vm: TradingAgentHQViewModel): Mission[] {
 
 function commonBlockedReasons(vm: TradingAgentHQViewModel): string[] {
   const reasons: string[] = [];
-  if (vm.paper.closedCycles === 0) reasons.push("closedCycles=0: DATA_GAP, no edge XP");
-  if (vm.paper.sampleStatus !== "SUFFICIENT") reasons.push("sample size insufficient for expectancy");
-  if (vm.safety.exchangeManualApproval !== "approved") reasons.push("EXCHANGE_MANUAL_APPROVAL not approved");
-  if (vm.safety.phase.includes("BLOCKED")) reasons.push("Phase M-0B remains BLOCKED");
-  if (vm.meta.isStale) reasons.push("source/freshness is stale");
+  if (vm.paper.closedCycles === 0) reasons.push("closedCycles=0: ยังไม่มีข้อมูลรอบปิด ไม่มี edge XP");
+  if (vm.paper.sampleStatus !== "SUFFICIENT") reasons.push("ตัวอย่างยังไม่พอสำหรับประเมิน expectancy");
+  if (vm.safety.exchangeManualApproval !== "approved") reasons.push("EXCHANGE_MANUAL_APPROVAL ยังไม่อนุมัติ");
+  if (vm.safety.phase.includes("BLOCKED")) reasons.push("Phase M-0B ยังถูกบล็อก");
+  if (vm.meta.isStale) reasons.push("แหล่งข้อมูล/ความสดเป็นข้อมูลเก่า");
   return reasons;
 }
 
@@ -203,46 +212,46 @@ function dataQualityMissions(vm: TradingAgentHQViewModel): Mission[] {
     mission(
       "source-freshness",
       "Data Quality",
-      "Use public-safe API source",
-      "Progression reads the frontend ViewModel only; runtime JSON remains authoritative outside the UI.",
+      "ใช้แหล่งข้อมูล public-safe API",
+      "Progression อ่านจาก ViewModel ฝั่ง frontend เท่านั้น; ไฟล์ runtime จริงยังเป็น source of truth นอก UI",
       hasPublicSafeSource && !vm.meta.isStale ? "DONE" : hasPublicSafeSource ? "WARNING" : "DATA_GAP",
       hasPublicSafeSource ? (vm.meta.isStale ? 60 : 100) : 20,
       {
         completeEvidence: hasPublicSafeSource ? [`source=${vm.meta.source}`, `lastUpdate=${vm.meta.lastUpdate}`] : [],
-        missingEvidence: vm.meta.isStale ? ["fresh public-safe source timestamp"] : [],
-        whyItMatters: "Fresh public-safe source evidence lets the UI stay readable without becoming source-of-truth.",
-        nextSafeAction: "Refresh the dashboard or verify server endpoints if source remains stale.",
-        safetyNote: "Public/cache JSON remains display-only and is never authoritative.",
+        missingEvidence: vm.meta.isStale ? ["timestamp แหล่ง public-safe ที่สดใหม่"] : [],
+        whyItMatters: "หลักฐานแหล่ง public-safe ที่สด ทำให้ UI อ่านง่ายโดยไม่กลายเป็น source of truth",
+        nextSafeAction: "รีเฟรชแดชบอร์ด หรือตรวจ endpoint ถ้าแหล่งข้อมูลยังเก่า",
+        safetyNote: "public/cache JSON เป็น display เท่านั้น ไม่ใช่ของจริง",
       },
     ),
     mission(
       "fill-evidence",
       "Paper Evidence",
-      "Collect paper fills with averageFillPrice",
-      "Fill evidence XP is not profit XP and does not imply edge.",
+      "เก็บ paper fills พร้อม averageFillPrice",
+      "XP จาก fill ไม่ใช่ XP กำไร และไม่ได้แปลว่ามี edge",
       hasFills ? "DONE" : "DATA_GAP",
       hasFills ? 100 : 20,
       {
         completeEvidence: hasFills ? [`paper fills=${vm.paper.totalOrderFilled}`] : [],
-        missingEvidence: hasFills ? [] : ["paper fills with averageFillPrice"],
-        whyItMatters: "Paper fill quality shows the simulation path is producing evidence.",
-        nextSafeAction: "Keep the paper loop running naturally.",
-        safetyNote: "Paper fills are not profitability and are not live fills.",
+        missingEvidence: hasFills ? [] : ["paper fills ที่มี averageFillPrice"],
+        whyItMatters: "คุณภาพ paper fill แสดงว่าเส้นทางจำลองกำลังผลิตหลักฐาน",
+        nextSafeAction: "ปล่อย paper loop ทำงานตามธรรมชาติต่อไป",
+        safetyNote: "paper fills ไม่ใช่กำไร และไม่ใช่ fill เงินจริง",
       },
     ),
     mission(
       "closed-cycle",
       "Paper Evidence",
-      "Collect first closed cycle",
-      "Closed cycles are required before expectancy or edge review.",
+      "เก็บรอบปิดครบรอบแรก",
+      "ต้องมีรอบปิดครบก่อนจึงประเมิน expectancy หรือ edge ได้",
       vm.paper.closedCycles > 0 ? "DONE" : "DATA_GAP",
       vm.paper.closedCycles > 0 ? 100 : 10,
       {
         completeEvidence: vm.paper.closedCycles > 0 ? [`closedCycles=${vm.paper.closedCycles}`] : [],
-        missingEvidence: vm.paper.closedCycles > 0 ? [] : ["closed round-trip BUY -> SELL pair"],
-        whyItMatters: "A closed cycle is the minimum evidence for expectancy analysis.",
-        nextSafeAction: "Keep the paper loop running; wait for natural market movement.",
-        safetyNote: "Do not force-fill or edit runtime JSON to manufacture a cycle.",
+        missingEvidence: vm.paper.closedCycles > 0 ? [] : ["รอบปิดครบ BUY → SELL"],
+        whyItMatters: "รอบปิดครบคือหลักฐานขั้นต่ำสำหรับวิเคราะห์ expectancy",
+        nextSafeAction: "ปล่อย paper loop ทำงานต่อ; รอให้ตลาดเคลื่อนตามธรรมชาติ",
+        safetyNote: "ห้าม force-fill หรือแก้ runtime JSON เพื่อสร้างรอบปิดปลอม",
       },
     ),
   ];
@@ -311,13 +320,13 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
   const safetyMissions = commonSafetyMissions(vm);
   const dataMissions = dataQualityMissions(vm);
   const commonBadges = [
-    ...(safeXp > 0 ? [badge("Safety Lock Active", "safe", "Live/order/production flags remain OFF.", {
-      evidenceSource: "Safety flags from the TradingAgentHQ ViewModel.",
-      doesNotMean: "Does not mean live-ready or operator-approved.",
+    ...(safeXp > 0 ? [badge("ล็อกความปลอดภัยทำงาน", "safe", "flag เงินจริง/คำสั่ง/production ยังปิดอยู่", {
+      evidenceSource: "safety flags จาก ViewModel ของ TradingAgentHQ",
+      doesNotMean: "ไม่ได้แปลว่าพร้อม live หรือ operator อนุมัติแล้ว",
     })] : []),
-    ...(vm.paper.closedCycles === 0 ? [badge("Data Gap Watcher", "warning", "Closed-cycle evidence is not available yet.", {
-      evidenceSource: "closedCycles=0 and sample status from safe paper evidence.",
-      doesNotMean: "Does not mean failure; it means missing evidence is visible.",
+    ...(vm.paper.closedCycles === 0 ? [badge("เฝ้าระวังช่องว่างข้อมูล", "warning", "ยังไม่มีหลักฐานรอบปิด", {
+      evidenceSource: "closedCycles=0 และสถานะ sample จากหลักฐาน paper ที่ปลอดภัย",
+      doesNotMean: "ไม่ได้แปลว่า Fail — แปลว่ามองเห็นว่ายังขาดหลักฐาน",
     })] : []),
   ];
 
@@ -325,16 +334,16 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
     mission(
       "cost-discipline",
       "Paper Evidence",
-      "Maintain cost gate discipline",
-      "Cost PASS is cost discipline only; Cost PASS does not mean edge PASS.",
+      "คงวินัย cost gate",
+      "Cost ผ่าน = วินัยต้นทุนเท่านั้น; Cost ผ่าน ไม่ได้แปลว่า edge ผ่าน",
       vm.paper.costGateStatus === "PASS" ? "DONE" : vm.paper.costGateStatus === "UNKNOWN" ? "DATA_GAP" : "WARNING",
       undefined,
       {
         completeEvidence: vm.paper.costGateStatus === "PASS" ? ["costGate.status=PASS"] : [],
-        missingEvidence: vm.paper.closedCycles === 0 ? ["closed cycles before edge review"] : [],
-        whyItMatters: "Cost discipline checks whether estimated costs are covered by spacing assumptions.",
-        nextSafeAction: "Keep observing paper evidence; do not treat cost PASS as edge PASS.",
-        safetyNote: "Cost PASS is not profitability, expectancy, approval, or live readiness.",
+        missingEvidence: vm.paper.closedCycles === 0 ? ["รอบปิดครบก่อนรีวิว edge"] : [],
+        whyItMatters: "วินัยต้นทุนตรวจว่าต้นทุนที่ประเมินถูกครอบคลุมด้วยสมมติฐาน spacing หรือไม่",
+        nextSafeAction: "สังเกตหลักฐาน paper ต่อไป; อย่าถือว่า cost ผ่าน = edge ผ่าน",
+        safetyNote: "Cost ผ่าน ไม่ใช่กำไร, expectancy, การอนุมัติ หรือความพร้อม live",
       },
     ),
     ...dataMissions,
@@ -347,19 +356,19 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
       100 + costXp + fillXp + closedCycleXp + sourceXp,
       gridMissions,
       [
-        { name: "Grid Spacing Awareness", state: vm.paper.costGateStatus === "PASS" ? "online" : "watching" },
-        { name: "Fill Quality Tracking", state: vm.paper.totalOrderFilled > 0 ? "online" : "data_gap" },
-        { name: "Closed Cycle Pairing", state: vm.paper.closedCycles > 0 ? "online" : "data_gap" },
-        { name: "Cost Gate Discipline", state: vm.paper.costGateStatus === "PASS" ? "online" : "watching" },
+        { name: "รู้ทัน Grid Spacing", state: vm.paper.costGateStatus === "PASS" ? "online" : "watching" },
+        { name: "ติดตามคุณภาพ Fill", state: vm.paper.totalOrderFilled > 0 ? "online" : "data_gap" },
+        { name: "จับคู่รอบปิด", state: vm.paper.closedCycles > 0 ? "online" : "data_gap" },
+        { name: "วินัย Cost Gate", state: vm.paper.costGateStatus === "PASS" ? "online" : "watching" },
       ],
       [
-        ...(vm.paper.costGateStatus === "PASS" ? [badge("Cost Gate Keeper", "safe", "Cost discipline is passing; this is not edge evidence.", {
-          evidenceSource: "costGate.status=PASS from paper performance evidence.",
-          doesNotMean: "Does not mean edge, profitability, approval, or production readiness.",
+        ...(vm.paper.costGateStatus === "PASS" ? [badge("ผู้คุม Cost Gate", "safe", "วินัยต้นทุนผ่าน; นี่ไม่ใช่หลักฐาน edge", {
+          evidenceSource: "costGate.status=PASS จากหลักฐาน paper performance",
+          doesNotMean: "ไม่ได้แปลว่า edge, กำไร, การอนุมัติ หรือความพร้อม production",
         })] : []),
-        ...(vm.paper.totalOrderFilled > 0 ? [badge("Fill Evidence Started", "info", "Paper fills are accumulating with fill evidence.", {
-          evidenceSource: `totalOrderFilled=${vm.paper.totalOrderFilled} from paper evidence.`,
-          doesNotMean: "Does not mean profitable strategy or live trading evidence.",
+        ...(vm.paper.totalOrderFilled > 0 ? [badge("เริ่มมีหลักฐาน Fill", "info", "paper fills กำลังสะสมพร้อมหลักฐาน fill", {
+          evidenceSource: `totalOrderFilled=${vm.paper.totalOrderFilled} จากหลักฐาน paper`,
+          doesNotMean: "ไม่ได้แปลว่ากลยุทธ์กำไรหรือหลักฐานเทรดเงินจริง",
         })] : []),
         ...commonBadges,
       ],
@@ -369,19 +378,19 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
       "trend_bot",
       80 + sourceXp + (vm.paper.closedCycles > 0 ? 30 : 0),
       [
-        mission("trend-patience", "Data Quality", "Wait for validated opportunity context", "Trend context is read-only and cannot trigger orders here.", "IN_PROGRESS"),
-        mission("no-false-edge", "Visual QA", "Avoid false edge claims", "Closed cycles and sample size gate must pass before expectancy claims.", vm.paper.closedCycles === 0 ? "DATA_GAP" : "IN_PROGRESS"),
+        mission("trend-patience", "Data Quality", "รอบริบทโอกาสที่ผ่านการยืนยัน", "บริบทเทรนด์เป็นแบบอ่านอย่างเดียว และสั่ง order จากที่นี่ไม่ได้", "IN_PROGRESS"),
+        mission("no-false-edge", "Visual QA", "เลี่ยงการอ้าง edge เท็จ", "ต้องผ่าน gate รอบปิดครบและขนาดตัวอย่างก่อนจะอ้าง expectancy", vm.paper.closedCycles === 0 ? "DATA_GAP" : "IN_PROGRESS"),
         ...safetyMissions,
       ],
       [
-        { name: "Momentum Scan", state: "watching" },
-        { name: "Regime Confirmation", state: "watching" },
-        { name: "Signal Patience", state: "online" },
-        { name: "False Breakout Awareness", state: "watching" },
+        { name: "สแกนโมเมนตัม", state: "watching" },
+        { name: "ยืนยัน Regime", state: "watching" },
+        { name: "อดทนรอสัญญาณ", state: "online" },
+        { name: "รู้ทัน False Breakout", state: "watching" },
       ],
-      [badge("Signal Patience", "info", "No trading action is unlocked by visual momentum state.", {
-        evidenceSource: "Read-only mission state in TradingAgentHQ.",
-        doesNotMean: "Does not mean buy/sell signal execution.",
+      [badge("อดทนรอสัญญาณ", "info", "สถานะโมเมนตัมบนภาพไม่ปลดล็อกการเทรดใด ๆ", {
+        evidenceSource: "สถานะภารกิจแบบอ่านอย่างเดียวใน TradingAgentHQ",
+        doesNotMean: "ไม่ได้แปลว่ามีการ execute สัญญาณซื้อ/ขาย",
       }), ...commonBadges],
     ),
     risk_manager: makeProgression(
@@ -390,23 +399,23 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
       160 + safeXp + sourceXp,
       [
         ...safetyMissions,
-        mission("operator-approval", "Operator Review", "Keep approval manual", "Approval stays not_approved until all gates pass and operator approves.", "NOT_APPROVED"),
-        mission("visual-safety-copy", "Visual QA", "Keep safety copy visible", "XP does not control trading; M-0B remains BLOCKED.", "DONE"),
+        mission("operator-approval", "Operator Review", "คงการอนุมัติเป็นแบบ manual", "การอนุมัติจะเป็น not_approved จนกว่าจะผ่านทุก gate และ operator อนุมัติ", "NOT_APPROVED"),
+        mission("visual-safety-copy", "Visual QA", "คงข้อความความปลอดภัยให้เห็นชัด", "XP ไม่ควบคุมการเทรด; M-0B ยังถูกบล็อก", "DONE"),
       ],
       [
-        { name: "Kill Switch Awareness", state: "online" },
-        { name: "Approval Discipline", state: "online" },
-        { name: "Drawdown Guard", state: "watching" },
-        { name: "Safety Gate Integrity", state: "online" },
+        { name: "รู้ทัน Kill Switch", state: "online" },
+        { name: "วินัยการอนุมัติ", state: "online" },
+        { name: "ป้องกัน Drawdown", state: "watching" },
+        { name: "ความสมบูรณ์ของ Safety Gate", state: "online" },
       ],
       [
-        badge("Safety Steward", "safe", "Safety flags remain locked down.", {
-          evidenceSource: "live OFF / orders OFF / approval not_approved in safe ViewModel.",
-          doesNotMean: "Does not mean the system is approved for live trading.",
+        badge("ผู้พิทักษ์ความปลอดภัย", "safe", "safety flags ยังถูกล็อกไว้", {
+          evidenceSource: "เงินจริงปิด / คำสั่งปิด / ยังไม่อนุมัติ ใน ViewModel ที่ปลอดภัย",
+          doesNotMean: "ไม่ได้แปลว่าระบบได้รับอนุมัติให้เทรดเงินจริง",
         }),
-        badge("No False Ready Claim", "safe", "UI does not claim live or production readiness.", {
-          evidenceSource: "TradingAgentHQ safety copy and blocked phase state.",
-          doesNotMean: "Does not mean all gates passed.",
+        badge("ไม่อ้างความพร้อมเท็จ", "safe", "UI ไม่อ้างความพร้อม live หรือ production", {
+          evidenceSource: "ข้อความความปลอดภัยของ TradingAgentHQ และสถานะ phase ที่ถูกบล็อก",
+          doesNotMean: "ไม่ได้แปลว่าผ่านทุก gate แล้ว",
         }),
         ...commonBadges,
       ],
@@ -416,19 +425,19 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
       "news_analyst",
       70 + sourceXp,
       [
-        mission("event-risk", "Data Quality", "Track event-risk context", "News/event context is displayed only when public-safe evidence exposes it.", "IN_PROGRESS"),
-        mission("no-trade-reason", "Data Quality", "Preserve no-trade reasons", "Missing context remains DATA_GAP instead of fake healthy PASS.", "DATA_GAP"),
+        mission("event-risk", "Data Quality", "ติดตามบริบทความเสี่ยงจากเหตุการณ์", "บริบทข่าว/เหตุการณ์จะแสดงเฉพาะเมื่อหลักฐาน public-safe เปิดเผยเท่านั้น", "IN_PROGRESS"),
+        mission("no-trade-reason", "Data Quality", "คงเหตุผลที่ไม่เทรด", "บริบทที่ขาดยังคงเป็นข้อมูลยังไม่พอ ไม่ใช่ PASS ปลอม", "DATA_GAP"),
         ...safetyMissions,
       ],
       [
-        { name: "Event Risk Detection", state: "watching" },
-        { name: "News Context Coverage", state: "data_gap" },
-        { name: "No-Trade Reason Logging", state: "watching" },
-        { name: "Sentiment Awareness", state: "watching" },
+        { name: "ตรวจจับความเสี่ยงเหตุการณ์", state: "watching" },
+        { name: "ความครอบคลุมบริบทข่าว", state: "data_gap" },
+        { name: "บันทึกเหตุผลที่ไม่เทรด", state: "watching" },
+        { name: "รู้ทัน Sentiment", state: "watching" },
       ],
-      [badge("No False News Claim", "info", "Missing news context is not treated as healthy PASS.", {
-        evidenceSource: "News/event missions remain DATA_GAP when safe evidence is missing.",
-        doesNotMean: "Does not mean news risk is clear.",
+      [badge("ไม่อ้างข่าวเท็จ", "info", "บริบทข่าวที่ขาดไม่ถูกมองว่าเป็น PASS ปกติ", {
+        evidenceSource: "ภารกิจข่าว/เหตุการณ์ยังเป็นข้อมูลยังไม่พอเมื่อขาดหลักฐานที่ปลอดภัย",
+        doesNotMean: "ไม่ได้แปลว่าความเสี่ยงจากข่าวหมดไป",
       }), ...commonBadges],
     ),
     market_regime: makeProgression(
@@ -436,19 +445,19 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
       "market_regime",
       90 + sourceXp + (vm.paper.costGateStatus === "PASS" ? 20 : 0),
       [
-        mission("regime-context", "Data Quality", "Read regime context safely", "Regime visualization is read-only and never sends orders.", "IN_PROGRESS"),
-        mission("session-tags", "Data Quality", "Collect mode/regime/session tags", "Tags increase data-quality maturity only when present in safe evidence.", "DATA_GAP"),
+        mission("regime-context", "Data Quality", "อ่านบริบท regime อย่างปลอดภัย", "การแสดง regime เป็นแบบอ่านอย่างเดียว และไม่เคยส่ง order", "IN_PROGRESS"),
+        mission("session-tags", "Data Quality", "เก็บ tag mode/regime/session", "tag เพิ่มความสมบูรณ์ของข้อมูลเฉพาะเมื่อมีในหลักฐานที่ปลอดภัย", "DATA_GAP"),
         ...safetyMissions,
       ],
       [
-        { name: "Range Detection", state: "watching" },
-        { name: "Trend Detection", state: "watching" },
-        { name: "Volatility State", state: "watching" },
-        { name: "Session Context", state: "data_gap" },
+        { name: "ตรวจจับ Range", state: "watching" },
+        { name: "ตรวจจับ Trend", state: "watching" },
+        { name: "สถานะความผันผวน", state: "watching" },
+        { name: "บริบท Session", state: "data_gap" },
       ],
-      [badge("Grid Context Online", "info", "Cost and grid context are visible, not authoritative trading approval.", {
-        evidenceSource: "Safe ViewModel cost/regime context.",
-        doesNotMean: "Does not mean strategy edge or order permission.",
+      [badge("บริบท Grid ออนไลน์", "info", "เห็นบริบทต้นทุนและ grid แต่ไม่ใช่การอนุมัติให้เทรด", {
+        evidenceSource: "บริบทต้นทุน/regime จาก ViewModel ที่ปลอดภัย",
+        doesNotMean: "ไม่ได้แปลว่ามี edge หรือสิทธิ์ส่งคำสั่ง",
       }), ...commonBadges],
     ),
     memory_brain: makeProgression(
@@ -456,20 +465,20 @@ export function buildAgentProgressions(vm: TradingAgentHQViewModel): Record<Agen
       "memory_brain",
       110 + fillXp + sourceXp + (vm.paper.closedCycles > 0 ? 60 : 0),
       [
-        mission("journal-evidence", "Paper Evidence", "Keep journal evidence readable", "Paper events are evidence, not live PnL.", vm.paper.totalOrderFilled > 0 ? "DONE" : "DATA_GAP"),
-        mission("closed-cycle-memory", "Paper Evidence", "Record closed-cycle evidence", "closedCycles=0 remains DATA_GAP until a real cycle exists.", vm.paper.closedCycles > 0 ? "DONE" : "DATA_GAP"),
+        mission("journal-evidence", "Paper Evidence", "คง journal ให้อ่านได้", "เหตุการณ์ paper เป็นหลักฐาน ไม่ใช่ PnL เงินจริง", vm.paper.totalOrderFilled > 0 ? "DONE" : "DATA_GAP"),
+        mission("closed-cycle-memory", "Paper Evidence", "บันทึกหลักฐานรอบปิด", "closedCycles=0 ยังไม่มีข้อมูลรอบปิดจนกว่าจะมีรอบจริง", vm.paper.closedCycles > 0 ? "DONE" : "DATA_GAP"),
         ...safetyMissions,
       ],
       [
-        { name: "Journal Completeness", state: vm.paper.totalOrderFilled > 0 ? "online" : "data_gap" },
-        { name: "Evidence Recall", state: "watching" },
-        { name: "Lessons Learned", state: vm.paper.closedCycles > 0 ? "online" : "locked" },
-        { name: "Attribution Coverage", state: "watching" },
+        { name: "ความครบของ Journal", state: vm.paper.totalOrderFilled > 0 ? "online" : "data_gap" },
+        { name: "เรียกคืนหลักฐาน", state: "watching" },
+        { name: "บทเรียนที่ได้", state: vm.paper.closedCycles > 0 ? "online" : "locked" },
+        { name: "ความครอบคลุม Attribution", state: "watching" },
       ],
       [
-        ...(vm.paper.totalOrderFilled > 0 ? [badge("Evidence Ledger Online", "info", "Recent paper evidence is visible to the UI.", {
-          evidenceSource: "Recent paper events surfaced through safe frontend state.",
-          doesNotMean: "Does not mean live PnL or production readiness.",
+        ...(vm.paper.totalOrderFilled > 0 ? [badge("บัญชีหลักฐานออนไลน์", "info", "หลักฐาน paper ล่าสุดมองเห็นได้บน UI", {
+          evidenceSource: "เหตุการณ์ paper ล่าสุดผ่านสถานะ frontend ที่ปลอดภัย",
+          doesNotMean: "ไม่ได้แปลว่า PnL เงินจริงหรือความพร้อม production",
         })] : []),
         ...commonBadges,
       ],

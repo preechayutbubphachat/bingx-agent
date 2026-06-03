@@ -1,11 +1,12 @@
 // dashboard/components/trading-agent-hq/AgentSprite.tsx
 "use client";
 
+import type { CSSProperties } from "react";
 import type { AgentPlacement } from "@/lib/trading-agent-hq/sceneConfig";
 import { toPct } from "@/lib/trading-agent-hq/sceneConfig";
 import type { AgentVM } from "@/lib/trading-agent-hq/viewModel";
 import type { AnimKey } from "@/lib/trading-agent-hq/animationConfig";
-import { VISUAL_BEHAVIOR, FRAME } from "@/lib/trading-agent-hq/animationConfig";
+import { VISUAL_BEHAVIOR, frameForAgent } from "@/lib/trading-agent-hq/animationConfig";
 import { SHEET_SRC, SHEET, framePositionX, framePositionY } from "@/lib/trading-agent-hq/assetManifest";
 import AgentBubble from "./AgentBubble";
 
@@ -60,9 +61,11 @@ export default function AgentSprite({
   const animClass = lowPower && !behavior.transient ? "" : behavior.cssClass;
   const toneRing = TONE_RING[behavior.tone] ?? "transparent";
   const sheetSrc = SHEET_SRC[placement.id];
-  const frame = FRAME[animKey];
+  const frame = frameForAgent(placement.id, animKey);
   const cell = size * 1.8; // square sprite cell display size
   const cycling = !!frame.cycle && !lowPower;
+  const frameCount = Math.max(1, Math.min(frame.frameCount ?? SHEET.cols, SHEET.cols));
+  const cycleEndX = framePositionX(frameCount - 1);
   const cycleDuration = CYCLE_DURATION[animKey];
   const cycleDelay = CYCLE_DELAY[placement.id] ?? "0s";
 
@@ -138,10 +141,12 @@ export default function AgentSprite({
                 backgroundPositionX: cycling ? "0%" : framePositionX(frame.col),
                 backgroundPositionY: framePositionY(frame.row),
                 backgroundRepeat: "no-repeat",
+                "--thq-cycle-end-x": cycleEndX,
                 animationDuration: cycling ? cycleDuration : undefined,
                 animationDelay: cycling ? cycleDelay : undefined,
+                animationTimingFunction: cycling ? `steps(${frameCount}, jump-none)` : undefined,
                 imageRendering: "auto",
-              }}
+              } as CSSProperties}
             />
             <span
               className="absolute right-2 top-2 h-2 w-2 rounded-full opacity-80 ring-1 ring-white/80"

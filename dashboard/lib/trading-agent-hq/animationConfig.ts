@@ -2,7 +2,7 @@
 // THQ-6 — Animation config: Normalized Visual State → Animation Key → Visual Behavior.
 // SAFETY: presentation only. Animation never implies trading readiness.
 
-import type { AgentStatus } from "./viewModel";
+import type { AgentId, AgentStatus } from "./viewModel";
 
 export type AnimKey =
   | "idle"
@@ -51,9 +51,11 @@ export const VISUAL_BEHAVIOR: Record<AnimKey, VisualBehavior> = {
  *  Row layout: 0 idle · 1 working(desk) · 2 tablet/pointing · 3 happy/cheer. */
 // NOTE: café background already draws each desk, so we avoid row 1 (sprite-with-desk)
 // to prevent double-desk. Use standing (row 0) + tablet/pointing (row 2) + cheer (row 3).
-export const FRAME: Record<AnimKey, { row: number; col: number; cycle?: boolean }> = {
+export type SpriteFrame = { row: number; col: number; cycle?: boolean; frameCount?: number };
+
+export const FRAME: Record<AnimKey, SpriteFrame> = {
   idle: { row: 0, col: 0 },                   // static standing frame
-  guarding: { row: 0, col: 0 },               // calm static frame
+  guarding: { row: 0, col: 0, cycle: true },  // calm guard loop
   working: { row: 1, col: 0, cycle: true },   // role work loop
   logging: { row: 1, col: 0, cycle: true },   // writing/knowledge loop
   scanning: { row: 2, col: 0, cycle: true },  // chart/tablet scanning loop
@@ -61,6 +63,21 @@ export const FRAME: Record<AnimKey, { row: number; col: number; cycle?: boolean 
   error: { row: 0, col: 1 },
   paused: { row: 0, col: 4 },
 };
+
+const AGENT_FRAME_OVERRIDES: Partial<Record<AgentId, Partial<Record<AnimKey, SpriteFrame>>>> = {
+  risk_manager: {
+    guarding: { row: 0, col: 0, cycle: true },
+    alert: { row: 0, col: 0, cycle: true },
+  },
+  market_regime: {
+    scanning: { row: 0, col: 0, cycle: true, frameCount: 12 },
+    working: { row: 0, col: 0, cycle: true, frameCount: 12 },
+  },
+};
+
+export function frameForAgent(agentId: AgentId, animKey: AnimKey): SpriteFrame {
+  return AGENT_FRAME_OVERRIDES[agentId]?.[animKey] ?? FRAME[animKey];
+}
 
 export const TIMING = {
   /** keep a resolved animation at least this long (anti-flicker) */

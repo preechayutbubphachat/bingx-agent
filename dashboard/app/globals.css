@@ -109,7 +109,7 @@ body {
 
 /* THQ-2/6: smooth sprite-sheet frame cycling (18 columns, character stays anchored in place) */
 .thq-cycle { animation: thq-cyc 5.8s steps(18, jump-none) infinite; }
-@keyframes thq-cyc { from { background-position-x: 0%; } to { background-position-x: 100%; } }
+@keyframes thq-cyc { from { background-position-x: 0%; } to { background-position-x: var(--thq-cycle-end-x, 100%); } }
 @media (prefers-reduced-motion: reduce) { .thq-cycle { animation: none !important; } }
 
 /* Trading Caffee HQ: 6 x 4 character sprite sheets, presentation only. */

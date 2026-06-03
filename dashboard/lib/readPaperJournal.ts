@@ -67,6 +67,8 @@ export type PaperJournalSummary = {
   totalPaperEvents: number;
   totalOrderSimulated: number;
   totalOrderFilled: number;
+  buyFillCount: number;
+  sellFillCount: number;
   totalOrderCanceled: number;
   totalOrderRejected: number;
   openPaperOrders: number;
@@ -199,6 +201,8 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
   let totalPaperEvents = 0;
   let totalOrderSimulated = 0;
   let totalOrderFilled = 0;
+  let buyFillCount = 0;
+  let sellFillCount = 0;
   let totalOrderCanceled = 0;
   let totalOrderRejected = 0;
   let openPaperOrders = 0;
@@ -219,6 +223,8 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
       totalPaperEvents: 0,
       totalOrderSimulated: 0,
       totalOrderFilled: 0,
+      buyFillCount: 0,
+      sellFillCount: 0,
       totalOrderCanceled: 0,
       totalOrderRejected: 0,
       openPaperOrders: 0,
@@ -279,6 +285,8 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
       totalPaperEvents: 0,
       totalOrderSimulated: 0,
       totalOrderFilled: 0,
+      buyFillCount: 0,
+      sellFillCount: 0,
       totalOrderCanceled: 0,
       totalOrderRejected: 0,
       openPaperOrders: 0,
@@ -335,6 +343,10 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
         // when both events fire for the same order.
         if (eventType === "ORDER_FILLED" || eventType === "FILL_RESULT") {
           const payloadObj = event.payload as Record<string, unknown> | undefined;
+          const fillSide =
+            typeof payloadObj?.side === "string"
+              ? payloadObj.side.trim().toUpperCase()
+              : textOrNull(readObservabilityContext(event, payloadObj).side)?.toUpperCase();
           const fillKey =
             event.eventKey ??
             (typeof payloadObj?.orderId === "string" ? payloadObj.orderId : null);
@@ -342,10 +354,14 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
             if (!filledOrderKeys.has(fillKey)) {
               filledOrderKeys.add(fillKey);
               totalOrderFilled++;
+              if (fillSide === "BUY") buyFillCount++;
+              if (fillSide === "SELL") sellFillCount++;
             }
           } else {
             // no stable key — count to avoid undercounting (matches prior ORDER_FILLED behavior)
             totalOrderFilled++;
+            if (fillSide === "BUY") buyFillCount++;
+            if (fillSide === "SELL") sellFillCount++;
           }
         }
 
@@ -492,6 +508,8 @@ export async function readPaperJournal(): Promise<PaperJournalSummary> {
     totalPaperEvents,
     totalOrderSimulated,
     totalOrderFilled,
+    buyFillCount,
+    sellFillCount,
     totalOrderCanceled,
     totalOrderRejected,
     openPaperOrders,

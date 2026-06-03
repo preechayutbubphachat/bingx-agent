@@ -206,6 +206,42 @@ build_curl_flags() {
   fi
 }
 
+audit_log_path() {
+  local audit_root log_dir
+
+  if [ -n "${EXECUTION_AUDIT_LOG_PATH:-}" ]; then
+    printf '%s\n' "$EXECUTION_AUDIT_LOG_PATH"
+    return 0
+  fi
+
+  audit_root="${EXECUTION_AUDIT_ROOT_DIR:-$ROOT_DIR}"
+  log_dir="$audit_root/tmp"
+  mkdir -p "$log_dir" 2>/dev/null || return 1
+  printf '%s/paper_cycle_audit.jsonl\n' "$log_dir"
+}
+
+append_no_trade_audit() {
+  local primary_reason="$1"
+  local range_status="$2"
+  local secondary_reason="${3:-}"
+  local tertiary_reason="${4:-}"
+  local audit_file audit_body
+
+  audit_file="$(audit_log_path || true)"
+  if [ -z "$audit_file" ]; then
+    log "could not resolve audit log path for no-trade event"
+    return 0
+  fi
+
+  read -r -d '' audit_body <<JSON || true
+{"schema_version":"execution_audit_v1","ts":$EVENT_TS,"type":"NO_TRADE_DECISION","symbol":"$(json_escape "$SYMBOL")","mode":"PAPER","eventKey":"$(json_escape "$EVENT_KEY")","payload":{"decision":{"side":"NONE","quantity":null,"kind":"NO_TRADE"},"context":{"schemaVersion":"$SCHEMA_VERSION","paperObservabilitySchemaVersion":"$SCHEMA_VERSION","gridLower":$(json_num_or_null "$GRID_LOWER"),"gridUpper":$(json_num_or_null "$GRID_UPPER"),"gridMid":$(json_num_or_null "$GRID_MID"),"currentPrice":$(json_num_or_null "$CURRENT_PRICE"),"gridSpacingPct":$(json_num_or_null "$GRID_SPACING_PCT"),"side":"NONE","symbol":"$(json_escape "$SYMBOL")","mode":$(json_str_or_null "$MODE"),"market_mode":$(json_str_or_null "$MODE"),"regime":$(json_str_or_null "$REGIME"),"session":$(json_str_or_null "$SESSION"),"paperModeDetected":true,"eventTs":$EVENT_TS,"timestamp":"$(date -u '+%Y-%m-%dT%H:%M:%SZ')","noTradeReason":"$(json_escape "$primary_reason")","reason":"$(json_escape "$primary_reason")","reasons":["$(json_escape "$primary_reason")","$(json_escape "$secondary_reason")","$(json_escape "$tertiary_reason")"],"rangeStatus":"$(json_escape "$range_status")"}}}
+JSON
+
+  if [ -n "$audit_body" ]; then
+    printf '%s\n' "$audit_body" >> "$audit_file" || log "could not append no-trade audit event"
+  fi
+}
+
 KEY="$(read_setting "${RUN_CYCLE_TRIGGER_KEY:-}" RUN_CYCLE_TRIGGER_KEY INTERNAL_API_KEY REFRESH_ENDPOINT_KEY || true)"
 if [ -z "$KEY" ]; then
   log "missing RUN_CYCLE_TRIGGER_KEY/INTERNAL_API_KEY/REFRESH_ENDPOINT_KEY"
@@ -261,15 +297,29 @@ if [ -z "$CURRENT_PRICE" ] || [ -z "$GRID_MID" ]; then
   exit 0
 fi
 
+EVENT_TS="$(printf '%(%s)T' -1)000"
+EVENT_KEY="${SYMBOL}:paper_cycle:${EVENT_TS}"
+
 CURRENT_MILLI="$(num_to_milli "$CURRENT_PRICE")"
+if [ -n "$GRID_LOWER_MILLI" ] && [ "$CURRENT_MILLI" -lt "$GRID_LOWER_MILLI" ]; then
+  NO_TRADE_REASON="price_below_grid_lower"
+  append_no_trade_audit "$NO_TRADE_REASON" "BELOW_GRID" "range_breakdown" "waiting_for_regrid_or_reentry"
+  log "price below grid_lower; no paper BUY sent (reason=$NO_TRADE_REASON currentPrice=$CURRENT_PRICE grid_lower=$GRID_LOWER grid_upper=$GRID_UPPER gridMid=$GRID_MID mode=${MODE:-unknown})"
+  exit 0
+fi
+
+if [ -n "$GRID_UPPER_MILLI" ] && [ "$CURRENT_MILLI" -gt "$GRID_UPPER_MILLI" ]; then
+  NO_TRADE_REASON="price_above_grid_upper"
+  append_no_trade_audit "$NO_TRADE_REASON" "ABOVE_GRID" "range_breakout" ""
+  log "price above grid_upper; no inappropriate paper order sent (reason=$NO_TRADE_REASON currentPrice=$CURRENT_PRICE grid_lower=$GRID_LOWER grid_upper=$GRID_UPPER gridMid=$GRID_MID mode=${MODE:-unknown})"
+  exit 0
+fi
+
 if [ "$CURRENT_MILLI" -lt "$GRID_MID_MILLI" ]; then
   SIDE="BUY"
 else
   SIDE="SELL"
 fi
-
-EVENT_TS="$(printf '%(%s)T' -1)000"
-EVENT_KEY="${SYMBOL}:paper_cycle:${EVENT_TS}"
 
 read -r -d '' BODY <<JSON || true
 {

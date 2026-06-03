@@ -45,6 +45,7 @@ export type SampleSizeStatus =
   | "robust_sample";
 
 export type CostDragStatus = "ok" | "cost_drag_high" | "critical_cost_drag";
+export type PriceVsGridStatus = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
 export type NoTradeReason =
   | "data_missing"
@@ -57,6 +58,8 @@ export type NoTradeReason =
   | "news_risk"
   | "runtime_audit_critical"
   | "cost_exceeds_edge"
+  | "price_below_grid_lower"
+  | "price_above_grid_upper"
   | "paper_edge_unproven"
   | "insufficient_paper_edge";
 
@@ -199,6 +202,10 @@ export type PaperPerformanceReport = {
   totalEvents: number;
   totalPaperOrders: number;
   totalPaperFills: number;
+  buyFillCount: number;
+  sellFillCount: number;
+  latestJournalAt: string | null;
+  priceVsGrid: PriceVsGridStatus;
   sampleSizeStatus: SampleSizeStatus;
   // ─── PnL metrics ────────────────────────────────────────────────────────
   grossPaperPnl: number | null;
@@ -314,6 +321,8 @@ const REQUIRED_NO_TRADE_REASONS: NoTradeReason[] = [
   "volatility_extreme",
   "runtime_audit_critical",
   "cost_exceeds_edge",
+  "price_below_grid_lower",
+  "price_above_grid_upper",
   "paper_edge_unproven",
 ];
 
@@ -813,6 +822,23 @@ function averageGridSpacingFromEvents(events: PaperEventSummary[]): number | nul
   return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 }
 
+function classifyPriceVsGrid(events: PaperEventSummary[]): PriceVsGridStatus {
+  const latestWithRange = events.find(
+    (event) =>
+      typeof event.currentPrice === "number" &&
+      Number.isFinite(event.currentPrice) &&
+      typeof event.gridLower === "number" &&
+      Number.isFinite(event.gridLower) &&
+      typeof event.gridUpper === "number" &&
+      Number.isFinite(event.gridUpper)
+  );
+
+  if (!latestWithRange) return "UNKNOWN";
+  if (latestWithRange.currentPrice! < latestWithRange.gridLower!) return "BELOW_GRID";
+  if (latestWithRange.currentPrice! > latestWithRange.gridUpper!) return "ABOVE_GRID";
+  return "INSIDE_GRID";
+}
+
 function noTradeReasonsFromEvents(events: PaperEventSummary[]): NoTradeReason[] {
   const valid = new Set<NoTradeReason>(REQUIRED_NO_TRADE_REASONS);
   const reasons = events
@@ -944,6 +970,7 @@ function emptyReport(warnings: string[], nextActions: string[], checkedAt: strin
   return {
     ok: false, readOnly: true, status: "no_data",
     totalEvents: 0, totalPaperOrders: 0, totalPaperFills: 0,
+    buyFillCount: 0, sellFillCount: 0, latestJournalAt: null, priceVsGrid: "UNKNOWN",
     sampleSizeStatus: "insufficient_data",
     grossPaperPnl: null, feeEstimateTotal: null, slippageEstimateTotal: null,
     fundingEstimateTotal: null, netPaperPnl: null,
@@ -998,8 +1025,12 @@ export async function computePaperPerformance(): Promise<PaperPerformanceReport>
   const totalEvents = journal.totalPaperEvents;
   const totalPaperOrders = journal.totalOrderSimulated;
   const totalPaperFills = journal.totalOrderFilled;
+  const buyFillCount = journal.buyFillCount ?? 0;
+  const sellFillCount = journal.sellFillCount ?? 0;
+  const latestJournalAt = journal.lastPaperEventAt;
   const recentEvents = journal.recentEvents ?? [];
   const observedGridSpacingPct = averageGridSpacingFromEvents(recentEvents);
+  const priceVsGrid = classifyPriceVsGrid(recentEvents);
   const eventNoTradeReasons = noTradeReasonsFromEvents(recentEvents);
   warnings.push(...journal.warnings);
 
@@ -1052,6 +1083,13 @@ export async function computePaperPerformance(): Promise<PaperPerformanceReport>
 
   if (!dataAvailableForPnl) {
     warnings.push("ยังไม่มี fill price data — รอ ORDER_FILLED events ที่มี averageFillPrice");
+  }
+  if (priceVsGrid === "BELOW_GRID" && buyFillCount > 0 && sellFillCount === 0) {
+    warnings.push("Paper loop is below active grid range with BUY fills and no SELL fills; closedCycles stays 0 until regrid/reentry or SELL evidence appears.");
+    nextActions.push("price_below_grid_lower: pause new paper BUY opens and wait for regrid_or_reentry evidence");
+  } else if (priceVsGrid === "ABOVE_GRID") {
+    warnings.push("Paper loop is above active grid range; out-of-grid paper opens are guarded until strategy explicitly supports that side.");
+    nextActions.push("price_above_grid_upper: wait for range reentry/regrid before adding inappropriate paper opens");
   }
 
   // 6. Cost drag
@@ -1135,7 +1173,9 @@ export async function computePaperPerformance(): Promise<PaperPerformanceReport>
   return {
     ok: edgeStatus === "positive_candidate" || edgeStatus === "positive_unconfirmed",
     readOnly: true, status,
-    totalEvents, totalPaperOrders, totalPaperFills, sampleSizeStatus,
+    totalEvents, totalPaperOrders, totalPaperFills,
+    buyFillCount, sellFillCount, latestJournalAt, priceVsGrid,
+    sampleSizeStatus,
     grossPaperPnl: dataAvailableForPnl ? metrics.grossPnl : null,
     feeEstimateTotal: dataAvailableForPnl ? metrics.feeTotal : null,
     slippageEstimateTotal: dataAvailableForPnl ? metrics.slippageTotal : null,

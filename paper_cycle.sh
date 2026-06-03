@@ -88,6 +88,27 @@ json_number() {
   return 1
 }
 
+# Algorithm v2 hotfix: read the LAST occurrence of a numeric key (newest candle in an
+# oldest→newest array). Used for market_snapshot close so we use the latest close, not the first.
+json_number_last() {
+  local file="$1"
+  shift
+  local key match value
+  [ -f "$file" ] || return 1
+  for key in "$@"; do
+    match="$(grep -oE "\"${key}\"[[:space:]]*:[[:space:]]*-?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?" "$file" | tail -n 1 || true)"
+    if [ -n "$match" ]; then
+      value="${match#*:}"
+      value="${value//[!0-9eE+.-]/}"
+      if [ -n "$value" ]; then
+        printf '%s\n' "$value"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
 json_string() {
   local file="$1"
   shift
@@ -214,10 +235,12 @@ audit_log_path() {
     return 0
   fi
 
+  # write into the SAME execution-runner journal root as FILL_RESULT so
+  # `grep -R PAPER_NO_TRADE <root>/tmp/execution-runner` works and the reader scans it.
   audit_root="${EXECUTION_AUDIT_ROOT_DIR:-$ROOT_DIR}"
-  log_dir="$audit_root/tmp"
+  log_dir="$audit_root/tmp/execution-runner"
   mkdir -p "$log_dir" 2>/dev/null || return 1
-  printf '%s/paper_cycle_audit.jsonl\n' "$log_dir"
+  printf '%s/paper_no_trade.jsonl\n' "$log_dir"
 }
 
 append_no_trade_audit() {
@@ -234,7 +257,7 @@ append_no_trade_audit() {
   fi
 
   read -r -d '' audit_body <<JSON || true
-{"schema_version":"execution_audit_v1","ts":$EVENT_TS,"type":"NO_TRADE_DECISION","symbol":"$(json_escape "$SYMBOL")","mode":"PAPER","eventKey":"$(json_escape "$EVENT_KEY")","payload":{"decision":{"side":"NONE","quantity":null,"kind":"NO_TRADE"},"context":{"schemaVersion":"$SCHEMA_VERSION","paperObservabilitySchemaVersion":"$SCHEMA_VERSION","gridLower":$(json_num_or_null "$GRID_LOWER"),"gridUpper":$(json_num_or_null "$GRID_UPPER"),"gridMid":$(json_num_or_null "$GRID_MID"),"currentPrice":$(json_num_or_null "$CURRENT_PRICE"),"gridSpacingPct":$(json_num_or_null "$GRID_SPACING_PCT"),"side":"NONE","symbol":"$(json_escape "$SYMBOL")","mode":$(json_str_or_null "$MODE"),"market_mode":$(json_str_or_null "$MODE"),"regime":$(json_str_or_null "$REGIME"),"session":$(json_str_or_null "$SESSION"),"paperModeDetected":true,"eventTs":$EVENT_TS,"timestamp":"$(date -u '+%Y-%m-%dT%H:%M:%SZ')","noTradeReason":"$(json_escape "$primary_reason")","reason":"$(json_escape "$primary_reason")","reasons":["$(json_escape "$primary_reason")","$(json_escape "$secondary_reason")","$(json_escape "$tertiary_reason")"],"rangeStatus":"$(json_escape "$range_status")"}}}
+{"schema_version":"execution_audit_v1","ts":$EVENT_TS,"type":"PAPER_NO_TRADE","symbol":"$(json_escape "$SYMBOL")","mode":"PAPER","eventKey":"$(json_escape "$EVENT_KEY")","payload":{"decision":{"side":"NONE","quantity":null,"kind":"NO_TRADE"},"context":{"schemaVersion":"$SCHEMA_VERSION","paperObservabilitySchemaVersion":"$SCHEMA_VERSION","gridLower":$(json_num_or_null "$GRID_LOWER"),"gridUpper":$(json_num_or_null "$GRID_UPPER"),"gridMid":$(json_num_or_null "$GRID_MID"),"currentPrice":$(json_num_or_null "$CURRENT_PRICE"),"gridSpacingPct":$(json_num_or_null "$GRID_SPACING_PCT"),"side":"NONE","symbol":"$(json_escape "$SYMBOL")","mode":$(json_str_or_null "$MODE"),"market_mode":$(json_str_or_null "$MODE"),"regime":$(json_str_or_null "$REGIME"),"session":$(json_str_or_null "$SESSION"),"paperModeDetected":true,"eventTs":$EVENT_TS,"timestamp":"$(date -u '+%Y-%m-%dT%H:%M:%SZ')","noTradeReason":"$(json_escape "$primary_reason")","reason":"$(json_escape "$primary_reason")","reasons":["$(json_escape "$primary_reason")","$(json_escape "$secondary_reason")","$(json_escape "$tertiary_reason")"],"rangeStatus":"$(json_escape "$range_status")","state":"$(json_escape "$range_status")","priceVsGrid":$(json_str_or_null "${PRICE_VS_GRID:-}"),"decisionPrice":$(json_num_or_null "${DECISION_PRICE:-}"),"snapshotPrice":$(json_num_or_null "${SNAPSHOT_CLOSE:-}"),"priceDriftPct":$(json_num_or_null "${PRICE_DRIFT_PCT:-}"),"buyFillCount":$(json_num_or_null "${BUY_FILL_COUNT:-}"),"sellFillCount":$(json_num_or_null "${SELL_FILL_COUNT:-}")}}}
 JSON
 
   if [ -n "$audit_body" ]; then
@@ -269,7 +292,8 @@ SESSION="$(json_string "$MARKET_FILE" session label name || true)"
 
 # Algorithm v2: market_snapshot CLOSE is the source of truth for the range/stale gate.
 # orderbook mid (and the price the decision was built on) is kept separately to detect drift.
-SNAPSHOT_CLOSE="$(json_number "$MARKET_FILE" close last_close lastClose latest_close lastPrice last c || true)"
+# prefer an explicit "latest" scalar; else take the LAST close in the candle array (newest)
+SNAPSHOT_CLOSE="$(json_number "$MARKET_FILE" last_close lastClose latest_close lastPrice latestClose || json_number_last "$MARKET_FILE" close c || true)"
 DECISION_PRICE="$MID_PRICE"
 
 GRID_LOWER_MILLI=""
@@ -306,6 +330,19 @@ fi
 
 EVENT_TS="$(printf '%(%s)T' -1)000"
 EVENT_KEY="${SYMBOL}:paper_cycle:${EVENT_TS}"
+
+# priceVsGrid (computed from latest snapshot close) — used in every no-trade audit event
+CURRENT_MILLI="$(num_to_milli "$CURRENT_PRICE")"
+PRICE_VS_GRID=""
+if [ -n "$GRID_LOWER_MILLI" ] && [ -n "$GRID_UPPER_MILLI" ]; then
+  if [ "$CURRENT_MILLI" -lt "$GRID_LOWER_MILLI" ]; then
+    PRICE_VS_GRID="BELOW_GRID"
+  elif [ "$CURRENT_MILLI" -gt "$GRID_UPPER_MILLI" ]; then
+    PRICE_VS_GRID="ABOVE_GRID"
+  else
+    PRICE_VS_GRID="INSIDE_GRID"
+  fi
+fi
 
 # Part D — stale decision / price-source mismatch gate (drift between decision price and fresh close)
 PRICE_DRIFT_PCT=""

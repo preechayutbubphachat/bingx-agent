@@ -9,6 +9,10 @@ import { calculateDynamicGrid, type DynamicGridResult } from "@/lib/grid/dynamic
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
 export interface PaperLoopDiagnostics {
+  /** windowed counts — reader scans newest ~30 journal files, NOT full history (use grep for cumulative) */
+  sampleBuyFillCount: number;
+  sampleSellFillCount: number;
+  /** @deprecated alias of sample*FillCount (kept for backward-compatibility) */
   rawBuyFillCount: number;
   rawSellFillCount: number;
   latestJournalAt: string | null;
@@ -94,6 +98,8 @@ export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLo
     : null;
 
   return {
+    sampleBuyFillCount: summary.buyFillCount,
+    sampleSellFillCount: summary.sellFillCount,
     rawBuyFillCount: summary.buyFillCount,
     rawSellFillCount: summary.sellFillCount,
     latestJournalAt: summary.lastPaperEventAt,

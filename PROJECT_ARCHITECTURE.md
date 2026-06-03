@@ -1650,3 +1650,58 @@ Rules:
 - No fake PnL.
 - Stale data reduces confidence and mood.
 - M-0B remains blocked until all real gates pass.
+
+---
+
+## Layer 07 — Grid Mode & Parameter Engine · Dynamic Grid Engine v2 (paper-only)
+
+> เพิ่ม 2026-06 หลัง audit พบ design gap: static neutral grid ซื้อต่อเนื่องแม้ราคาหลุดต่ำกว่า grid_lower
+> Module: `dashboard/lib/grid/dynamicGrid.ts` (`calculateDynamicGrid`, pure) · **paper-only จนกว่า M-0B evidence ผ่าน**
+
+### ทำไม static grid ไม่พอ
+neutral grid ตั้ง [grid_lower, grid_upper] คงที่ + side ตัดที่ gridMid อย่างเดียว → ถ้าราคาหลุดออกนอกช่วง (เช่น close ≈ 66849 ขณะ grid [72480, 78053]) การ "ซื้อเมื่อราคา < mid" จะ**ซื้อรัวขาเดียว**โดยไม่มีฝั่งขายมาปิดรอบ → closedCycles=0 และสะสม inventory ขาเดียวไม่จำกัด ราคาต่ำกว่า grid_lower = **neutral grid ใช้ไม่ได้แล้ว** ต้อง regrid หรือหยุด
+
+### State machine
+```
+INSIDE_GRID → ทำ grid ปกติ (BUY < mid, SELL > mid) ภายใต้ exposure cap
+BELOW_GRID  → block BUY → REGRID_REQUIRED (no_trade: price_below_grid_lower)
+ABOVE_GRID  → block SELL/open → REGRID_REQUIRED (no_trade: price_above_grid_upper)
+PAUSE_OUT_OF_RANGE / PAUSE_EXPOSURE_LIMIT → หยุดเปิดเพิ่ม
+REGRID_REQUIRED → REGRID_CANDIDATE → (ผ่าน cooldown/stable candle) → DYNAMIC_GRID_ACTIVE
+TREND_CHECK → mode ไม่ range-like → ไม่ regrid neutral ทันที
+NO_TRADE → regime ไม่ชัด / volatility สุดขั้ว / cost gate ไม่ผ่าน  (No-Trade = decision ที่ถูกต้อง)
+STALE_DATA → decision price กับ snapshot price ต่างกันเกิน threshold
+```
+
+### สูตรคำนวณ (v2)
+```
+priceVsGrid     = BELOW/INSIDE/ABOVE จาก currentPrice (snapshot สด) เทียบ grid_lower/upper
+realizedRangePct= (max(N closes) − min(N closes)) / price × 100
+atrProxyPct     = avg(|close[i] − close[i−1]|) / price × 100
+minGridWidthPct = max(roundTripCostPct × 5, 1.5%)
+targetWidthPct  = clamp(atrProxyPct × 6, minGridWidthPct, 12%)
+dynLower/Upper  = price × (1 ∓ targetWidthPct/200) ; dynMid = price
+spacingPct      = targetWidthPct / gridCount   (ต้อง > roundTripCostPct × 2.5)
+```
+
+### Regrid cooldown
+ราคาหลุดช่วงไม่ regrid ทันที → REGRID_REQUIRED ก่อน แล้วต้องผ่าน stable candle (N=3–6) + data สด + volatility ไม่สุดขั้ว + regime range-like + spacing คุ้ม cost + exposure ไม่เกิน cap จึงจะ DYNAMIC_GRID_ACTIVE
+
+### Cost gate integration
+spacingPct ต้อง > roundTripCostPct × 2.5 มิฉะนั้น no_trade (cost_gate_failed) — cost ผ่าน ≠ edge ผ่าน
+
+### Exposure guardrail
+maxOneSidedBuyFillsWithoutSell / maxOneSidedSellFillsWithoutBuy (default 5) → เกิน → PAUSE_EXPOSURE_LIMIT (one_sided_buy_limit / one_sided_sell_limit)
+
+### ความต่าง
+| แบบ | ช่วงราคา | regrid | ใช้เมื่อ |
+|---|---|---|---|
+| Static Grid | คงที่ | ไม่ | range นิ่ง |
+| Adaptive Grid | คงที่ + ปรับ param | นาน ๆ ครั้ง | range เปลี่ยน vol |
+| Dynamic Grid | ย้ายตามราคา/ATR | เมื่อหลุดช่วง+ผ่าน gate | range เลื่อน |
+| Trend Grid | bias ทิศ | — | trend ยืนยัน |
+| No-Trade | — | — | regime ไม่ชัด/นอกช่วง/cost ไม่คุ้ม |
+
+### Safety
+Dynamic Grid เป็น **paper-only** จนกว่า M-0B evidence ผ่าน · ไม่เปิด live/order · ไม่ตั้ง approval ·
+**M-0B ยังถูกบล็อกจนกว่า:** closedCycles เพียงพอ · netExpectancy > 0 หลังหัก cost · operator review · manual approval

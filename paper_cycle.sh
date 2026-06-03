@@ -267,12 +267,19 @@ MARK_PRICE="$(json_number "$FUNDING_FILE" markPrice || json_number "$MARKET_FILE
 INDEX_PRICE="$(json_number "$FUNDING_FILE" indexPrice || json_number "$MARKET_FILE" indexPrice || true)"
 SESSION="$(json_string "$MARKET_FILE" session label name || true)"
 
+# Algorithm v2: market_snapshot CLOSE is the source of truth for the range/stale gate.
+# orderbook mid (and the price the decision was built on) is kept separately to detect drift.
+SNAPSHOT_CLOSE="$(json_number "$MARKET_FILE" close last_close lastClose latest_close lastPrice last c || true)"
+DECISION_PRICE="$MID_PRICE"
+
 GRID_LOWER_MILLI=""
 GRID_UPPER_MILLI=""
 GRID_MID_MILLI=""
 GRID_MID=""
 GRID_SPACING_PCT=""
-CURRENT_PRICE="$MID_PRICE"
+# prefer fresh snapshot close; fall back to orderbook mid / bid-ask / mark / index
+CURRENT_PRICE="$SNAPSHOT_CLOSE"
+if [ -z "$CURRENT_PRICE" ]; then CURRENT_PRICE="$MID_PRICE"; fi
 
 if [ -n "$GRID_LOWER" ] && [ -n "$GRID_UPPER" ]; then
   GRID_LOWER_MILLI="$(num_to_milli "$GRID_LOWER")"
@@ -299,6 +306,50 @@ fi
 
 EVENT_TS="$(printf '%(%s)T' -1)000"
 EVENT_KEY="${SYMBOL}:paper_cycle:${EVENT_TS}"
+
+# Part D — stale decision / price-source mismatch gate (drift between decision price and fresh close)
+PRICE_DRIFT_PCT=""
+if [ -n "$DECISION_PRICE" ] && [ -n "$SNAPSHOT_CLOSE" ]; then
+  dprice_milli="$(num_to_milli "$DECISION_PRICE")"
+  sclose_milli="$(num_to_milli "$SNAPSHOT_CLOSE")"
+  if [ "$sclose_milli" -gt 0 ]; then
+    drift_milli=$(( dprice_milli - sclose_milli ))
+    if [ "$drift_milli" -lt 0 ]; then drift_milli=$(( -drift_milli )); fi
+    drift_scaled=$(( drift_milli * 100 * 1000 / sclose_milli ))  # pct x1000 (3 decimals)
+    PRICE_DRIFT_PCT="$(milli_to_num "$drift_scaled")"
+    max_drift_scaled="${PAPER_MAX_PRICE_DRIFT_SCALED:-1000}"       # 1000 = 1.000%
+    if [ "$drift_scaled" -gt "$max_drift_scaled" ]; then
+      NO_TRADE_REASON="stale_decision_or_price_mismatch"
+      append_no_trade_audit "$NO_TRADE_REASON" "STALE_DATA" "decision_vs_snapshot_drift" "drift_pct=$PRICE_DRIFT_PCT"
+      log "stale/price mismatch; no paper order (reason=$NO_TRADE_REASON decisionPrice=$DECISION_PRICE snapshotClose=$SNAPSHOT_CLOSE driftPct=$PRICE_DRIFT_PCT)"
+      exit 0
+    fi
+  fi
+fi
+
+# Part C — one-sided exposure guardrail (best-effort count from paper fills journal)
+BUY_FILL_COUNT=0
+SELL_FILL_COUNT=0
+FILLS_DIR="${EXECUTION_AUDIT_ROOT_DIR:-$ROOT_DIR}/tmp/execution-runner"
+if [ -d "$FILLS_DIR" ]; then
+  BUY_FILL_COUNT="$(grep -rhoE '"side"[[:space:]]*:[[:space:]]*"BUY"' "$FILLS_DIR" 2>/dev/null | grep -c . || true)"
+  SELL_FILL_COUNT="$(grep -rhoE '"side"[[:space:]]*:[[:space:]]*"SELL"' "$FILLS_DIR" 2>/dev/null | grep -c . || true)"
+fi
+BUY_FILL_COUNT="${BUY_FILL_COUNT:-0}"
+SELL_FILL_COUNT="${SELL_FILL_COUNT:-0}"
+MAX_ONE_SIDED="${PAPER_MAX_ONE_SIDED_FILLS:-5}"
+if [ "$BUY_FILL_COUNT" -gt "$MAX_ONE_SIDED" ] && [ "$SELL_FILL_COUNT" -eq 0 ]; then
+  NO_TRADE_REASON="one_sided_buy_limit"
+  append_no_trade_audit "$NO_TRADE_REASON" "PAUSE_EXPOSURE_LIMIT" "buy=$BUY_FILL_COUNT" "sell=$SELL_FILL_COUNT"
+  log "one-sided BUY exposure cap; no paper BUY (buy=$BUY_FILL_COUNT sell=$SELL_FILL_COUNT max=$MAX_ONE_SIDED)"
+  exit 0
+fi
+if [ "$SELL_FILL_COUNT" -gt "$MAX_ONE_SIDED" ] && [ "$BUY_FILL_COUNT" -eq 0 ]; then
+  NO_TRADE_REASON="one_sided_sell_limit"
+  append_no_trade_audit "$NO_TRADE_REASON" "PAUSE_EXPOSURE_LIMIT" "buy=$BUY_FILL_COUNT" "sell=$SELL_FILL_COUNT"
+  log "one-sided SELL exposure cap; no paper SELL (buy=$BUY_FILL_COUNT sell=$SELL_FILL_COUNT max=$MAX_ONE_SIDED)"
+  exit 0
+fi
 
 CURRENT_MILLI="$(num_to_milli "$CURRENT_PRICE")"
 if [ -n "$GRID_LOWER_MILLI" ] && [ "$CURRENT_MILLI" -lt "$GRID_LOWER_MILLI" ]; then

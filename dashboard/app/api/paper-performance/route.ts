@@ -30,6 +30,8 @@
 
 import { NextResponse } from "next/server";
 import { computePaperPerformance } from "@/lib/paperPerformance";
+import { readPaperJournal } from "@/lib/readPaperJournal";
+import { buildPaperLoopDiagnostics } from "@/lib/paper/paperLoopDiagnostics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,6 +41,15 @@ const PAPER_PERFORMANCE_VERSION = "1.1.0";
 export async function GET() {
   try {
     const report = await computePaperPerformance();
+
+    // Part F — additive paper-loop diagnostics (never throws the endpoint)
+    let paperLoopDiagnostics = null;
+    try {
+      const summary = await readPaperJournal();
+      paperLoopDiagnostics = buildPaperLoopDiagnostics(summary);
+    } catch {
+      paperLoopDiagnostics = null;
+    }
 
     return NextResponse.json(
       {
@@ -50,6 +61,13 @@ export async function GET() {
           roundTripCostPct: report.costGate?.roundTripCostPct ?? null,
           passes: report.costGate?.pass ?? null,
           note: report.costGate?.nextAction ?? "",
+        },
+        // Part F — additive observability (backward-compatible)
+        paperLoopDiagnostics,
+        paperDataQuality: {
+          ...report.paperDataQuality,
+          hasNoTradeLogs: !!paperLoopDiagnostics && paperLoopDiagnostics.lastNoTradeReason != null,
+          hasDynamicGridDiagnostics: !!paperLoopDiagnostics?.dynamicGrid?.enabled,
         },
       },
       { status: 200 }

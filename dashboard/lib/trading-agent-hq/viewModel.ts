@@ -70,6 +70,8 @@ export interface DynamicRegridCandidateVM {
 }
 
 export interface DynamicRegridVM {
+  marketMode: string | null;
+  regime: string | null;
   priceVsGrid: string | null;
   paperLoopState: string | null;
   lastNoTradeReason: string | null;
@@ -97,7 +99,10 @@ export interface RuntimeMonitorVM {
   noTradeIncreasing: boolean;
   regridCandidateIncreasing: boolean;
   activationAllowed: boolean | null;
+  priceVsGrid: string | null;
+  paperLoopState: string | null;
   monitorStatus: "PASS" | "WATCH" | "UNKNOWN";
+  monitorSummary: string | null;
 }
 
 export interface TopHudVM {

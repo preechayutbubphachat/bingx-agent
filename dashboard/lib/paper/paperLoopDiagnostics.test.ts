@@ -102,6 +102,9 @@ test("runtime monitor PASS when activation is blocked and safety journals advanc
   assert.equal(d.runtimeMonitor.noTradeIncreasing, true);
   assert.equal(d.runtimeMonitor.regridCandidateIncreasing, true);
   assert.equal(d.runtimeMonitor.monitorStatus, "PASS");
+  assert.equal(d.runtimeMonitor.priceVsGrid, "BELOW_GRID");
+  assert.equal(d.runtimeMonitor.paperLoopState, "REGRID_REQUIRED");
+  assert.equal(d.runtimeMonitor.monitorSummary, "STABLE_RUNTIME_PASS");
 });
 
 test("runtime monitor WATCH when a fill is newer than no-trade while out of grid", () => {

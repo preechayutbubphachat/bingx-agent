@@ -17,6 +17,7 @@ import BottomWidgetDock from "./BottomWidgetDock";
 import AdvancedDebugCard from "./AdvancedDebugCard";
 import DynamicRegridStatusCard from "./DynamicRegridStatusCard";
 import RuntimeMonitorCard from "./RuntimeMonitorCard";
+import TrendRegimeConfirmationCard from "./TrendRegimeConfirmationCard";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
 const edgeStatusLabel = (status: string) =>
@@ -59,6 +60,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
   useEffect(() => {
     const monitor = vm.paper.runtimeMonitor;
     const previous = previousRuntimeMonitor.current;
+    let timeoutId: number | null = null;
     if (previous) {
       const messages: string[] = [];
       if (
@@ -69,14 +71,18 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       }
       if (monitor.paperNoTradeCount > previous.paperNoTradeCount) messages.push("No-Trade ทำงาน");
       if (monitor.regridCandidateCount > previous.regridCandidateCount) messages.push("Regrid evaluator ทำงาน");
-      setRuntimePollMessages(messages);
+      timeoutId = window.setTimeout(() => setRuntimePollMessages(messages), 0);
     }
     previousRuntimeMonitor.current = {
       cumulativeBuyFillCount: monitor.cumulativeBuyFillCount,
       paperNoTradeCount: monitor.paperNoTradeCount,
       regridCandidateCount: monitor.regridCandidateCount,
     };
+    return () => {
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    };
   }, [
+    vm.paper.runtimeMonitor,
     vm.paper.runtimeMonitor.cumulativeBuyFillCount,
     vm.paper.runtimeMonitor.paperNoTradeCount,
     vm.paper.runtimeMonitor.regridCandidateCount,
@@ -123,6 +129,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />
           <RuntimeMonitorCard paper={vm.paper} safety={vm.safety} pollMessages={runtimePollMessages} />
         </div>
+        <TrendRegimeConfirmationCard paper={vm.paper} />
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
           <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />

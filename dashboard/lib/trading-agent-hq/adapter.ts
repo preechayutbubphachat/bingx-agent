@@ -75,11 +75,16 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       noTradeIncreasing: bool(runtimeMonitor.noTradeIncreasing),
       regridCandidateIncreasing: bool(runtimeMonitor.regridCandidateIncreasing),
       activationAllowed: boolOrNull(runtimeMonitor.activationAllowed ?? candidate.activationAllowed),
+      priceVsGrid: strOrNull(runtimeMonitor.priceVsGrid ?? loop.priceVsGrid ?? perf.priceVsGrid),
+      paperLoopState: strOrNull(runtimeMonitor.paperLoopState ?? loop.paperLoopState),
       monitorStatus: str(runtimeMonitor.monitorStatus, "UNKNOWN") === "PASS"
         ? "PASS"
         : str(runtimeMonitor.monitorStatus, "UNKNOWN") === "WATCH" ? "WATCH" : "UNKNOWN",
+      monitorSummary: strOrNull(runtimeMonitor.monitorSummary),
     },
     dynamicRegrid: {
+      marketMode: strOrNull(loop.marketMode ?? loop.market_mode ?? perf.marketMode ?? perf.market_mode),
+      regime: strOrNull(loop.regime ?? perf.regime),
       priceVsGrid: strOrNull(loop.priceVsGrid ?? perf.priceVsGrid),
       paperLoopState: strOrNull(loop.paperLoopState),
       lastNoTradeReason: strOrNull(loop.lastNoTradeReason),

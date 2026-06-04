@@ -21,6 +21,8 @@ export interface PaperLoopDiagnostics {
   gridUpper: number | null;
   gridMid: number | null;
   currentPrice: number | null;
+  marketMode: string | null;
+  regime: string | null;
   priceVsGrid: PriceVsGrid;
   decisionPrice: number | null;
   snapshotPrice: number | null;
@@ -63,7 +65,10 @@ export interface PaperRuntimeMonitor extends RuntimeMonitorCounters {
   noTradeIncreasing: boolean;
   regridCandidateIncreasing: boolean;
   activationAllowed: boolean;
+  priceVsGrid: PriceVsGrid;
+  paperLoopState: string;
   monitorStatus: "PASS" | "WATCH";
+  monitorSummary: "STABLE_RUNTIME_PASS" | "WATCH_RUNTIME";
 }
 
 function priceVsGridOf(price: number | null, lower: number | null, upper: number | null): PriceVsGrid {
@@ -168,6 +173,8 @@ export function buildPaperLoopDiagnostics(
     buyCountStable
       ? "PASS"
       : "WATCH";
+  const monitorSummary: PaperRuntimeMonitor["monitorSummary"] =
+    monitorStatus === "PASS" ? "STABLE_RUNTIME_PASS" : "WATCH_RUNTIME";
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -179,6 +186,8 @@ export function buildPaperLoopDiagnostics(
     gridUpper,
     gridMid,
     currentPrice,
+    marketMode,
+    regime,
     priceVsGrid,
     // decisionPrice not structured in journal yet; snapshot price == context currentPrice (snapshot close)
     decisionPrice: null,
@@ -209,7 +218,10 @@ export function buildPaperLoopDiagnostics(
       noTradeIncreasing,
       regridCandidateIncreasing,
       activationAllowed,
+      priceVsGrid,
+      paperLoopState,
       monitorStatus,
+      monitorSummary,
     },
   };
 }

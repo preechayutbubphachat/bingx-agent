@@ -34,6 +34,13 @@ function SafetyPill({ label, value }: { label: string; value: string }) {
   );
 }
 
+function priceVsGridLabel(value: string | null | undefined): string {
+  if (value === "BELOW_GRID") return "ราคาอยู่นอกกรอบล่าง";
+  if (value === "ABOVE_GRID") return "ราคาอยู่นอกกรอบบน";
+  if (value === "INSIDE_GRID") return "ราคาอยู่ในกรอบ";
+  return "ไม่ทราบ";
+}
+
 export default function RuntimeMonitorCard({ paper, safety, pollMessages }: RuntimeMonitorCardProps) {
   const monitor = paper.runtimeMonitor;
   const activationText = monitor.activationAllowed === false
@@ -69,6 +76,9 @@ export default function RuntimeMonitorCard({ paper, safety, pollMessages }: Runt
         <Field label="SELL sample/window" value={fmt(monitor.sampleSellFillCount)} />
         <Field label="อนุญาตเปิดกริดใหม่" value={`${activationText} (activationAllowed=${String(monitor.activationAllowed)})`} />
         <Field label="สถานะ monitor" value={monitorStatusText} />
+        <Field label="priceVsGrid" value={priceVsGridLabel(monitor.priceVsGrid)} />
+        <Field label="paperLoopState" value={monitor.paperLoopState ?? "ไม่ทราบ"} />
+        <Field label="เวลาล่าสุดของ Fill" value={fmtTime(monitor.latestFillAt)} />
         <Field label="เวลาล่าสุดของ no-trade" value={fmtTime(monitor.latestNoTradeAt)} />
         <Field label="เวลาล่าสุดของ regrid candidate" value={fmtTime(monitor.latestRegridCandidateAt)} />
       </div>

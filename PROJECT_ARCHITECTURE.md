@@ -1705,3 +1705,16 @@ maxOneSidedBuyFillsWithoutSell / maxOneSidedSellFillsWithoutBuy (default 5) → 
 ### Safety
 Dynamic Grid เป็น **paper-only** จนกว่า M-0B evidence ผ่าน · ไม่เปิด live/order · ไม่ตั้ง approval ·
 **M-0B ยังถูกบล็อกจนกว่า:** closedCycles เพียงพอ · netExpectancy > 0 หลังหัก cost · operator review · manual approval
+
+### Dynamic Regrid Phase 2-A — Regrid Readiness (read-only/paper-only overlay, 2026-06)
+> ดูเต็ม: `docs/M0Z6_DYNAMIC_REGRID_DESIGN.md` (Phase 1+2-A) + `docs/M0Z6_DYNAMIC_REGRID_PHASE2A_MONITORING.md`
+
+Phase 2-A เป็นชั้น **observability/readiness เท่านั้น** เหนือ Dynamic Grid v2 — ประเมินว่า "candidate grid กำลังก่อตัวไหม" เมื่อราคา **นอก grid** แต่**ไม่ activate** อะไรเลย:
+- **Out-of-grid guardrail:** BELOW_GRID/ABOVE_GRID → `REGRID_REQUIRED` (No-Trade) เป็น default ปลอดภัย — guardrail หยุด BUY ขาเดียว (เหตุ closedCycles=0 + inventory ขาเดียว)
+- **`REGRID_CANDIDATE` read-only evaluator** (`dashboard/lib/grid/regridCandidate.ts`): คำนวณ candidate geometry รอบราคาปัจจุบัน → คืน candidateStatus/Lower/Upper/Mid/WidthPct/SpacingPct/GridCount/stableCandleCount/cooldownRemaining + **`activationAllowed=false` เสมอ** · เขียน audit `tmp/execution-runner/regrid_candidate.jsonl` (paper marker, ไม่ส่ง order)
+- **Regrid Readiness card + Runtime Monitor** บน `/agent-hq` (Layer 13 read-only UI) แสดง readiness diagnostics
+- **Paper Epoch Preparation:** `paperLoopDiagnostics.dynamicGrid.candidate` ใน `/api/paper-performance` (additive, backward-compatible)
+- **Old exposure quarantine:** one-sided BUY exposure เดิม ถูกกักไว้ — ไม่ปิดด้วยการ force SELL · ไม่นำมาประเมิน edge
+- **No-Trade = decision ที่ถูกต้อง** เมื่อนอก grid / gate ไม่ครบ
+
+**Phase 2-A ทำอะไรไม่ได้ (invariants):** ไม่เปิด grid ใหม่ · ไม่สร้าง order · ไม่ปลดล็อก M-0B · ไม่ตั้ง live/order/approval flag · `activationAllowed`/`paperActivationAllowed`/`liveActivationAllowed`=false ตลอด · **activation จริง = Phase 2-B** ซึ่งต้อง operator approve อย่างชัดเจน (paper-only design) ก่อน และ live ยังบล็อกตลอด Phase 2

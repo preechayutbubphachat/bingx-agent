@@ -30,6 +30,32 @@ Phase 2-A is still visibility-only and paper-only. It prepares operator review s
 - Live trading remains prohibited: no `LIVE_TRADING_ENABLED`, no `ENABLE_ORDER_PLACEMENT`, no `PRODUCTION_TRADING_READY`, and no exchange approval changes.
 - Agent HQ shows the Thai read-only card `ความพร้อม Regrid Phase 2-A` so operators can inspect readiness, epoch, and old-exposure quarantine state without SSH/grep.
 
+### Latest runtime evidence (2026-06)
+- Agent HQ UI (`/agent-hq`) แสดง **Runtime Monitor + Regrid Readiness** (card `ความพร้อม Regrid Phase 2-A`)
+- **PAPER_NO_TRADE count = เพิ่มขึ้นต่อเนื่อง** (guardrail ทำงานขณะ BELOW_GRID)
+- **REGRID_CANDIDATE count = เพิ่มขึ้นต่อเนื่อง** (read-only evaluator + `REGRID_READINESS` audit)
+- **BUY count = นิ่ง (≈1,460, หยุดเพิ่ม)** · SELL = 0 · closedCycles = 0
+- priceVsGrid = BELOW_GRID · paperLoopState = REGRID_REQUIRED · lastNoTradeReason = price_below_grid_lower
+- regridReadiness = NOT_READY / WATCH · oldExposurePolicy = QUARANTINE_OLD_ONE_SIDED_EXPOSURE
+- activationAllowed = false · paperActivationAllowed = false · liveActivationAllowed = false
+
+### Phase 2-A acceptance
+**PASS if (ทุกข้อ):**
+- BUY count คงที่ (ไม่เพิ่มขณะ BELOW_GRID)
+- PAPER_NO_TRADE เพิ่มขึ้น
+- REGRID_CANDIDATE / REGRID_READINESS เพิ่มขึ้น
+- readiness diagnostics อัปเดต (latestJournalAt / paperEpoch ขยับ)
+- activation flags ทั้งหมดยัง false (activationAllowed / paperActivationAllowed / liveActivationAllowed)
+
+**FAIL if (ข้อใดข้อหนึ่ง):**
+- BUY เพิ่มขึ้นขณะ priceVsGrid = BELOW_GRID
+- activationAllowed กลายเป็น true โดยไม่คาดคิด
+- paperActivationAllowed กลายเป็น true โดยไม่คาดคิด
+- liveActivationAllowed กลายเป็น true
+- no-trade / regrid / readiness logs หยุดอัปเดตขณะ loop ยังทำงาน
+
+> `READY_FOR_OPERATOR_REVIEW` = สัญญาณให้ operator ตรวจเท่านั้น ไม่ใช่ execution permission · activation จริง = Phase 2-B (operator approve อย่างชัดเจน, paper-only) · live ยังบล็อกตลอด Phase 2
+
 ---
 
 ## 0) หลักการ

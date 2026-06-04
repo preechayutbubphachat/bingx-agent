@@ -10,34 +10,40 @@
 
 **Current Stage:**
 Phase M-0Z-6 — Paper Execution Live + Evidence Accumulation
-(เพิ่งสำเร็จ: deploy engine layer + paper fill จริงทำงานบน production, 2026-05-31)
+**Overlay: Dynamic Regrid Phase 2-A — Regrid Readiness + Paper Epoch Preparation** (read-only/paper-only)
+(base: paper fill จริงบน production ตั้งแต่ 2026-05-31 · overlay: out-of-grid guardrail + regrid readiness monitor บน `/agent-hq`)
 
-**✅ Confirmed PASS (post-deploy, ของจริงบน server):**
-- Git release: commit `34c4a8f` (engine layer) + `59472f8` (fix1/2) pushed origin main
-- Plesk deploy + rebuild + restart: PASS
-- Runtime source-of-truth: `/api/public-health` ยืนยัน `latest_decision.json` + `market_snapshot.json` + `schedulerHeartbeat` = exists, phase=M-0B_BLOCKED, ไม่มี secret/stack trace
-- `BINGX_AGENT_DIR` = `/var/www/vhosts/ob-gate.com/httpdocs` (verified)
+**✅ Confirmed PASS (ของจริงบน server / runtime):**
+- Algorithm v2 guardrail PASS (block BUY เมื่อราคาหลุดต่ำกว่า grid → REGRID_REQUIRED)
+- Price source hotfix PASS (ใช้ latest close จริง ไม่ใช่ first/oldest)
+- PAPER_NO_TRADE logging PASS (`tmp/execution-runner/paper_no_trade.jsonl`)
+- REGRID_CANDIDATE logging PASS (read-only evaluator → `tmp/execution-runner/regrid_candidate.jsonl`)
+- Runtime Monitor UI PASS (`/agent-hq`)
+- Regrid Readiness UI PASS (Phase 2-A section)
+- **BUY accumulation stopped** (guardrail ทำงาน — ไม่ซื้อรัวขาเดียวต่อขณะ BELOW_GRID)
+- activationAllowed=false · paperActivationAllowed=false · liveActivationAllowed=false
 - Env safety flags: LIVE_TRADING_ENABLED=false, ENABLE_ORDER_PLACEMENT=false, PRODUCTION_TRADING_READY=false
 - EXCHANGE_MANUAL_APPROVAL = not_approved
-- `npm run build` EXIT:0 (server, incl. engine layer)
-- **Paper execution pipeline = LIVE**: real decision → real market → paper MARKET fill → `FILL_RESULT` (averageFillPrice จริง เช่น 74115.3) → reader เห็น · `totalOrderFilled` สะสมจาก cron ทุก 5 นาที (`paper_cycle.sh`)
+- old one-sided BUY exposure = **quarantined** (ไม่ปิดด้วยการ force SELL · ไม่ใช้ประเมิน edge)
 
-**⚙️ สิ่งที่ deploy รอบนี้ (root cause สุดท้ายของ paper 0-fill):**
-- `dashboard/lib/broker/`, `lib/execution/`, `app/api/internal/` เคย **untracked ใน git** → server รัน engine เก่าที่ไม่มี FILL_RESULT block → fill เกิดแต่ไม่ surface
-- Fix: track engine layer + commit `34c4a8f` + deploy (ย้าย copy เก่า `.old` ออกก่อน pull) → server fill ได้
-- `paper_cycle.sh` (ใหม่, root): อ่าน decision/orderbook/funding จริง → ส่ง MARKET order (`entryPrice:null`) เข้า `/api/internal/execution-runner` → fill
-- `run_cycle.js` port (เลิก hardcode `C:\bingx-agent` + `localhost:3000`→`SNAPSHOT_BASE_URL`)
-- `readPaperJournal.ts`: S1 (นับ FILL_RESULT) + S3 (hasAverageFillPrice) + sort mtime ก่อน slice 30
+**📊 Latest observed runtime (Phase 2-A):**
+- cumulative BUY ≈ 1,460 (นิ่ง — หยุดเพิ่ม) · cumulative SELL = 0
+- sample buyFillCount = 14 · sample sellFillCount = 0 · closedCycles = 0
+- priceVsGrid = BELOW_GRID · paperLoopState = REGRID_REQUIRED
+- lastNoTradeReason = price_below_grid_lower
+- candidateStatus = NO_TRADE / REGRID_REQUIRED (ตาม event ล่าสุด) · activationAllowed = false
+- Phase 2-A readiness = NOT_READY / WATCH · oldExposurePolicy = quarantine
 
-**⏳ Pending (ก่อน paper evidence ครบ + M-0B):**
-- **closed cycles ยัง 0** — fill เป็น BUY หมด (ราคาต่ำกว่า grid mid) ต้องรอราคาขึ้นเหนือ mid ให้เกิด SELL → pairFills จับคู่เป็น round trip
-- sample ต้องถึง ~30 closed cycles เพื่อประเมิน edge
+**⏳ Blocked state (ก่อน M-0B):**
+- closedCycles = 0 · sellFillCount = 0 · expectancy = null
+- sample ยังไม่ถึง ~30 closed cycles
 - `/public` visual verification (16-item) — authenticated browser
 - Operator independent review
 - EXCHANGE_MANUAL_APPROVAL: not_approved (เปลี่ยนไม่ได้จนทุก gate PASS)
+- **Phase M-0B remains BLOCKED**
 
 **Decision:**
-Phase M-0B remains **BLOCKED**.
+Phase M-0B remains **BLOCKED**. Dynamic Regrid Phase 2-A เป็น read-only readiness/diagnostics เท่านั้น — **ไม่เปิด grid ใหม่ ไม่ส่ง order ไม่ปลดล็อก M-0B** · activation = Phase 2-B (รอ operator approve ภายหลัง)
 
 **Gate Summary (2026-05-31):**
 - PASS: release · staging · build · deploy · BINGX_AGENT_DIR · runtime files · public-health post-deploy · paper-performance endpoint · env safety flags
@@ -56,13 +62,12 @@ Phase M-0B remains **BLOCKED**.
 **🎮 Parallel track:** TradingAgentHQ (read-only pixel-art command center, codename Trading Caffe HQ) = APPROVED FOR DESIGN/PLANNING — ดู `PROJECT_ARCHITECTURE.md` Layer 13 + `docs/TRADING_AGENT_HQ_*.md` · **ไม่ปลดล็อก M-0B**, ไม่แตะ trading logic
 
 **Next Actions:**
-1. ปล่อย cron `paper_cycle.sh` ทำงานสะสม fill (ทุก 5 นาที) — อย่า force-fill
-2. เฝ้าดู `/api/paper-performance` → `closedCycles > 0` เมื่อราคาแกว่งข้าม grid mid
-3. ถ้าผ่าน 1-2 วันแล้ว closed cycles ยัง 0 → review side logic ของ `paper_cycle.sh` (ตอนนี้ BUY ถ้าราคา<mid / SELL ถ้า>mid)
-4. Operator: login → `/public` → 16-item visual checklist → report
-5. รอ sample ถึง ~30 closed cycles → ประเมิน expectancy/edge
-6. Do NOT enable live trading / order placement / set EXCHANGE_MANUAL_APPROVAL=approved
-7. commit docs: M0Z6_PAPER_LOOP_A1_STATUS.md, M0Z6_SERVER_DEPLOY_FIXES_2026-05-30.md, อัปเดต SERVER_EVIDENCE_LEDGER
+1. Monitor Phase 2-A บน `/agent-hq` (ดู `docs/M0Z6_DYNAMIC_REGRID_PHASE2A_MONITORING.md`)
+2. **Do NOT activate Phase 2-B yet** — ยังไม่เปิด dynamic grid
+3. รอ readiness gates: stable candles, cooldown, candidate quality, regime confirmation
+4. คง old one-sided exposure quarantined (ไม่ force SELL ปิด · ไม่ใช้ประเมิน edge)
+5. No live / order / approval changes · คง M-0B BLOCKED
+6. (ภายหลัง) Operator: login → `/public` → 16-item visual checklist → report
 
 ---
 
@@ -90,6 +95,8 @@ Paper Trading: ENABLED (PAPER_TRADING_ENABLED=true — simulation only, no real 
 Read-only Exchange Sync: Not yet approved
 Phase M-0B: BLOCKED
 EXCHANGE_MANUAL_APPROVAL: not_approved
+Dynamic Regrid Phase 2-A: ACTIVE (read-only readiness/diagnostics — no grid open, no order)
+activationAllowed / paperActivationAllowed / liveActivationAllowed: false
 ```
 
 ---

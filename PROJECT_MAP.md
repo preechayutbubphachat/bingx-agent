@@ -17,7 +17,40 @@
 > อัปเดตทุกครั้งที่ agent/operator ทำงานสำคัญเสร็จ
 
 ### Current Stage
-**Phase M-0Z-6 — Paper Execution LIVE + Evidence Accumulation** (2026-05-31) — Deploy + engine layer fixed; **paper fill จริงทำงานบน production แล้ว** (real decision → real market → paper MARKET fill → FILL_RESULT averageFillPrice จริง → reader นับได้; cron `paper_cycle.sh` ทุก 5 นาที สะสม fills, `totalOrderFilled` เพิ่มต่อเนื่อง). PASS post-deploy: release(`34c4a8f`/`59472f8`) · staging · build · Plesk deploy · BINGX_AGENT_DIR · runtime files · `/api/public-health` · paper-performance endpoint · env safety flags. **เหลือ:** closed cycles=0 (รอราคาแกว่ง 2 ทาง) · sample<30 cycles · `/public` visual(16-item) · operator review · `EXCHANGE_MANUAL_APPROVAL` NOT_APPROVED. **Phase M-0B remains BLOCKED.**
+**Phase M-0Z-6 — Paper Execution LIVE + Evidence Accumulation** (base) · **Overlay: Dynamic Regrid Phase 2-A — Regrid Readiness + Paper Epoch Preparation** (read-only/paper-only, 2026-06) — base: paper fill จริงบน production. overlay: Algorithm v2 guardrail หยุด BUY ขาเดียวเมื่อ BELOW_GRID + read-only REGRID_CANDIDATE evaluator + Runtime Monitor/Regrid Readiness บน `/agent-hq`. **PASS:** algorithm v2 guardrail · price source hotfix · PAPER_NO_TRADE log · REGRID_CANDIDATE log · Runtime Monitor UI · Regrid Readiness UI · BUY accumulation stopped · activationAllowed/paperActivationAllowed/liveActivationAllowed=false. **Blocked:** closedCycles=0 · sellFillCount=0 · expectancy=null · sample<30 · `/public` visual(16-item) · operator review · `EXCHANGE_MANUAL_APPROVAL` NOT_APPROVED. **Phase M-0B remains BLOCKED.** Dynamic Grid activation = Phase 2-B (รอ operator approve ภายหลัง).
+
+---
+
+### Dynamic Regrid Phase 2-A — Regrid Readiness + Paper Epoch Preparation (2026-06)
+> read-only/paper-only overlay เหนือ Phase M-0Z-6 · ดู `docs/M0Z6_DYNAMIC_REGRID_DESIGN.md` + `docs/M0Z6_DYNAMIC_REGRID_PHASE2A_MONITORING.md` · Architecture: `PROJECT_ARCHITECTURE.md` Layer 07/09/11
+> **Phase 2-A = observability/readiness เท่านั้น — ไม่เปิด grid ใหม่ ไม่สร้าง order ไม่ปลดล็อก M-0B**
+
+**Done ✅**
+- [x] Out-of-grid guardrail (block BUY เมื่อ BELOW_GRID / block SELL-open เมื่อ ABOVE_GRID → REGRID_REQUIRED)
+- [x] Latest close source fix (ใช้ close ล่าสุดจริง ไม่ใช่ first/oldest)
+- [x] PAPER_NO_TRADE audit path (`tmp/execution-runner/paper_no_trade.jsonl`)
+- [x] REGRID_CANDIDATE read-only evaluator (`dashboard/lib/grid/regridCandidate.ts` · `tmp/execution-runner/regrid_candidate.jsonl` · activationAllowed=false เสมอ)
+- [x] Runtime Monitor UI (`/agent-hq`)
+- [x] Regrid Readiness card (Phase 2-A diagnostics)
+- [x] Paper epoch diagnostics (`paperLoopDiagnostics.dynamicGrid.candidate`)
+- [x] Old one-sided BUY exposure quarantine policy (ไม่ force SELL ปิด · ไม่ใช้ประเมิน edge)
+
+**In Progress 🔄**
+- [ ] Phase 2-A runtime monitoring (BUY นิ่ง / No-Trade เพิ่ม / Regrid Candidate เพิ่ม)
+- [ ] readiness evidence accumulation (stableCandleCount / cooldownRemaining / candidate quality)
+- [ ] cooldown / stable candle observation
+- [ ] operator review preparation
+
+**Blocked 🔒**
+- [ ] Phase 2-B activation (เปิด dynamic grid จริง — paper)
+- [ ] paperActivationAllowed = true (คง false จนกว่า operator approve Phase 2-B design)
+- [ ] liveActivationAllowed = true (คง false ตลอด Phase 2)
+- [ ] Phase M-0B
+
+**Decision Log**
+- Dynamic Regrid Phase 2-A อนุญาตเป็น **read-only readiness/diagnostics เท่านั้น**
+- Dynamic Grid activation ต้องผ่าน **operator approval อย่างชัดเจน (Phase 2-B paper-only design)** ก่อนเสมอ
+- No-Trade ขณะนอก grid = decision ที่ถูกต้อง — ห้าม regrid เพื่อให้ได้เทรด · ห้าม force BUY/SELL · ห้าม fake closedCycles
 
 ### Next Stage
 **Paper Evidence Accumulation → M-0B** (🔒 M-0B BLOCKED) — รอ: (1) closed cycles สะสม (ราคาต้องข้าม grid mid ให้เกิด SELL), (2) sample ~30 closed cycles เพื่อประเมิน edge, (3) `/public` 16-item visual PASS, (4) operator independent review, (5) `EXCHANGE_MANUAL_APPROVAL=approved` (หลังทุก gate PASS). M-0B = Read-only Exchange API Implementation ยัง BLOCKED จนกว่า paper evidence + approval ครบ

@@ -12,8 +12,11 @@ import type {
 type AnyObj = Record<string, unknown>;
 const obj = (v: unknown): AnyObj => (v && typeof v === "object" ? (v as AnyObj) : {});
 const num = (v: unknown, d = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
+const numOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const bool = (v: unknown): boolean => v === true || v === "true";
+const boolOrNull = (v: unknown): boolean | null => (typeof v === "boolean" ? v : v === "true" ? true : v === "false" ? false : null);
 const str = (v: unknown, d = ""): string => (typeof v === "string" ? v : d);
+const strOrNull = (v: unknown): string | null => (typeof v === "string" && v.length > 0 ? v : null);
 
 function ageIsStale(iso: string, maxMin = 10): boolean {
   const t = Date.parse(iso);
@@ -35,6 +38,9 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const journal = obj(status.paperJournal);
   const edge = obj(perf.edgeDiagnostics);
   const costGate = obj(perf.costGate);
+  const loop = obj(perf.paperLoopDiagnostics);
+  const dynamicGrid = obj(loop.dynamicGrid);
+  const candidate = obj(dynamicGrid.candidate);
   const totalOrderFilled = num(journal.totalOrderFilled);
   const closedCycles = num(edge.closedCycles);
   const sampleRaw = str(edge.sampleSizeStatus || perf.sampleSizeStatus, "");
@@ -54,6 +60,25 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     paperModeDetected: bool(journal.paperModeDetected),
     edgeStatus,
     costGateStatus: mapCostGateStatus(str(costGate.status, "")),
+    dynamicRegrid: {
+      priceVsGrid: strOrNull(loop.priceVsGrid ?? perf.priceVsGrid),
+      paperLoopState: strOrNull(loop.paperLoopState),
+      lastNoTradeReason: strOrNull(loop.lastNoTradeReason),
+      currentPrice: numOrNull(loop.currentPrice),
+      gridLower: numOrNull(loop.gridLower),
+      gridUpper: numOrNull(loop.gridUpper),
+      gridMid: numOrNull(loop.gridMid),
+      buyFillCount: num(loop.sampleBuyFillCount ?? loop.rawBuyFillCount ?? perf.buyFillCount, 0),
+      sellFillCount: num(loop.sampleSellFillCount ?? loop.rawSellFillCount ?? perf.sellFillCount, 0),
+      closedCycles,
+      candidate: {
+        candidateStatus: strOrNull(candidate.candidateStatus),
+        candidateReason: strOrNull(candidate.candidateReason),
+        cooldownRemaining: numOrNull(candidate.cooldownRemaining),
+        stableCandleCount: numOrNull(candidate.stableCandleCount),
+        activationAllowed: boolOrNull(candidate.activationAllowed),
+      },
+    },
   };
 }
 

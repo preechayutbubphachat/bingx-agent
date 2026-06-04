@@ -57,6 +57,29 @@ export interface PaperVM {
   edgeStatus: "DATA_GAP" | "REAL_FILLS_ACCUMULATING" | "UNKNOWN";
   /** cost gate status from public-safe performance payload; never means edge/live-ready */
   costGateStatus: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+  dynamicRegrid: DynamicRegridVM;
+}
+
+export interface DynamicRegridCandidateVM {
+  candidateStatus: string | null;
+  candidateReason: string | null;
+  cooldownRemaining: number | null;
+  stableCandleCount: number | null;
+  activationAllowed: boolean | null;
+}
+
+export interface DynamicRegridVM {
+  priceVsGrid: string | null;
+  paperLoopState: string | null;
+  lastNoTradeReason: string | null;
+  currentPrice: number | null;
+  gridLower: number | null;
+  gridUpper: number | null;
+  gridMid: number | null;
+  buyFillCount: number;
+  sellFillCount: number;
+  closedCycles: number;
+  candidate: DynamicRegridCandidateVM;
 }
 
 export interface TopHudVM {

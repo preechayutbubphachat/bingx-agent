@@ -26,6 +26,25 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
     paperModeDetected: true,
     edgeStatus: "DATA_GAP", // closedCycles===0 → never edge PASS
     costGateStatus: "PASS",
+    dynamicRegrid: {
+      priceVsGrid: "BELOW_GRID",
+      paperLoopState: "REGRID_REQUIRED",
+      lastNoTradeReason: "price_below_grid_lower",
+      currentPrice: null,
+      gridLower: null,
+      gridUpper: null,
+      gridMid: null,
+      buyFillCount: 14,
+      sellFillCount: 0,
+      closedCycles: 0,
+      candidate: {
+        candidateStatus: "NO_TRADE",
+        candidateReason: "Phase 1 read-only evaluator; activation blocked",
+        cooldownRemaining: 4,
+        stableCandleCount: 0,
+        activationAllowed: false,
+      },
+    },
   },
   topHud: {
     marketMood: "UNKNOWN",

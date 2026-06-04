@@ -15,6 +15,7 @@ import CommandRail from "./CommandRail";
 import SafetyStatusStrip from "./SafetyStatusStrip";
 import BottomWidgetDock from "./BottomWidgetDock";
 import AdvancedDebugCard from "./AdvancedDebugCard";
+import DynamicRegridStatusCard from "./DynamicRegridStatusCard";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
 const edgeStatusLabel = (status: string) =>
@@ -83,6 +84,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             เงินจริง/คำสั่งจริงต้องปิดไว้เสมอจนกว่าจะอนุมัติ
           </p>
         </section>
+
+        <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
           <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />

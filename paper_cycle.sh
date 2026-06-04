@@ -265,6 +265,33 @@ JSON
   fi
 }
 
+# Dynamic Regrid Phase 1 — READ-ONLY candidate marker. Records that a regrid candidate is being
+# evaluated while out of grid. activationAllowed=false ALWAYS. Never places an order.
+regrid_audit_path() {
+  local audit_root log_dir
+  audit_root="${EXECUTION_AUDIT_ROOT_DIR:-$ROOT_DIR}"
+  log_dir="$audit_root/tmp/execution-runner"
+  mkdir -p "$log_dir" 2>/dev/null || return 1
+  printf '%s/regrid_candidate.jsonl\n' "$log_dir"
+}
+
+append_regrid_candidate() {
+  local candidate_reason="$1"
+  local candidate_status="$2"
+  local file body
+  file="$(regrid_audit_path || true)"
+  if [ -z "$file" ]; then
+    log "could not resolve regrid candidate log path"
+    return 0
+  fi
+  read -r -d '' body <<JSON || true
+{"schema_version":"execution_audit_v1","ts":$EVENT_TS,"type":"REGRID_CANDIDATE","symbol":"$(json_escape "$SYMBOL")","mode":"PAPER","eventKey":"$(json_escape "$EVENT_KEY")","payload":{"decision":{"side":"NONE","quantity":null,"kind":"NO_TRADE"},"context":{"schemaVersion":"$SCHEMA_VERSION","candidateStatus":"$(json_escape "$candidate_status")","candidateReason":"$(json_escape "$candidate_reason")","candidateGridMid":$(json_num_or_null "$CURRENT_PRICE"),"currentPrice":$(json_num_or_null "$CURRENT_PRICE"),"snapshotPrice":$(json_num_or_null "${SNAPSHOT_CLOSE:-}"),"gridLower":$(json_num_or_null "$GRID_LOWER"),"gridUpper":$(json_num_or_null "$GRID_UPPER"),"gridMid":$(json_num_or_null "$GRID_MID"),"priceVsGrid":$(json_str_or_null "${PRICE_VS_GRID:-}"),"buyFillCount":$(json_num_or_null "${BUY_FILL_COUNT:-}"),"sellFillCount":$(json_num_or_null "${SELL_FILL_COUNT:-}"),"stableCandleCount":null,"cooldownRemaining":null,"activationAllowed":false,"paperModeDetected":true,"eventTs":$EVENT_TS,"timestamp":"$(date -u '+%Y-%m-%dT%H:%M:%SZ')"}}}
+JSON
+  if [ -n "$body" ]; then
+    printf '%s\n' "$body" >> "$file" || log "could not append regrid candidate event"
+  fi
+}
+
 KEY="$(read_setting "${RUN_CYCLE_TRIGGER_KEY:-}" RUN_CYCLE_TRIGGER_KEY INTERNAL_API_KEY REFRESH_ENDPOINT_KEY || true)"
 if [ -z "$KEY" ]; then
   log "missing RUN_CYCLE_TRIGGER_KEY/INTERNAL_API_KEY/REFRESH_ENDPOINT_KEY"
@@ -392,6 +419,7 @@ CURRENT_MILLI="$(num_to_milli "$CURRENT_PRICE")"
 if [ -n "$GRID_LOWER_MILLI" ] && [ "$CURRENT_MILLI" -lt "$GRID_LOWER_MILLI" ]; then
   NO_TRADE_REASON="price_below_grid_lower"
   append_no_trade_audit "$NO_TRADE_REASON" "BELOW_GRID" "range_breakdown" "waiting_for_regrid_or_reentry"
+  append_regrid_candidate "$NO_TRADE_REASON" "REGRID_REQUIRED"
   log "price below grid_lower; no paper BUY sent (reason=$NO_TRADE_REASON currentPrice=$CURRENT_PRICE grid_lower=$GRID_LOWER grid_upper=$GRID_UPPER gridMid=$GRID_MID mode=${MODE:-unknown})"
   exit 0
 fi
@@ -399,6 +427,7 @@ fi
 if [ -n "$GRID_UPPER_MILLI" ] && [ "$CURRENT_MILLI" -gt "$GRID_UPPER_MILLI" ]; then
   NO_TRADE_REASON="price_above_grid_upper"
   append_no_trade_audit "$NO_TRADE_REASON" "ABOVE_GRID" "range_breakout" ""
+  append_regrid_candidate "$NO_TRADE_REASON" "REGRID_REQUIRED"
   log "price above grid_upper; no inappropriate paper order sent (reason=$NO_TRADE_REASON currentPrice=$CURRENT_PRICE grid_lower=$GRID_LOWER grid_upper=$GRID_UPPER gridMid=$GRID_MID mode=${MODE:-unknown})"
   exit 0
 fi

@@ -44,6 +44,9 @@ test("below-grid no-trade → priceVsGrid BELOW_GRID + state REGRID_REQUIRED", (
   assert.equal(d.lastNoTradeReason, "price_below_grid_lower");
   assert.equal(d.noTradeReasonCounts["price_below_grid_lower"], 2);
   assert.equal(d.dynamicGrid.enabled, true);
+  // Phase 1 read-only candidate: forms when out of grid, but never activates
+  assert.notEqual(d.dynamicGrid.candidate.candidateStatus, "INACTIVE");
+  assert.equal(d.dynamicGrid.candidate.activationAllowed, false);
 });
 
 test("stale reason → paperLoopState STALE_DATA", () => {

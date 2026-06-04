@@ -5,6 +5,7 @@
 
 import type { PaperJournalSummary, PaperEventSummary } from "@/lib/readPaperJournal";
 import { calculateDynamicGrid, type DynamicGridResult } from "@/lib/grid/dynamicGrid";
+import { evaluateRegridCandidate, type RegridCandidate } from "@/lib/grid/regridCandidate";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
@@ -39,6 +40,8 @@ export interface PaperLoopDiagnostics {
     gridCount: number;
     confidence: DynamicGridResult["confidence"];
     cooldownRequired: boolean;
+    /** Phase 1 read-only regrid candidate (activationAllowed always false) */
+    candidate: RegridCandidate;
   };
 }
 
@@ -97,6 +100,19 @@ export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLo
       })
     : null;
 
+  // Phase 1 read-only regrid candidate (recentCloses not in journal → stableCandleCount best-effort 0)
+  const candidate = evaluateRegridCandidate({
+    priceVsGrid,
+    paperLoopState,
+    currentPrice,
+    oldGridLower: gridLower,
+    oldGridUpper: gridUpper,
+    marketMode,
+    regime,
+    buyFillCount: summary.buyFillCount,
+    sellFillCount: summary.sellFillCount,
+  });
+
   return {
     sampleBuyFillCount: summary.buyFillCount,
     sampleSellFillCount: summary.sellFillCount,
@@ -127,6 +143,7 @@ export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLo
       gridCount: dg?.gridCount ?? 10,
       confidence: dg?.confidence ?? "low",
       cooldownRequired: dg?.cooldownRequired ?? true,
+      candidate,
     },
   };
 }

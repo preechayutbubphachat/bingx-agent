@@ -292,6 +292,35 @@ JSON
   fi
 }
 
+# Dynamic Regrid Phase 2-A - READ-ONLY readiness marker. This prepares observability for
+# operator review only; it never places orders and never permits paper/live activation.
+regrid_readiness_path() {
+  local audit_root log_dir
+  audit_root="${EXECUTION_AUDIT_ROOT_DIR:-$ROOT_DIR}"
+  log_dir="$audit_root/tmp/execution-runner"
+  mkdir -p "$log_dir" 2>/dev/null || return 1
+  printf '%s/regrid_readiness.jsonl\n' "$log_dir"
+}
+
+append_regrid_readiness() {
+  local readiness_reason="$1"
+  local readiness_status="${2:-NOT_READY}"
+  local file body old_exposure_policy
+  file="$(regrid_readiness_path || true)"
+  if [ -z "$file" ]; then
+    log "could not resolve regrid readiness log path"
+    return 0
+  fi
+
+  old_exposure_policy='["QUARANTINE_OLD_ONE_SIDED_EXPOSURE","DO_NOT_COUNT_AS_CLOSED_CYCLE","DO_NOT_FORCE_SELL","DO_NOT_USE_FOR_EXPECTANCY"]'
+  read -r -d '' body <<JSON || true
+{"schema_version":"execution_audit_v1","ts":$EVENT_TS,"type":"REGRID_READINESS","symbol":"$(json_escape "$SYMBOL")","mode":"PAPER","eventKey":"$(json_escape "$EVENT_KEY")","payload":{"status":"$(json_escape "$readiness_status")","score":40,"passedGates":["out_of_grid_context","old_one_sided_exposure_quarantined"],"failedGates":["stable_candles_pending","cooldown_pending","candidate_grid_missing"],"warnings":["old_buy_exposure_quarantined_not_counted_as_closed_cycle","closed_cycles_remain_zero_do_not_fake_edge"],"nextAction":"wait_for_stability_cooldown_and_candidate_grid","paperActivationAllowed":false,"liveActivationAllowed":false,"epoch":{"currentEpochId":"static-grid:$(json_escape "${PRICE_VS_GRID:-UNKNOWN}")","previousEpochStatus":"OPEN_ONE_SIDED_EXPOSURE","previousEpochReason":"old static-grid BUY exposure is quarantined and cannot become a closed cycle without real SELL evidence","nextEpochCandidateId":null,"nextEpochStatus":"NOT_READY","oldExposurePolicy":$old_exposure_policy},"context":{"schemaVersion":"$SCHEMA_VERSION","reason":"$(json_escape "$readiness_reason")","currentPrice":$(json_num_or_null "$CURRENT_PRICE"),"gridLower":$(json_num_or_null "$GRID_LOWER"),"gridUpper":$(json_num_or_null "$GRID_UPPER"),"gridMid":$(json_num_or_null "$GRID_MID"),"priceVsGrid":$(json_str_or_null "${PRICE_VS_GRID:-}"),"buyFillCount":$(json_num_or_null "${BUY_FILL_COUNT:-}"),"sellFillCount":$(json_num_or_null "${SELL_FILL_COUNT:-}"),"activationAllowed":false,"eventTs":$EVENT_TS,"timestamp":"$(date -u '+%Y-%m-%dT%H:%M:%SZ')"}}}
+JSON
+  if [ -n "$body" ]; then
+    printf '%s\n' "$body" >> "$file" || log "could not append regrid readiness event"
+  fi
+}
+
 KEY="$(read_setting "${RUN_CYCLE_TRIGGER_KEY:-}" RUN_CYCLE_TRIGGER_KEY INTERNAL_API_KEY REFRESH_ENDPOINT_KEY || true)"
 if [ -z "$KEY" ]; then
   log "missing RUN_CYCLE_TRIGGER_KEY/INTERNAL_API_KEY/REFRESH_ENDPOINT_KEY"
@@ -420,6 +449,7 @@ if [ -n "$GRID_LOWER_MILLI" ] && [ "$CURRENT_MILLI" -lt "$GRID_LOWER_MILLI" ]; t
   NO_TRADE_REASON="price_below_grid_lower"
   append_no_trade_audit "$NO_TRADE_REASON" "BELOW_GRID" "range_breakdown" "waiting_for_regrid_or_reentry"
   append_regrid_candidate "$NO_TRADE_REASON" "REGRID_REQUIRED"
+  append_regrid_readiness "$NO_TRADE_REASON" "NOT_READY"
   log "price below grid_lower; no paper BUY sent (reason=$NO_TRADE_REASON currentPrice=$CURRENT_PRICE grid_lower=$GRID_LOWER grid_upper=$GRID_UPPER gridMid=$GRID_MID mode=${MODE:-unknown})"
   exit 0
 fi
@@ -428,6 +458,7 @@ if [ -n "$GRID_UPPER_MILLI" ] && [ "$CURRENT_MILLI" -gt "$GRID_UPPER_MILLI" ]; t
   NO_TRADE_REASON="price_above_grid_upper"
   append_no_trade_audit "$NO_TRADE_REASON" "ABOVE_GRID" "range_breakout" ""
   append_regrid_candidate "$NO_TRADE_REASON" "REGRID_REQUIRED"
+  append_regrid_readiness "$NO_TRADE_REASON" "NOT_READY"
   log "price above grid_upper; no inappropriate paper order sent (reason=$NO_TRADE_REASON currentPrice=$CURRENT_PRICE grid_lower=$GRID_LOWER grid_upper=$GRID_UPPER gridMid=$GRID_MID mode=${MODE:-unknown})"
   exit 0
 fi

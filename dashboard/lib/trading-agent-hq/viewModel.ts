@@ -59,6 +59,8 @@ export interface PaperVM {
   costGateStatus: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
   dynamicRegrid: DynamicRegridVM;
   runtimeMonitor: RuntimeMonitorVM;
+  regridReadiness: RegridReadinessVM;
+  paperEpoch: PaperEpochVM;
 }
 
 export interface DynamicRegridCandidateVM {
@@ -103,6 +105,27 @@ export interface RuntimeMonitorVM {
   paperLoopState: string | null;
   monitorStatus: "PASS" | "WATCH" | "UNKNOWN";
   monitorSummary: string | null;
+}
+
+export interface RegridReadinessVM {
+  status: "NOT_READY" | "WATCH" | "READY_FOR_OPERATOR_REVIEW" | "UNKNOWN";
+  score: number;
+  passedGates: string[];
+  failedGates: string[];
+  warnings: string[];
+  nextAction: string | null;
+  operatorReviewRequired: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+}
+
+export interface PaperEpochVM {
+  currentEpochId: string | null;
+  previousEpochStatus: string | null;
+  previousEpochReason: string | null;
+  nextEpochCandidateId: string | null;
+  nextEpochStatus: string | null;
+  oldExposurePolicy: string[];
 }
 
 export interface TopHudVM {

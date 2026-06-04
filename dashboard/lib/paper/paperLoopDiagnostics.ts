@@ -6,6 +6,12 @@
 import type { PaperJournalSummary, PaperEventSummary } from "@/lib/readPaperJournal";
 import { calculateDynamicGrid, type DynamicGridResult } from "@/lib/grid/dynamicGrid";
 import { evaluateRegridCandidate, type RegridCandidate } from "@/lib/grid/regridCandidate";
+import {
+  buildPaperEpochDiagnostics,
+  evaluateRegridReadiness,
+  type PaperEpochDiagnostics,
+  type RegridReadiness,
+} from "@/lib/grid/regridReadiness";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
@@ -46,6 +52,8 @@ export interface PaperLoopDiagnostics {
     candidate: RegridCandidate;
   };
   runtimeMonitor: PaperRuntimeMonitor;
+  regridReadiness: RegridReadiness;
+  paperEpoch: PaperEpochDiagnostics;
 }
 
 export interface RuntimeMonitorCounters {
@@ -71,6 +79,14 @@ export interface PaperRuntimeMonitor extends RuntimeMonitorCounters {
   monitorSummary: "STABLE_RUNTIME_PASS" | "WATCH_RUNTIME";
 }
 
+export interface PaperLoopDiagnosticsContext {
+  closedCycles?: number | null;
+  costGate?: {
+    pass?: boolean | null;
+    requiredMinSpacingPct?: number | null;
+  } | null;
+}
+
 function priceVsGridOf(price: number | null, lower: number | null, upper: number | null): PriceVsGrid {
   if (price == null || lower == null || upper == null) return "UNKNOWN";
   if (price < lower) return "BELOW_GRID";
@@ -90,11 +106,13 @@ function firstMatch<T>(events: PaperEventSummary[], pick: (e: PaperEventSummary)
 export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLoopDiagnostics;
 export function buildPaperLoopDiagnostics(
   summary: PaperJournalSummary,
-  runtimeCounters: RuntimeMonitorCounters | null
+  runtimeCounters: RuntimeMonitorCounters | null,
+  context?: PaperLoopDiagnosticsContext
 ): PaperLoopDiagnostics;
 export function buildPaperLoopDiagnostics(
   summary: PaperJournalSummary,
-  runtimeCounters: RuntimeMonitorCounters | null = null
+  runtimeCounters: RuntimeMonitorCounters | null = null,
+  context: PaperLoopDiagnosticsContext = {}
 ): PaperLoopDiagnostics {
   const events = (summary.recentEvents ?? []) as PaperEventSummary[]; // already newest-first
 
@@ -175,6 +193,36 @@ export function buildPaperLoopDiagnostics(
       : "WATCH";
   const monitorSummary: PaperRuntimeMonitor["monitorSummary"] =
     monitorStatus === "PASS" ? "STABLE_RUNTIME_PASS" : "WATCH_RUNTIME";
+  const closedCycles = context.closedCycles ?? 0;
+  const regridReadiness = evaluateRegridReadiness({
+    currentPrice,
+    gridLower,
+    gridUpper,
+    gridMid,
+    priceVsGrid,
+    candidateStatus: candidate.candidateStatus,
+    candidateGridLower: candidate.candidateGridLower,
+    candidateGridUpper: candidate.candidateGridUpper,
+    candidateGridMid: candidate.candidateGridMid,
+    candidateSpacingPct: candidate.candidateSpacingPct,
+    stableCandleCount: candidate.stableCandleCount,
+    cooldownRemaining: candidate.cooldownRemaining,
+    buyFillCount: summary.buyFillCount,
+    sellFillCount: summary.sellFillCount,
+    closedCycles,
+    costGate: context.costGate,
+    regime,
+    marketMode,
+    staleData: paperLoopState === "STALE_DATA",
+    runtimeAuditCritical: false,
+  });
+  const paperEpoch = buildPaperEpochDiagnostics({
+    priceVsGrid,
+    buyFillCount: summary.buyFillCount,
+    sellFillCount: summary.sellFillCount,
+    candidateGridMid: candidate.candidateGridMid,
+    readinessStatus: regridReadiness.status,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -223,5 +271,7 @@ export function buildPaperLoopDiagnostics(
       monitorStatus,
       monitorSummary,
     },
+    regridReadiness,
+    paperEpoch,
   };
 }

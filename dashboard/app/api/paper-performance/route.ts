@@ -48,7 +48,13 @@ export async function GET() {
     try {
       const summary = await readPaperJournal();
       const runtimeCounters = await readRuntimeMonitorCounters().catch(() => null);
-      paperLoopDiagnostics = buildPaperLoopDiagnostics(summary, runtimeCounters);
+      paperLoopDiagnostics = buildPaperLoopDiagnostics(summary, runtimeCounters, {
+        closedCycles: report.edgeDiagnostics?.closedCycles ?? 0,
+        costGate: {
+          pass: report.costGate?.pass ?? null,
+          requiredMinSpacingPct: report.costGate?.requiredMinSpacingPct ?? null,
+        },
+      });
     } catch {
       paperLoopDiagnostics = null;
     }

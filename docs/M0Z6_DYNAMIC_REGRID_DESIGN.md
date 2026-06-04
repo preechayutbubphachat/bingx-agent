@@ -14,6 +14,24 @@
 
 ---
 
+## Phase 2-A — Regrid Readiness + Paper Epoch Preparation (implemented)
+Phase 2-A is still visibility-only and paper-only. It prepares operator review signals but does not activate a dynamic grid, does not place paper orders differently, and does not unlock live trading.
+
+- `dashboard/lib/grid/regridReadiness.ts` adds a pure readiness evaluator with status `NOT_READY`, `WATCH`, or `READY_FOR_OPERATOR_REVIEW`.
+- Readiness output always keeps `paperActivationAllowed=false` and `liveActivationAllowed=false`; `READY_FOR_OPERATOR_REVIEW` is only an operator review signal, not an execution permission.
+- `/api/paper-performance` exposes `paperLoopDiagnostics.regridReadiness` and `paperLoopDiagnostics.paperEpoch` without removing existing fields.
+- `paper_cycle.sh` writes read-only audit event `REGRID_READINESS` to `dashboard/tmp/execution-runner/regrid_readiness.jsonl` when the paper loop is outside the grid and already taking the no-trade/regrid-candidate path.
+- Old one-sided BUY exposure is quarantined under policy:
+  - `QUARANTINE_OLD_ONE_SIDED_EXPOSURE`
+  - `DO_NOT_COUNT_AS_CLOSED_CYCLE`
+  - `DO_NOT_FORCE_SELL`
+  - `DO_NOT_USE_FOR_EXPECTANCY`
+- Dynamic grid activation requires a later explicit Phase 2-B approval path. This phase does not activate Dynamic Grid, does not change M-0B, and does not change paper execution decisions.
+- Live trading remains prohibited: no `LIVE_TRADING_ENABLED`, no `ENABLE_ORDER_PLACEMENT`, no `PRODUCTION_TRADING_READY`, and no exchange approval changes.
+- Agent HQ shows the Thai read-only card `ความพร้อม Regrid Phase 2-A` so operators can inspect readiness, epoch, and old-exposure quarantine state without SSH/grep.
+
+---
+
 ## 0) หลักการ
 - ราคา นอก grid = `REGRID_REQUIRED` (no-trade) เป็น **ค่าเริ่มต้นที่ปลอดภัย** เสมอ
 - การ "regrid" คือสร้าง candidate grid ใหม่รอบราคาปัจจุบัน → **ต้องผ่าน gate หลายชั้น + cooldown** ก่อน activate

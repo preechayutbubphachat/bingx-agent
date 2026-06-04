@@ -17,6 +17,7 @@ const bool = (v: unknown): boolean => v === true || v === "true";
 const boolOrNull = (v: unknown): boolean | null => (typeof v === "boolean" ? v : v === "true" ? true : v === "false" ? false : null);
 const str = (v: unknown, d = ""): string => (typeof v === "string" ? v : d);
 const strOrNull = (v: unknown): string | null => (typeof v === "string" && v.length > 0 ? v : null);
+const strArray = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
 function ageIsStale(iso: string, maxMin = 10): boolean {
   const t = Date.parse(iso);
@@ -40,6 +41,8 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const costGate = obj(perf.costGate);
   const loop = obj(perf.paperLoopDiagnostics);
   const runtimeMonitor = obj(loop.runtimeMonitor);
+  const readiness = obj(loop.regridReadiness);
+  const epoch = obj(loop.paperEpoch);
   const dynamicGrid = obj(loop.dynamicGrid);
   const candidate = obj(dynamicGrid.candidate);
   const totalOrderFilled = num(journal.totalOrderFilled);
@@ -81,6 +84,29 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
         ? "PASS"
         : str(runtimeMonitor.monitorStatus, "UNKNOWN") === "WATCH" ? "WATCH" : "UNKNOWN",
       monitorSummary: strOrNull(runtimeMonitor.monitorSummary),
+    },
+    regridReadiness: {
+      status: str(readiness.status, "UNKNOWN") === "NOT_READY"
+        ? "NOT_READY"
+        : str(readiness.status, "UNKNOWN") === "WATCH"
+          ? "WATCH"
+          : str(readiness.status, "UNKNOWN") === "READY_FOR_OPERATOR_REVIEW" ? "READY_FOR_OPERATOR_REVIEW" : "UNKNOWN",
+      score: num(readiness.score, 0),
+      passedGates: strArray(readiness.passedGates),
+      failedGates: strArray(readiness.failedGates),
+      warnings: strArray(readiness.warnings),
+      nextAction: strOrNull(readiness.nextAction),
+      operatorReviewRequired: bool(readiness.operatorReviewRequired),
+      paperActivationAllowed: bool(readiness.paperActivationAllowed),
+      liveActivationAllowed: bool(readiness.liveActivationAllowed),
+    },
+    paperEpoch: {
+      currentEpochId: strOrNull(epoch.currentEpochId),
+      previousEpochStatus: strOrNull(epoch.previousEpochStatus),
+      previousEpochReason: strOrNull(epoch.previousEpochReason),
+      nextEpochCandidateId: strOrNull(epoch.nextEpochCandidateId),
+      nextEpochStatus: strOrNull(epoch.nextEpochStatus),
+      oldExposurePolicy: strArray(epoch.oldExposurePolicy),
     },
     dynamicRegrid: {
       marketMode: strOrNull(loop.marketMode ?? loop.market_mode ?? perf.marketMode ?? perf.market_mode),

@@ -26,6 +26,22 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
     paperModeDetected: true,
     edgeStatus: "DATA_GAP", // closedCycles===0 → never edge PASS
     costGateStatus: "PASS",
+    runtimeMonitor: {
+      cumulativeBuyFillCount: 1460,
+      cumulativeSellFillCount: 0,
+      sampleBuyFillCount: 14,
+      sampleSellFillCount: 0,
+      paperNoTradeCount: 122,
+      regridCandidateCount: 75,
+      latestFillAt: null,
+      latestNoTradeAt: null,
+      latestRegridCandidateAt: null,
+      buyCountStable: true,
+      noTradeIncreasing: true,
+      regridCandidateIncreasing: true,
+      activationAllowed: false,
+      monitorStatus: "PASS",
+    },
     dynamicRegrid: {
       priceVsGrid: "BELOW_GRID",
       paperLoopState: "REGRID_REQUIRED",

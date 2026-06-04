@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/viewModel";
 import { buildAgentProgressions } from "@/lib/trading-agent-hq/progression";
@@ -16,6 +16,7 @@ import SafetyStatusStrip from "./SafetyStatusStrip";
 import BottomWidgetDock from "./BottomWidgetDock";
 import AdvancedDebugCard from "./AdvancedDebugCard";
 import DynamicRegridStatusCard from "./DynamicRegridStatusCard";
+import RuntimeMonitorCard from "./RuntimeMonitorCard";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
 const edgeStatusLabel = (status: string) =>
@@ -33,6 +34,12 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
   const [hovered, setHovered] = useState<AgentId | null>(null);
   const [lowPower, setLowPower] = useState(false);
   const [debug, setDebug] = useState(false);
+  const [runtimePollMessages, setRuntimePollMessages] = useState<string[]>([]);
+  const previousRuntimeMonitor = useRef<{
+    cumulativeBuyFillCount: number;
+    paperNoTradeCount: number;
+    regridCandidateCount: number;
+  } | null>(null);
 
   const animKeys = useAgentAnimations(vm.agents);
   const progressions = buildAgentProgressions(vm);
@@ -48,6 +55,33 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    const monitor = vm.paper.runtimeMonitor;
+    const previous = previousRuntimeMonitor.current;
+    if (previous) {
+      const messages: string[] = [];
+      if (
+        monitor.cumulativeBuyFillCount > previous.cumulativeBuyFillCount &&
+        vm.paper.dynamicRegrid.priceVsGrid === "BELOW_GRID"
+      ) {
+        messages.push("ผิดปกติ: BUY เพิ่มทั้งที่อยู่นอกกรอบ");
+      }
+      if (monitor.paperNoTradeCount > previous.paperNoTradeCount) messages.push("No-Trade ทำงาน");
+      if (monitor.regridCandidateCount > previous.regridCandidateCount) messages.push("Regrid evaluator ทำงาน");
+      setRuntimePollMessages(messages);
+    }
+    previousRuntimeMonitor.current = {
+      cumulativeBuyFillCount: monitor.cumulativeBuyFillCount,
+      paperNoTradeCount: monitor.paperNoTradeCount,
+      regridCandidateCount: monitor.regridCandidateCount,
+    };
+  }, [
+    vm.paper.runtimeMonitor.cumulativeBuyFillCount,
+    vm.paper.runtimeMonitor.paperNoTradeCount,
+    vm.paper.runtimeMonitor.regridCandidateCount,
+    vm.paper.dynamicRegrid.priceVsGrid,
+  ]);
 
   const goDebug = () => router.push("/public");
 
@@ -85,7 +119,10 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           </p>
         </section>
 
-        <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />
+        <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
+          <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />
+          <RuntimeMonitorCard paper={vm.paper} safety={vm.safety} pollMessages={runtimePollMessages} />
+        </div>
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
           <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />

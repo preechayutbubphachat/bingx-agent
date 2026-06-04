@@ -32,6 +32,7 @@ import { NextResponse } from "next/server";
 import { computePaperPerformance } from "@/lib/paperPerformance";
 import { readPaperJournal } from "@/lib/readPaperJournal";
 import { buildPaperLoopDiagnostics } from "@/lib/paper/paperLoopDiagnostics";
+import { readRuntimeMonitorCounters } from "@/lib/paper/runtimeMonitorCounters";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -46,7 +47,8 @@ export async function GET() {
     let paperLoopDiagnostics = null;
     try {
       const summary = await readPaperJournal();
-      paperLoopDiagnostics = buildPaperLoopDiagnostics(summary);
+      const runtimeCounters = await readRuntimeMonitorCounters().catch(() => null);
+      paperLoopDiagnostics = buildPaperLoopDiagnostics(summary, runtimeCounters);
     } catch {
       paperLoopDiagnostics = null;
     }

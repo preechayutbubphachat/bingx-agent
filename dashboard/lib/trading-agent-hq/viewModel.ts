@@ -58,6 +58,7 @@ export interface PaperVM {
   /** cost gate status from public-safe performance payload; never means edge/live-ready */
   costGateStatus: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
   dynamicRegrid: DynamicRegridVM;
+  runtimeMonitor: RuntimeMonitorVM;
 }
 
 export interface DynamicRegridCandidateVM {
@@ -80,6 +81,23 @@ export interface DynamicRegridVM {
   sellFillCount: number;
   closedCycles: number;
   candidate: DynamicRegridCandidateVM;
+}
+
+export interface RuntimeMonitorVM {
+  cumulativeBuyFillCount: number;
+  cumulativeSellFillCount: number;
+  sampleBuyFillCount: number;
+  sampleSellFillCount: number;
+  paperNoTradeCount: number;
+  regridCandidateCount: number;
+  latestFillAt: string | null;
+  latestNoTradeAt: string | null;
+  latestRegridCandidateAt: string | null;
+  buyCountStable: boolean;
+  noTradeIncreasing: boolean;
+  regridCandidateIncreasing: boolean;
+  activationAllowed: boolean | null;
+  monitorStatus: "PASS" | "WATCH" | "UNKNOWN";
 }
 
 export interface TopHudVM {

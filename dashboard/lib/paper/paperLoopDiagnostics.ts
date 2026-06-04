@@ -43,6 +43,27 @@ export interface PaperLoopDiagnostics {
     /** Phase 1 read-only regrid candidate (activationAllowed always false) */
     candidate: RegridCandidate;
   };
+  runtimeMonitor: PaperRuntimeMonitor;
+}
+
+export interface RuntimeMonitorCounters {
+  cumulativeBuyFillCount: number;
+  cumulativeSellFillCount: number;
+  paperNoTradeCount: number;
+  regridCandidateCount: number;
+  latestFillAt: string | null;
+  latestNoTradeAt: string | null;
+  latestRegridCandidateAt: string | null;
+}
+
+export interface PaperRuntimeMonitor extends RuntimeMonitorCounters {
+  sampleBuyFillCount: number;
+  sampleSellFillCount: number;
+  buyCountStable: boolean;
+  noTradeIncreasing: boolean;
+  regridCandidateIncreasing: boolean;
+  activationAllowed: boolean;
+  monitorStatus: "PASS" | "WATCH";
 }
 
 function priceVsGridOf(price: number | null, lower: number | null, upper: number | null): PriceVsGrid {
@@ -61,7 +82,15 @@ function firstMatch<T>(events: PaperEventSummary[], pick: (e: PaperEventSummary)
   return null;
 }
 
-export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLoopDiagnostics {
+export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLoopDiagnostics;
+export function buildPaperLoopDiagnostics(
+  summary: PaperJournalSummary,
+  runtimeCounters: RuntimeMonitorCounters | null
+): PaperLoopDiagnostics;
+export function buildPaperLoopDiagnostics(
+  summary: PaperJournalSummary,
+  runtimeCounters: RuntimeMonitorCounters | null = null
+): PaperLoopDiagnostics {
   const events = (summary.recentEvents ?? []) as PaperEventSummary[]; // already newest-first
 
   const gridLower = firstMatch(events, (e) => e.gridLower);
@@ -112,6 +141,33 @@ export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLo
     buyFillCount: summary.buyFillCount,
     sellFillCount: summary.sellFillCount,
   });
+  const activationAllowed: boolean = Boolean(candidate.activationAllowed);
+  const counters: RuntimeMonitorCounters = runtimeCounters ?? {
+    cumulativeBuyFillCount: summary.buyFillCount,
+    cumulativeSellFillCount: summary.sellFillCount,
+    paperNoTradeCount: 0,
+    regridCandidateCount: 0,
+    latestFillAt: summary.lastPaperEventAt,
+    latestNoTradeAt: null,
+    latestRegridCandidateAt: null,
+  };
+  const latestFillTime = counters.latestFillAt ? Date.parse(counters.latestFillAt) : NaN;
+  const latestNoTradeTime = counters.latestNoTradeAt ? Date.parse(counters.latestNoTradeAt) : NaN;
+  const noNewFillAfterNoTrade =
+    !Number.isFinite(latestFillTime) ||
+    (Number.isFinite(latestNoTradeTime) && latestNoTradeTime >= latestFillTime);
+  const noTradeIncreasing = counters.paperNoTradeCount > 0;
+  const regridCandidateIncreasing = counters.regridCandidateCount > 0;
+  const outOfGrid = priceVsGrid === "BELOW_GRID" || priceVsGrid === "ABOVE_GRID";
+  const buyCountStable = !outOfGrid || noNewFillAfterNoTrade;
+  const monitorStatus: PaperRuntimeMonitor["monitorStatus"] =
+    !activationAllowed &&
+    outOfGrid &&
+    noTradeIncreasing &&
+    regridCandidateIncreasing &&
+    buyCountStable
+      ? "PASS"
+      : "WATCH";
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -144,6 +200,16 @@ export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLo
       confidence: dg?.confidence ?? "low",
       cooldownRequired: dg?.cooldownRequired ?? true,
       candidate,
+    },
+    runtimeMonitor: {
+      ...counters,
+      sampleBuyFillCount: summary.buyFillCount,
+      sampleSellFillCount: summary.sellFillCount,
+      buyCountStable,
+      noTradeIncreasing,
+      regridCandidateIncreasing,
+      activationAllowed,
+      monitorStatus,
     },
   };
 }

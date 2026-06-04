@@ -39,6 +39,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const edge = obj(perf.edgeDiagnostics);
   const costGate = obj(perf.costGate);
   const loop = obj(perf.paperLoopDiagnostics);
+  const runtimeMonitor = obj(loop.runtimeMonitor);
   const dynamicGrid = obj(loop.dynamicGrid);
   const candidate = obj(dynamicGrid.candidate);
   const totalOrderFilled = num(journal.totalOrderFilled);
@@ -60,6 +61,24 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     paperModeDetected: bool(journal.paperModeDetected),
     edgeStatus,
     costGateStatus: mapCostGateStatus(str(costGate.status, "")),
+    runtimeMonitor: {
+      cumulativeBuyFillCount: num(runtimeMonitor.cumulativeBuyFillCount, 0),
+      cumulativeSellFillCount: num(runtimeMonitor.cumulativeSellFillCount, 0),
+      sampleBuyFillCount: num(runtimeMonitor.sampleBuyFillCount ?? loop.sampleBuyFillCount ?? loop.rawBuyFillCount, 0),
+      sampleSellFillCount: num(runtimeMonitor.sampleSellFillCount ?? loop.sampleSellFillCount ?? loop.rawSellFillCount, 0),
+      paperNoTradeCount: num(runtimeMonitor.paperNoTradeCount, 0),
+      regridCandidateCount: num(runtimeMonitor.regridCandidateCount, 0),
+      latestFillAt: strOrNull(runtimeMonitor.latestFillAt),
+      latestNoTradeAt: strOrNull(runtimeMonitor.latestNoTradeAt),
+      latestRegridCandidateAt: strOrNull(runtimeMonitor.latestRegridCandidateAt),
+      buyCountStable: bool(runtimeMonitor.buyCountStable),
+      noTradeIncreasing: bool(runtimeMonitor.noTradeIncreasing),
+      regridCandidateIncreasing: bool(runtimeMonitor.regridCandidateIncreasing),
+      activationAllowed: boolOrNull(runtimeMonitor.activationAllowed ?? candidate.activationAllowed),
+      monitorStatus: str(runtimeMonitor.monitorStatus, "UNKNOWN") === "PASS"
+        ? "PASS"
+        : str(runtimeMonitor.monitorStatus, "UNKNOWN") === "WATCH" ? "WATCH" : "UNKNOWN",
+    },
     dynamicRegrid: {
       priceVsGrid: strOrNull(loop.priceVsGrid ?? perf.priceVsGrid),
       paperLoopState: strOrNull(loop.paperLoopState),

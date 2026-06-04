@@ -71,3 +71,58 @@ test("empty journal → safe defaults, no throw", () => {
   assert.equal(d.lastNoTradeReason, null);
   assert.equal(d.dynamicGrid.enabled, false);
 });
+
+test("runtime monitor PASS when activation is blocked and safety journals advance after fills", () => {
+  const d = buildPaperLoopDiagnostics(
+    summary({
+      buyFillCount: 14, sellFillCount: 0, lastPaperEventAt: "2026-06-04T01:00:00.000Z",
+      recentEvents: [
+        ev({ gridLower: 72480, gridUpper: 78053, gridMid: 75266, currentPrice: 66849, noTradeReason: "price_below_grid_lower" }),
+      ],
+    }),
+    {
+      cumulativeBuyFillCount: 1460,
+      cumulativeSellFillCount: 0,
+      paperNoTradeCount: 122,
+      regridCandidateCount: 75,
+      latestFillAt: "2026-06-04T00:50:00.000Z",
+      latestNoTradeAt: "2026-06-04T01:00:00.000Z",
+      latestRegridCandidateAt: "2026-06-04T01:01:00.000Z",
+    }
+  );
+
+  assert.equal(d.runtimeMonitor.cumulativeBuyFillCount, 1460);
+  assert.equal(d.runtimeMonitor.cumulativeSellFillCount, 0);
+  assert.equal(d.runtimeMonitor.sampleBuyFillCount, 14);
+  assert.equal(d.runtimeMonitor.sampleSellFillCount, 0);
+  assert.equal(d.runtimeMonitor.paperNoTradeCount, 122);
+  assert.equal(d.runtimeMonitor.regridCandidateCount, 75);
+  assert.equal(d.runtimeMonitor.activationAllowed, false);
+  assert.equal(d.runtimeMonitor.buyCountStable, true);
+  assert.equal(d.runtimeMonitor.noTradeIncreasing, true);
+  assert.equal(d.runtimeMonitor.regridCandidateIncreasing, true);
+  assert.equal(d.runtimeMonitor.monitorStatus, "PASS");
+});
+
+test("runtime monitor WATCH when a fill is newer than no-trade while out of grid", () => {
+  const d = buildPaperLoopDiagnostics(
+    summary({
+      buyFillCount: 1, sellFillCount: 0,
+      recentEvents: [
+        ev({ gridLower: 72480, gridUpper: 78053, currentPrice: 66849, noTradeReason: "price_below_grid_lower" }),
+      ],
+    }),
+    {
+      cumulativeBuyFillCount: 1461,
+      cumulativeSellFillCount: 0,
+      paperNoTradeCount: 122,
+      regridCandidateCount: 75,
+      latestFillAt: "2026-06-04T01:05:00.000Z",
+      latestNoTradeAt: "2026-06-04T01:00:00.000Z",
+      latestRegridCandidateAt: "2026-06-04T01:01:00.000Z",
+    }
+  );
+
+  assert.equal(d.runtimeMonitor.buyCountStable, false);
+  assert.equal(d.runtimeMonitor.monitorStatus, "WATCH");
+});

@@ -46,6 +46,9 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const readiness = obj(loop.regridReadiness);
   const epoch = obj(loop.paperEpoch);
   const indicatorGate = obj(loop.indicatorGate);
+  const canonicalRegime = obj(loop.canonicalMarketRegime);
+  const canonicalFreshness = obj(canonicalRegime.sourceFreshness);
+  const canonicalCompleteness = obj(canonicalRegime.evidenceCompleteness);
   const dynamicGrid = obj(loop.dynamicGrid);
   const candidate = obj(dynamicGrid.candidate);
   const regimeEvidence = obj(loop.regimeEvidence);
@@ -129,6 +132,33 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       blocking: bool(indicatorGate.blocking),
       paperActivationAllowed: bool(indicatorGate.paperActivationAllowed),
       liveActivationAllowed: bool(indicatorGate.liveActivationAllowed),
+    },
+    canonicalMarketRegime: {
+      regime: mapCanonicalRegime(str(canonicalRegime.regime, "UNKNOWN")),
+      direction: mapCanonicalDirection(str(canonicalRegime.direction, "UNKNOWN")),
+      confidence: num(canonicalRegime.confidence, 0),
+      confidenceLabel: mapIndicatorGateConfidence(str(canonicalRegime.confidenceLabel, "low")),
+      reasons: strArray(canonicalRegime.reasons),
+      warnings: strArray(canonicalRegime.warnings),
+      allowedModes: strArray(canonicalRegime.allowedModes),
+      blockedModes: strArray(canonicalRegime.blockedModes),
+      sourcePriority: strArray(canonicalRegime.sourcePriority),
+      ignoredLegacyFields: strArray(canonicalRegime.ignoredLegacyFields),
+      sourceFreshness: {
+        status: mapCanonicalFreshnessStatus(str(canonicalFreshness.status, "unknown")),
+        generatedAt: strOrNull(canonicalFreshness.generatedAt),
+        latestCandleAtByTimeframe: mapStringRecord(canonicalFreshness.latestCandleAtByTimeframe),
+        warnings: strArray(canonicalFreshness.warnings),
+      },
+      evidenceCompleteness: {
+        status: mapCanonicalCompletenessStatus(str(canonicalCompleteness.status, "unknown")),
+        scorePct: num(canonicalCompleteness.scorePct, 0),
+        availableGroups: strArray(canonicalCompleteness.availableGroups),
+        missingGroups: strArray(canonicalCompleteness.missingGroups),
+      },
+      shadowOnly: bool(canonicalRegime.shadowOnly),
+      paperActivationAllowed: bool(canonicalRegime.paperActivationAllowed),
+      liveActivationAllowed: bool(canonicalRegime.liveActivationAllowed),
     },
     regimeEvidence: {
       evidenceCompleteness: {
@@ -253,6 +283,47 @@ function mapIndicatorGateConfidence(confidence: string): PaperVM["indicatorGate"
   if (confidence === "high") return "high";
   if (confidence === "medium") return "medium";
   return "low";
+}
+
+function mapCanonicalRegime(regime: string): PaperVM["canonicalMarketRegime"]["regime"] {
+  if (regime === "RANGE") return "RANGE";
+  if (regime === "UPTREND") return "UPTREND";
+  if (regime === "DOWNTREND") return "DOWNTREND";
+  if (regime === "VOLATILITY_EXPANSION") return "VOLATILITY_EXPANSION";
+  if (regime === "VOLATILITY_COMPRESSION") return "VOLATILITY_COMPRESSION";
+  if (regime === "EVENT_RISK") return "EVENT_RISK";
+  if (regime === "NO_TRADE") return "NO_TRADE";
+  return "UNKNOWN";
+}
+
+function mapCanonicalDirection(direction: string): PaperVM["canonicalMarketRegime"]["direction"] {
+  if (direction === "BULLISH") return "BULLISH";
+  if (direction === "BEARISH") return "BEARISH";
+  if (direction === "NEUTRAL") return "NEUTRAL";
+  return "UNKNOWN";
+}
+
+function mapCanonicalFreshnessStatus(status: string): PaperVM["canonicalMarketRegime"]["sourceFreshness"]["status"] {
+  if (status === "fresh") return "fresh";
+  if (status === "stale") return "stale";
+  if (status === "partial") return "partial";
+  return "unknown";
+}
+
+function mapCanonicalCompletenessStatus(status: string): PaperVM["canonicalMarketRegime"]["evidenceCompleteness"]["status"] {
+  if (status === "complete") return "complete";
+  if (status === "partial") return "partial";
+  if (status === "missing") return "missing";
+  return "unknown";
+}
+
+function mapStringRecord(value: unknown): Record<string, string | null> {
+  const raw = obj(value);
+  const out: Record<string, string | null> = {};
+  for (const [key, item] of Object.entries(raw)) {
+    out[key] = typeof item === "string" && item.length > 0 ? item : null;
+  }
+  return out;
 }
 
 function mapCostGateStatus(status: string): PaperVM["costGateStatus"] {

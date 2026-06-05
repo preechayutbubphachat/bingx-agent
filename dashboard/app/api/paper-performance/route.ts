@@ -37,6 +37,10 @@ import { readLatest } from "@/lib/readLatest";
 import { buildRegimeEvidence } from "@/lib/paper/regimeEvidence";
 import { getCandlesFromSnapshot } from "@/lib/candleAdapter";
 import { computeIndicatorEvidence } from "@/lib/indicators/computeIndicators";
+import {
+  buildCanonicalMarketRegime,
+  buildMultiTimeframeIndicatorEvidence,
+} from "@/lib/market-regime/canonicalMarketRegime";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -59,12 +63,22 @@ export async function GET() {
       const indicatorEvidence = candles15m.length
         ? computeIndicatorEvidence(candles15m, { timeframe: "15m" })
         : null;
+      const multiTimeframeIndicatorEvidence = latest?.marketSnapshot
+        ? buildMultiTimeframeIndicatorEvidence(latest.marketSnapshot)
+        : {};
       const regimeEvidence = buildRegimeEvidence({
         decision: latest?.decision ?? null,
         marketSnapshot: latest?.marketSnapshot ?? null,
         planStatusState: latest?.planStatusState ?? null,
         sourceInfo: latest?.sourceInfo ?? null,
         indicatorEvidence,
+      });
+      const canonicalMarketRegime = buildCanonicalMarketRegime({
+        marketSnapshot: latest?.marketSnapshot ?? null,
+        indicatorEvidenceByTimeframe: multiTimeframeIndicatorEvidence,
+        obGate: regimeEvidence.obGate,
+        derivatives: regimeEvidence.derivatives,
+        legacyPlanMode: typeof latest?.decision?.market_mode === "string" ? latest.decision.market_mode : null,
       });
       paperLoopDiagnostics = buildPaperLoopDiagnostics(summary, runtimeCounters, {
         closedCycles: report.edgeDiagnostics?.closedCycles ?? 0,
@@ -73,6 +87,8 @@ export async function GET() {
           requiredMinSpacingPct: report.costGate?.requiredMinSpacingPct ?? null,
         },
         regimeEvidence,
+        canonicalMarketRegime,
+        multiTimeframeIndicatorEvidence,
       });
     } catch {
       paperLoopDiagnostics = null;

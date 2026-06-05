@@ -63,6 +63,7 @@ export interface PaperVM {
   paperEpoch: PaperEpochVM;
   regimeEvidence: RegimeEvidenceVM;
   indicatorGate: IndicatorGateVM;
+  canonicalMarketRegime: CanonicalMarketRegimeVM;
 }
 
 export interface DynamicRegridCandidateVM {
@@ -137,6 +138,34 @@ export interface IndicatorGateVM {
   failed: string[];
   confidence: "low" | "medium" | "high";
   blocking: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+}
+
+export interface CanonicalMarketRegimeVM {
+  regime: "RANGE" | "UPTREND" | "DOWNTREND" | "VOLATILITY_EXPANSION" | "VOLATILITY_COMPRESSION" | "EVENT_RISK" | "NO_TRADE" | "UNKNOWN";
+  direction: "BULLISH" | "BEARISH" | "NEUTRAL" | "UNKNOWN";
+  confidence: number;
+  confidenceLabel: "low" | "medium" | "high";
+  reasons: string[];
+  warnings: string[];
+  allowedModes: string[];
+  blockedModes: string[];
+  sourcePriority: string[];
+  ignoredLegacyFields: string[];
+  sourceFreshness: {
+    status: "fresh" | "stale" | "partial" | "unknown";
+    generatedAt: string | null;
+    latestCandleAtByTimeframe: Record<string, string | null>;
+    warnings: string[];
+  };
+  evidenceCompleteness: {
+    status: "complete" | "partial" | "missing" | "unknown";
+    scorePct: number;
+    availableGroups: string[];
+    missingGroups: string[];
+  };
+  shadowOnly: boolean;
   paperActivationAllowed: boolean;
   liveActivationAllowed: boolean;
 }

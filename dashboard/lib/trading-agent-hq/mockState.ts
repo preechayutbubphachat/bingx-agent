@@ -79,6 +79,33 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       paperActivationAllowed: false,
       liveActivationAllowed: false,
     },
+    canonicalMarketRegime: {
+      regime: "UNKNOWN",
+      direction: "UNKNOWN",
+      confidence: 0,
+      confidenceLabel: "low",
+      reasons: ["mock_data_not_runtime_evidence"],
+      warnings: ["canonical_market_regime_requires_market_snapshot"],
+      allowedModes: ["NO_TRADE"],
+      blockedModes: ["NEUTRAL_GRID", "DYNAMIC_NEUTRAL_GRID", "PHASE_2B_ACTIVATION"],
+      sourcePriority: ["market_snapshot.klines"],
+      ignoredLegacyFields: ["latest_decision.market_mode"],
+      sourceFreshness: {
+        status: "unknown",
+        generatedAt: null,
+        latestCandleAtByTimeframe: {},
+        warnings: ["mock_has_no_freshness_evidence"],
+      },
+      evidenceCompleteness: {
+        status: "missing",
+        scorePct: 0,
+        availableGroups: [],
+        missingGroups: ["multi_timeframe_indicators"],
+      },
+      shadowOnly: true,
+      paperActivationAllowed: false,
+      liveActivationAllowed: false,
+    },
     regimeEvidence: {
       evidenceCompleteness: {
         status: "partial",

@@ -5,6 +5,10 @@ import { computeLiquidityMagnetFromCandles } from "@/lib/liquidityMagnet";
 import { buildSourceInfo, readRuntimeJson, resolveRuntimeDir } from "@/lib/readLatest";
 import { safeJsonErrorResponse } from "@/lib/safeJsonResponse";
 import { computeIndicatorEvidence } from "@/lib/indicators/computeIndicators";
+import {
+    buildCanonicalMarketRegime,
+    buildMultiTimeframeIndicatorEvidence,
+} from "@/lib/market-regime/canonicalMarketRegime";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -1332,6 +1336,7 @@ export async function GET() {
     const raw5m: Candle[] = snapshot5m.length ? snapshot5m : store?.symbols?.[sym]?.raw_5m?.series ?? [];
     const agg1h: Candle[] = snapshot1h.length ? snapshot1h : store?.symbols?.[sym]?.agg_1h?.series ?? [];
     const indicatorEvidence = computeIndicatorEvidence(snapshot15m, { timeframe: "15m" });
+    const multiTimeframeIndicatorEvidence = buildMultiTimeframeIndicatorEvidence(store ?? {});
 
     const sourceUpdatedAt =
         toMs(toNumber(store?.meta?.generated_at) ?? null) ??
@@ -2292,6 +2297,13 @@ export async function GET() {
         };
 
     const ob_gate = buildObGate({ decision, raw5m, agg1h, last5m, last1h });
+    const canonicalMarketRegime = buildCanonicalMarketRegime({
+        marketSnapshot: store ?? null,
+        indicatorEvidenceByTimeframe: multiTimeframeIndicatorEvidence,
+        obGate: ob_gate,
+        derivatives: { oi: oiMeta, funding: fundingMeta },
+        legacyPlanMode: typeof decision?.market_mode === "string" ? decision.market_mode : null,
+    });
 
     const prevEntryStatus = norm(prevStateObj?.ob_gate?.entry?.status);
     const curEntryStatus = norm(ob_gate?.entry?.status);
@@ -2766,6 +2778,8 @@ export async function GET() {
         },
 
         indicatorEvidence,
+        multiTimeframeIndicatorEvidence,
+        canonicalMarketRegime,
 
         derivatives: {
             updated_at: derivUpdatedAtMs,

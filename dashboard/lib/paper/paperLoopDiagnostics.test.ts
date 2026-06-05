@@ -203,3 +203,53 @@ test("indicator gate is shadow-only and does not change regrid readiness", () =>
   assert.ok(d.regridReadiness.failedGates.includes("stable_candles_pending"));
   assert.ok(d.regridReadiness.warnings.includes("closed_cycles_remain_zero_do_not_fake_edge"));
 });
+
+test("canonical market regime diagnostics are additive and do not change readiness", () => {
+  const d = buildPaperLoopDiagnostics(
+    summary({
+      buyFillCount: 14,
+      sellFillCount: 0,
+      recentEvents: [
+        ev({ gridLower: 72480, gridUpper: 78053, gridMid: 75266, currentPrice: 63598.5, noTradeReason: "price_below_grid_lower" }),
+      ],
+    }),
+    null,
+    {
+      canonicalMarketRegime: {
+        regime: "DOWNTREND",
+        direction: "BEARISH",
+        confidence: 66,
+        confidenceLabel: "medium",
+        reasons: ["trend_down_confirmed_by_indicators"],
+        warnings: [],
+        allowedModes: ["NO_TRADE", "TREND_CHECK"],
+        blockedModes: ["NEUTRAL_GRID", "DYNAMIC_NEUTRAL_GRID", "PHASE_2B_ACTIVATION"],
+        sourcePriority: ["market_snapshot.klines"],
+        ignoredLegacyFields: ["latest_decision.market_mode"],
+        sourceFreshness: {
+          status: "fresh",
+          generatedAt: "2026-06-05T00:00:00.000Z",
+          latestCandleAtByTimeframe: { "15M": "2026-06-05T00:00:00.000Z" },
+          warnings: [],
+        },
+        evidenceCompleteness: {
+          status: "partial",
+          scorePct: 60,
+          availableGroups: ["multi_timeframe_indicators"],
+          missingGroups: ["derivatives"],
+        },
+        shadowOnly: true,
+        paperActivationAllowed: false,
+        liveActivationAllowed: false,
+      },
+      multiTimeframeIndicatorEvidence: {},
+    }
+  );
+
+  assert.equal(d.canonicalMarketRegime?.regime, "DOWNTREND");
+  assert.equal(d.canonicalMarketRegime?.paperActivationAllowed, false);
+  assert.equal(d.canonicalMarketRegime?.liveActivationAllowed, false);
+  assert.equal(d.regridReadiness.status, "NOT_READY");
+  assert.equal(d.regridReadiness.paperActivationAllowed, false);
+  assert.equal(d.regridReadiness.liveActivationAllowed, false);
+});

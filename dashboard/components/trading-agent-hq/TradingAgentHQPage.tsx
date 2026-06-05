@@ -19,6 +19,7 @@ import DynamicRegridStatusCard from "./DynamicRegridStatusCard";
 import RegridPhase2AReadinessCard from "./RegridPhase2AReadinessCard";
 import RuntimeMonitorCard from "./RuntimeMonitorCard";
 import RegimeEvidenceCard from "./RegimeEvidenceCard";
+import CanonicalMarketRegimeCard from "./CanonicalMarketRegimeCard";
 import IndicatorGateShadowCard from "./IndicatorGateShadowCard";
 import TrendRegimeConfirmationCard from "./TrendRegimeConfirmationCard";
 
@@ -133,6 +134,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           <RuntimeMonitorCard paper={vm.paper} safety={vm.safety} pollMessages={runtimePollMessages} />
         </div>
         <RegridPhase2AReadinessCard paper={vm.paper} />
+        <CanonicalMarketRegimeCard paper={vm.paper} />
         <RegimeEvidenceCard paper={vm.paper} />
         <IndicatorGateShadowCard paper={vm.paper} />
         <TrendRegimeConfirmationCard paper={vm.paper} />

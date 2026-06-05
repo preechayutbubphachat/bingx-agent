@@ -13,6 +13,10 @@ import {
   type RegridReadiness,
 } from "../grid/regridReadiness.ts";
 import { evaluateIndicatorGate, type IndicatorGate } from "../grid/indicatorGate.ts";
+import type {
+  CanonicalMarketRegime,
+  MultiTimeframeIndicatorEvidence,
+} from "../market-regime/canonicalMarketRegime.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -58,6 +62,8 @@ export interface PaperLoopDiagnostics {
   paperEpoch: PaperEpochDiagnostics;
   regimeEvidence: RegimeEvidence;
   indicatorGate: IndicatorGate;
+  canonicalMarketRegime: CanonicalMarketRegime | null;
+  multiTimeframeIndicatorEvidence: MultiTimeframeIndicatorEvidence | null;
 }
 
 export interface RuntimeMonitorCounters {
@@ -90,6 +96,8 @@ export interface PaperLoopDiagnosticsContext {
     requiredMinSpacingPct?: number | null;
   } | null;
   regimeEvidence?: RegimeEvidence | null;
+  canonicalMarketRegime?: CanonicalMarketRegime | null;
+  multiTimeframeIndicatorEvidence?: MultiTimeframeIndicatorEvidence | null;
 }
 
 function priceVsGridOf(price: number | null, lower: number | null, upper: number | null): PriceVsGrid {
@@ -301,5 +309,7 @@ export function buildPaperLoopDiagnostics(
     paperEpoch,
     regimeEvidence,
     indicatorGate,
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
   };
 }

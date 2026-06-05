@@ -22,9 +22,16 @@ function indicatorLabel(value: EvidenceValueVM): string {
   return `${value.value}`;
 }
 
-function sourceLabel(value: EvidenceValueVM): string {
-  if (!value.source || value.source === "missing") return "source=missing";
+function sourceLabel(value: EvidenceValueVM, insufficient: boolean): string {
+  if (!value.source || value.source === "missing") return insufficient ? "แท่งเทียนไม่พอ" : "source=missing";
   return value.source;
+}
+
+function freshnessLabel(ageMs: number | null | undefined): string {
+  if (ageMs == null) return "ยังไม่มีข้อมูลจาก source";
+  const minutes = Math.round(ageMs / 60_000);
+  if (ageMs > 30 * 60_000) return `ข้อมูลไม่สด (${minutes} นาที)`;
+  return `สด (${minutes} นาที)`;
 }
 
 function Field({ label, value, source }: { label: string; value: string; source?: string }) {
@@ -45,6 +52,8 @@ export default function RegimeEvidenceCard({ paper }: RegimeEvidenceCardProps) {
   const derivatives = evidence.derivatives;
   const obGate = evidence.obGate;
   const freshness = evidence.sourceFreshness;
+  const indicatorMeta = evidence.indicatorEvidence;
+  const insufficient = Boolean(indicatorMeta?.notes.includes("insufficient_candles"));
 
   return (
     <section className="rounded-lg border border-[#d1b58c] bg-[#f7f1e8] p-3 text-[#3f2f22] shadow-sm">
@@ -52,7 +61,7 @@ export default function RegimeEvidenceCard({ paper }: RegimeEvidenceCardProps) {
         <div>
           <h2 className="text-sm font-black text-[#2f241b]">หลักฐาน Regime / Trend สำหรับ Regrid</h2>
           <p className="mt-0.5 text-[11px] font-bold text-[#80644c]">
-            ค่านี้ยังไม่ถูกใช้เปิดเทรด เป็น diagnostic เท่านั้น
+            ใช้แสดงหลักฐานเท่านั้น ยังไม่ใช้เปิดกริด
           </p>
         </div>
         <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-[#5b4432]">
@@ -76,17 +85,23 @@ export default function RegimeEvidenceCard({ paper }: RegimeEvidenceCardProps) {
           label="Evidence Completeness"
           value={`${completenessLabel(completeness.status)} (${completeness.availableCount}/${completeness.expectedCount})`}
         />
+        <Field label="Timeframe" value={valueLabel(indicatorMeta?.timeframe)} />
+        <Field label="Candle Count" value={valueLabel(indicatorMeta?.candleCount)} />
+        <Field label="Indicator Freshness" value={freshnessLabel(indicatorMeta?.freshness.ageMs)} />
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="ADX" value={indicatorLabel(indicators.adx)} source={sourceLabel(indicators.adx)} />
-        <Field label="+DI" value={indicatorLabel(indicators.plusDI)} source={sourceLabel(indicators.plusDI)} />
-        <Field label="-DI" value={indicatorLabel(indicators.minusDI)} source={sourceLabel(indicators.minusDI)} />
-        <Field label="RSI" value={indicatorLabel(indicators.rsi)} source={sourceLabel(indicators.rsi)} />
-        <Field label="ATR" value={indicatorLabel(indicators.atr)} source={sourceLabel(indicators.atr)} />
-        <Field label="BBW" value={indicatorLabel(indicators.bbw)} source={sourceLabel(indicators.bbw)} />
-        <Field label="MACD" value={indicatorLabel(indicators.macd)} source={sourceLabel(indicators.macd)} />
-        <Field label="EMA Slope" value={indicatorLabel(indicators.emaSlope)} source={sourceLabel(indicators.emaSlope)} />
+        <Field label="ADX" value={indicatorLabel(indicators.adx)} source={sourceLabel(indicators.adx, insufficient)} />
+        <Field label="+DI" value={indicatorLabel(indicators.plusDI)} source={sourceLabel(indicators.plusDI, insufficient)} />
+        <Field label="-DI" value={indicatorLabel(indicators.minusDI)} source={sourceLabel(indicators.minusDI, insufficient)} />
+        <Field label="RSI" value={indicatorLabel(indicators.rsi)} source={sourceLabel(indicators.rsi, insufficient)} />
+        <Field label="ATR" value={indicatorLabel(indicators.atr)} source={sourceLabel(indicators.atr, insufficient)} />
+        <Field label="ATR%" value={indicatorLabel(indicators.atrPct)} source={sourceLabel(indicators.atrPct, insufficient)} />
+        <Field label="BBW" value={indicatorLabel(indicators.bbw)} source={sourceLabel(indicators.bbw, insufficient)} />
+        <Field label="MACD" value={indicatorLabel(indicators.macd)} source={sourceLabel(indicators.macd, insufficient)} />
+        <Field label="MACD Signal" value={indicatorLabel(indicators.macdSignal)} source={sourceLabel(indicators.macdSignal, insufficient)} />
+        <Field label="MACD Hist" value={indicatorLabel(indicators.macdHistogram)} source={sourceLabel(indicators.macdHistogram, insufficient)} />
+        <Field label="EMA Slope" value={indicatorLabel(indicators.emaSlope)} source={sourceLabel(indicators.emaSlope, insufficient)} />
       </div>
 
       <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -95,6 +110,7 @@ export default function RegimeEvidenceCard({ paper }: RegimeEvidenceCardProps) {
           <div>latest_decision: {valueLabel(freshness.latestDecisionAt)}</div>
           <div>market_snapshot: {valueLabel(freshness.marketSnapshotAt)}</div>
           <div>plan_status_state: {valueLabel(freshness.planStatusStateAt)}</div>
+          <div>latest candle: {valueLabel(indicatorMeta?.freshness.latestCandleAt)}</div>
         </div>
         <div className="rounded-md border border-[#d6c2a6] bg-white/70 px-3 py-2 text-[11px] font-bold text-[#5b4432]">
           <div className="font-black text-[#2f241b]">Missing / Notes</div>

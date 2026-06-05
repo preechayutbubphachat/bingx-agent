@@ -6,7 +6,7 @@
 // grid, NEVER places orders, NEVER forces fills. `activationAllowed` is hard-wired false
 // in Phase 1 — activation is a separate, gated phase pending operator approval & M-0B.
 
-import { calculateDynamicGrid, DEFAULT_DYNAMIC_GRID_CONFIG, type DynamicGridConfig } from "./dynamicGrid";
+import { calculateDynamicGrid, DEFAULT_DYNAMIC_GRID_CONFIG, type DynamicGridConfig } from "./dynamicGrid.ts";
 
 export type RegridCandidateStatus =
   | "INACTIVE"          // not in a regrid context (price in range)

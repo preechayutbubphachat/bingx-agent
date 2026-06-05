@@ -171,8 +171,22 @@ export interface RegimeEvidenceVM {
     atrPct: EvidenceValueVM;
     bbw: EvidenceValueVM;
     macd: EvidenceValueVM;
+    macdSignal: EvidenceValueVM;
+    macdHistogram: EvidenceValueVM;
     emaSlope: EvidenceValueVM;
   };
+  indicatorEvidence: {
+    source: string | null;
+    calculatedAt: string | null;
+    candleCount: number;
+    timeframe: string | null;
+    freshness: {
+      latestCandleAt: string | null;
+      ageMs: number | null;
+    };
+    missingFields: string[];
+    notes: string[];
+  } | null;
   derivatives: {
     oiBias: string | null;
     oiChange: number | null;

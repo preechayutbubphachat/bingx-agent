@@ -4,6 +4,7 @@ import path from "path";
 import { computeLiquidityMagnetFromCandles } from "@/lib/liquidityMagnet";
 import { buildSourceInfo, readRuntimeJson, resolveRuntimeDir } from "@/lib/readLatest";
 import { safeJsonErrorResponse } from "@/lib/safeJsonResponse";
+import { computeIndicatorEvidence } from "@/lib/indicators/computeIndicators";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -1326,9 +1327,11 @@ export async function GET() {
     const store = storeRead.ok ? storeRead.value : null;
 
     const snapshot5m = normalizeSnapshotCandles(store?.market_data?.klines?.["5M"]?.candles);
+    const snapshot15m = normalizeSnapshotCandles(store?.market_data?.klines?.["15M"]?.candles);
     const snapshot1h = normalizeSnapshotCandles(store?.market_data?.klines?.["1H"]?.candles);
     const raw5m: Candle[] = snapshot5m.length ? snapshot5m : store?.symbols?.[sym]?.raw_5m?.series ?? [];
     const agg1h: Candle[] = snapshot1h.length ? snapshot1h : store?.symbols?.[sym]?.agg_1h?.series ?? [];
+    const indicatorEvidence = computeIndicatorEvidence(snapshot15m, { timeframe: "15m" });
 
     const sourceUpdatedAt =
         toMs(toNumber(store?.meta?.generated_at) ?? null) ??
@@ -2761,6 +2764,8 @@ export async function GET() {
             risk_warning: decision?.risk_warning ?? [],
             confidence: decision?.confidence ?? null,
         },
+
+        indicatorEvidence,
 
         derivatives: {
             updated_at: derivUpdatedAtMs,

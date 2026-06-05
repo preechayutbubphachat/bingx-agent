@@ -35,6 +35,8 @@ import { buildPaperLoopDiagnostics } from "@/lib/paper/paperLoopDiagnostics";
 import { readRuntimeMonitorCounters } from "@/lib/paper/runtimeMonitorCounters";
 import { readLatest } from "@/lib/readLatest";
 import { buildRegimeEvidence } from "@/lib/paper/regimeEvidence";
+import { getCandlesFromSnapshot } from "@/lib/candleAdapter";
+import { computeIndicatorEvidence } from "@/lib/indicators/computeIndicators";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,11 +53,18 @@ export async function GET() {
       const summary = await readPaperJournal();
       const runtimeCounters = await readRuntimeMonitorCounters().catch(() => null);
       const latest = await readLatest().catch(() => null);
+      const candles15m = latest?.marketSnapshot
+        ? getCandlesFromSnapshot(latest.marketSnapshot, "15M")
+        : [];
+      const indicatorEvidence = candles15m.length
+        ? computeIndicatorEvidence(candles15m, { timeframe: "15m" })
+        : null;
       const regimeEvidence = buildRegimeEvidence({
         decision: latest?.decision ?? null,
         marketSnapshot: latest?.marketSnapshot ?? null,
         planStatusState: latest?.planStatusState ?? null,
         sourceInfo: latest?.sourceInfo ?? null,
+        indicatorEvidence,
       });
       paperLoopDiagnostics = buildPaperLoopDiagnostics(summary, runtimeCounters, {
         closedCycles: report.edgeDiagnostics?.closedCycles ?? 0,

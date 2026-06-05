@@ -3,16 +3,16 @@
 // Pure: derives diagnostics from a PaperJournalSummary. No I/O, no side effects,
 // no trading behaviour. Never enables live/order/approval.
 
-import type { PaperJournalSummary, PaperEventSummary } from "@/lib/readPaperJournal";
-import { calculateDynamicGrid, type DynamicGridResult } from "@/lib/grid/dynamicGrid";
-import { evaluateRegridCandidate, type RegridCandidate } from "@/lib/grid/regridCandidate";
+import type { PaperJournalSummary, PaperEventSummary } from "../readPaperJournal.ts";
+import { calculateDynamicGrid, type DynamicGridResult } from "../grid/dynamicGrid.ts";
+import { evaluateRegridCandidate, type RegridCandidate } from "../grid/regridCandidate.ts";
 import {
   buildPaperEpochDiagnostics,
   evaluateRegridReadiness,
   type PaperEpochDiagnostics,
   type RegridReadiness,
-} from "@/lib/grid/regridReadiness";
-import { buildRegimeEvidence, type RegimeEvidence } from "@/lib/paper/regimeEvidence";
+} from "../grid/regridReadiness.ts";
+import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 

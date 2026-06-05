@@ -52,6 +52,8 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const freshness = obj(regimeEvidence.sourceFreshness);
   const evidenceDecision = obj(regimeEvidence.decision);
   const indicators = obj(regimeEvidence.indicators);
+  const indicatorEvidence = obj(regimeEvidence.indicatorEvidence);
+  const indicatorFreshness = obj(indicatorEvidence.freshness);
   const derivatives = obj(regimeEvidence.derivatives);
   const obGate = obj(regimeEvidence.obGate);
   const totalOrderFilled = num(journal.totalOrderFilled);
@@ -158,8 +160,24 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
         atrPct: mapEvidenceValue(indicators.atrPct),
         bbw: mapEvidenceValue(indicators.bbw),
         macd: mapEvidenceValue(indicators.macd),
+        macdSignal: mapEvidenceValue(indicators.macdSignal),
+        macdHistogram: mapEvidenceValue(indicators.macdHistogram),
         emaSlope: mapEvidenceValue(indicators.emaSlope),
       },
+      indicatorEvidence: Object.keys(indicatorEvidence).length
+        ? {
+            source: strOrNull(indicatorEvidence.source),
+            calculatedAt: strOrNull(indicatorEvidence.calculatedAt),
+            candleCount: num(indicatorEvidence.candleCount, 0),
+            timeframe: strOrNull(indicatorEvidence.timeframe),
+            freshness: {
+              latestCandleAt: strOrNull(indicatorFreshness.latestCandleAt),
+              ageMs: numOrNull(indicatorFreshness.ageMs),
+            },
+            missingFields: strArray(indicatorEvidence.missingFields),
+            notes: strArray(indicatorEvidence.notes),
+          }
+        : null,
       derivatives: {
         oiBias: strOrNull(derivatives.oiBias),
         oiChange: numOrNull(derivatives.oiChange),

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildRegimeEvidence } from "./regimeEvidence";
+import { buildRegimeEvidence } from "./regimeEvidence.ts";
 
 test("maps decision market mode and regime evidence from runtime sources", () => {
   const evidence = buildRegimeEvidence({
@@ -122,4 +122,43 @@ test("reports partial completeness when decision ob derivatives exist but direct
   assert.ok(evidence.evidenceCompleteness.scorePct < 100);
   assert.equal(evidence.indicators.rsi.value, null);
   assert.equal(evidence.indicators.rsi.source, "missing");
+});
+
+test("uses computed indicator evidence when provided", () => {
+  const evidence = buildRegimeEvidence({
+    decision: { market_mode: "GRID_NEUTRAL", regime: "RANGE", levels: { trend: { dir: "SIDEWAYS" } } },
+    marketSnapshot: {},
+    planStatusState: {
+      ob_gate: { entry: { status: "READY" } },
+      derivatives: { oi: { now: 1 }, funding: { now: 0.01 } },
+    },
+    sourceInfo: null,
+    indicatorEvidence: {
+      adx: 25,
+      plusDI: 18,
+      minusDI: 12,
+      rsi: 55,
+      atr: 100,
+      atrPct: 1.2,
+      bbw: 0.05,
+      macd: 2,
+      macdSignal: 1.5,
+      macdHistogram: 0.5,
+      emaSlope: 3,
+      source: "market_snapshot",
+      calculatedAt: "2026-06-05T00:00:00.000Z",
+      candleCount: 80,
+      timeframe: "15m",
+      freshness: { latestCandleAt: "2026-06-05T00:00:00.000Z", ageMs: 0 },
+      missingFields: [],
+      notes: [],
+    },
+  });
+
+  assert.deepEqual(evidence.indicators.adx, { value: 25, source: "market_snapshot.indicatorEvidence.adx" });
+  assert.deepEqual(evidence.indicators.plusDI, { value: 18, source: "market_snapshot.indicatorEvidence.plusDI" });
+  assert.deepEqual(evidence.indicators.macdSignal, { value: 1.5, source: "market_snapshot.indicatorEvidence.macdSignal" });
+  assert.equal(evidence.indicatorEvidence?.timeframe, "15m");
+  assert.equal(evidence.indicatorEvidence?.candleCount, 80);
+  assert.equal(evidence.evidenceCompleteness.status, "complete");
 });

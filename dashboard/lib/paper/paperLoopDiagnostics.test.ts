@@ -3,9 +3,9 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPaperLoopDiagnostics } from "./paperLoopDiagnostics";
-import type { PaperJournalSummary, PaperEventSummary } from "@/lib/readPaperJournal";
-import { buildRegimeEvidence } from "./regimeEvidence";
+import { buildPaperLoopDiagnostics } from "./paperLoopDiagnostics.ts";
+import type { PaperJournalSummary, PaperEventSummary } from "../readPaperJournal.ts";
+import { buildRegimeEvidence } from "./regimeEvidence.ts";
 
 function ev(p: Partial<PaperEventSummary>): PaperEventSummary {
   return {

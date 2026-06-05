@@ -106,7 +106,21 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
         atrPct: { value: null, source: "missing" },
         bbw: { value: null, source: "missing" },
         macd: { value: null, source: "missing" },
+        macdSignal: { value: null, source: "missing" },
+        macdHistogram: { value: null, source: "missing" },
         emaSlope: { value: null, source: "missing" },
+      },
+      indicatorEvidence: {
+        source: "market_snapshot",
+        calculatedAt: null,
+        candleCount: 0,
+        timeframe: "15m",
+        freshness: {
+          latestCandleAt: null,
+          ageMs: null,
+        },
+        missingFields: ["adx", "plusDI", "minusDI", "rsi", "macd"],
+        notes: ["insufficient_candles"],
       },
       derivatives: {
         oiBias: null,

@@ -1,3 +1,5 @@
+import type { IndicatorEvidence } from "../indicators/computeIndicators.ts";
+
 export type EvidenceCompletenessStatus = "complete" | "partial" | "missing";
 
 export interface EvidenceValue<T = number | string | boolean> {
@@ -42,8 +44,14 @@ export interface RegimeEvidence {
     atrPct: EvidenceValue<number>;
     bbw: EvidenceValue<number>;
     macd: EvidenceValue<number | string>;
+    macdSignal: EvidenceValue<number>;
+    macdHistogram: EvidenceValue<number>;
     emaSlope: EvidenceValue<number>;
   };
+  indicatorEvidence: Pick<
+    IndicatorEvidence,
+    "source" | "calculatedAt" | "candleCount" | "timeframe" | "freshness" | "missingFields" | "notes"
+  > | null;
   derivatives: {
     oiBias: string | null;
     oiChange: number | null;
@@ -70,6 +78,7 @@ export interface RegimeEvidenceInput {
   marketSnapshot: unknown;
   planStatusState: unknown;
   sourceInfo: unknown;
+  indicatorEvidence?: IndicatorEvidence | null;
 }
 
 type AnyObj = Record<string, unknown>;
@@ -152,6 +161,40 @@ function indicator(
   return { value: null, source: "missing" };
 }
 
+function computedIndicator(
+  evidence: IndicatorEvidence | null | undefined,
+  key: keyof Pick<
+    IndicatorEvidence,
+    | "adx"
+    | "plusDI"
+    | "minusDI"
+    | "rsi"
+    | "atr"
+    | "atrPct"
+    | "bbw"
+    | "macd"
+    | "macdSignal"
+    | "macdHistogram"
+    | "emaSlope"
+  >,
+  field: string,
+  availableFields: string[],
+  missingFields: string[],
+  notes: string[]
+): EvidenceValue<number> | null {
+  if (!evidence) return null;
+  const value = evidence[key];
+  if (typeof value === "number" && Number.isFinite(value)) {
+    availableFields.push(field);
+    return { value, source: `market_snapshot.indicatorEvidence.${key}` };
+  }
+  missingFields.push(field);
+  if (evidence.missingFields.includes(String(key)) && !notes.includes("insufficient_candles")) {
+    notes.push("insufficient_candles");
+  }
+  return { value: null, source: "missing" };
+}
+
 function trendDir(value: unknown): string | null {
   if (typeof value === "string") return text(value);
   if (value && typeof value === "object") {
@@ -194,6 +237,7 @@ export function buildRegimeEvidence(input: RegimeEvidenceInput): RegimeEvidence 
   const missingFields: string[] = [];
   const availableFields: string[] = [];
   const notes: string[] = [];
+  const computed = input.indicatorEvidence ?? null;
 
   const marketMode =
     pickText(decision, ["market_mode", "marketMode"]) ??
@@ -246,50 +290,62 @@ export function buildRegimeEvidence(input: RegimeEvidenceInput): RegimeEvidence 
   }
 
   const indicators = {
-    adx: indicator("indicators.adx", { decision, marketSnapshot }, [
+    adx: computedIndicator(computed, "adx", "indicators.adx", availableFields, missingFields, notes) ?? indicator("indicators.adx", { decision, marketSnapshot }, [
       "decision.indicators.adx",
       "decision.levels.indicators.adx",
       "marketSnapshot.indicators.adx",
     ], availableFields, missingFields, notes),
-    plusDI: indicator("indicators.plusDI", { decision, marketSnapshot }, [
+    plusDI: computedIndicator(computed, "plusDI", "indicators.plusDI", availableFields, missingFields, notes) ?? indicator("indicators.plusDI", { decision, marketSnapshot }, [
       "decision.indicators.plusDI",
       "decision.indicators.plus_di",
       "marketSnapshot.indicators.plusDI",
       "marketSnapshot.indicators.plus_di",
     ], availableFields, missingFields, notes),
-    minusDI: indicator("indicators.minusDI", { decision, marketSnapshot }, [
+    minusDI: computedIndicator(computed, "minusDI", "indicators.minusDI", availableFields, missingFields, notes) ?? indicator("indicators.minusDI", { decision, marketSnapshot }, [
       "decision.indicators.minusDI",
       "decision.indicators.minus_di",
       "marketSnapshot.indicators.minusDI",
       "marketSnapshot.indicators.minus_di",
     ], availableFields, missingFields, notes),
-    rsi: indicator("indicators.rsi", { decision, marketSnapshot }, [
+    rsi: computedIndicator(computed, "rsi", "indicators.rsi", availableFields, missingFields, notes) ?? indicator("indicators.rsi", { decision, marketSnapshot }, [
       "decision.indicators.rsi",
       "marketSnapshot.indicators.rsi",
     ], availableFields, missingFields, notes),
-    atr: indicator("indicators.atr", { decision, marketSnapshot }, [
+    atr: computedIndicator(computed, "atr", "indicators.atr", availableFields, missingFields, notes) ?? indicator("indicators.atr", { decision, marketSnapshot }, [
       "decision.indicators.atr",
       "decision.levels.indicators.atr",
       "marketSnapshot.volatility.now.atr_1h",
       "marketSnapshot.volatility.now.atr",
     ], availableFields, missingFields, notes),
-    atrPct: indicator("indicators.atrPct", { decision, marketSnapshot }, [
+    atrPct: computedIndicator(computed, "atrPct", "indicators.atrPct", availableFields, missingFields, notes) ?? indicator("indicators.atrPct", { decision, marketSnapshot }, [
       "decision.indicators.atrPct",
       "decision.indicators.atr_pct",
       "marketSnapshot.volatility.now.atrPct",
       "marketSnapshot.volatility.now.atr_pct",
     ], availableFields, missingFields, notes),
-    bbw: indicator("indicators.bbw", { decision, marketSnapshot }, [
+    bbw: computedIndicator(computed, "bbw", "indicators.bbw", availableFields, missingFields, notes) ?? indicator("indicators.bbw", { decision, marketSnapshot }, [
       "decision.indicators.bbw",
       "decision.levels.indicators.bbw",
       "marketSnapshot.volatility.now.bbw_1h",
       "marketSnapshot.volatility.now.bbw",
     ], availableFields, missingFields, notes),
-    macd: indicator("indicators.macd", { decision, marketSnapshot }, [
+    macd: computedIndicator(computed, "macd", "indicators.macd", availableFields, missingFields, notes) ?? indicator("indicators.macd", { decision, marketSnapshot }, [
       "decision.indicators.macd",
       "marketSnapshot.indicators.macd",
     ], availableFields, missingFields, notes),
-    emaSlope: indicator("indicators.emaSlope", { decision, marketSnapshot }, [
+    macdSignal: computedIndicator(computed, "macdSignal", "indicators.macdSignal", availableFields, missingFields, notes) ?? indicator("indicators.macdSignal", { decision, marketSnapshot }, [
+      "decision.indicators.macdSignal",
+      "decision.indicators.macd_signal",
+      "marketSnapshot.indicators.macdSignal",
+      "marketSnapshot.indicators.macd_signal",
+    ], availableFields, missingFields, notes),
+    macdHistogram: computedIndicator(computed, "macdHistogram", "indicators.macdHistogram", availableFields, missingFields, notes) ?? indicator("indicators.macdHistogram", { decision, marketSnapshot }, [
+      "decision.indicators.macdHistogram",
+      "decision.indicators.macd_histogram",
+      "marketSnapshot.indicators.macdHistogram",
+      "marketSnapshot.indicators.macd_histogram",
+    ], availableFields, missingFields, notes),
+    emaSlope: computedIndicator(computed, "emaSlope", "indicators.emaSlope", availableFields, missingFields, notes) ?? indicator("indicators.emaSlope", { decision, marketSnapshot }, [
       "decision.indicators.emaSlope",
       "decision.indicators.ema_slope",
       "marketSnapshot.indicators.emaSlope",
@@ -376,6 +432,17 @@ export function buildRegimeEvidence(input: RegimeEvidenceInput): RegimeEvidence 
     sourceFreshness: evidenceFreshness(input.sourceInfo),
     decision: decisionEvidence,
     indicators,
+    indicatorEvidence: computed
+      ? {
+          source: computed.source,
+          calculatedAt: computed.calculatedAt,
+          candleCount: computed.candleCount,
+          timeframe: computed.timeframe,
+          freshness: computed.freshness,
+          missingFields: computed.missingFields,
+          notes: computed.notes,
+        }
+      : null,
     derivatives,
     obGate,
     missingFields,

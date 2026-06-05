@@ -18,6 +18,8 @@ const boolOrNull = (v: unknown): boolean | null => (typeof v === "boolean" ? v :
 const str = (v: unknown, d = ""): string => (typeof v === "string" ? v : d);
 const strOrNull = (v: unknown): string | null => (typeof v === "string" && v.length > 0 ? v : null);
 const strArray = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+const scalarOrNull = (v: unknown): string | number | boolean | null =>
+  typeof v === "string" || typeof v === "number" || typeof v === "boolean" ? v : null;
 
 function ageIsStale(iso: string, maxMin = 10): boolean {
   const t = Date.parse(iso);
@@ -45,6 +47,13 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const epoch = obj(loop.paperEpoch);
   const dynamicGrid = obj(loop.dynamicGrid);
   const candidate = obj(dynamicGrid.candidate);
+  const regimeEvidence = obj(loop.regimeEvidence);
+  const completeness = obj(regimeEvidence.evidenceCompleteness);
+  const freshness = obj(regimeEvidence.sourceFreshness);
+  const evidenceDecision = obj(regimeEvidence.decision);
+  const indicators = obj(regimeEvidence.indicators);
+  const derivatives = obj(regimeEvidence.derivatives);
+  const obGate = obj(regimeEvidence.obGate);
   const totalOrderFilled = num(journal.totalOrderFilled);
   const closedCycles = num(edge.closedCycles);
   const sampleRaw = str(edge.sampleSizeStatus || perf.sampleSizeStatus, "");
@@ -108,6 +117,69 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       nextEpochStatus: strOrNull(epoch.nextEpochStatus),
       oldExposurePolicy: strArray(epoch.oldExposurePolicy),
     },
+    regimeEvidence: {
+      evidenceCompleteness: {
+        status: str(completeness.status, "unknown") === "complete"
+          ? "complete"
+          : str(completeness.status, "unknown") === "partial"
+            ? "partial"
+            : str(completeness.status, "unknown") === "missing" ? "missing" : "unknown",
+        scorePct: num(completeness.scorePct, 0),
+        availableCount: num(completeness.availableCount, 0),
+        expectedCount: num(completeness.expectedCount, 0),
+      },
+      sourceFreshness: {
+        latestDecisionAt: strOrNull(freshness.latestDecisionAt),
+        marketSnapshotAt: strOrNull(freshness.marketSnapshotAt),
+        planStatusStateAt: strOrNull(freshness.planStatusStateAt),
+        warnings: strArray(freshness.warnings),
+      },
+      decision: {
+        marketMode: strOrNull(evidenceDecision.marketMode),
+        regime: strOrNull(evidenceDecision.regime),
+        trendDir: strOrNull(evidenceDecision.trendDir),
+        trendTriggerRule: strOrNull(evidenceDecision.trendTriggerRule),
+        trendInvalidation: scalarOrNull(evidenceDecision.trendInvalidation) as string | number | null,
+        smcBias: strOrNull(evidenceDecision.smcBias),
+        structureState: strOrNull(evidenceDecision.structureState),
+        bos: scalarOrNull(evidenceDecision.bos) as string | boolean | null,
+        choch: scalarOrNull(evidenceDecision.choch) as string | boolean | null,
+        mss: scalarOrNull(evidenceDecision.mss) as string | boolean | null,
+        sweep: scalarOrNull(evidenceDecision.sweep) as string | boolean | null,
+        obContext: strOrNull(evidenceDecision.obContext),
+        fvgContext: strOrNull(evidenceDecision.fvgContext),
+      },
+      indicators: {
+        adx: mapEvidenceValue(indicators.adx),
+        plusDI: mapEvidenceValue(indicators.plusDI),
+        minusDI: mapEvidenceValue(indicators.minusDI),
+        rsi: mapEvidenceValue(indicators.rsi),
+        atr: mapEvidenceValue(indicators.atr),
+        atrPct: mapEvidenceValue(indicators.atrPct),
+        bbw: mapEvidenceValue(indicators.bbw),
+        macd: mapEvidenceValue(indicators.macd),
+        emaSlope: mapEvidenceValue(indicators.emaSlope),
+      },
+      derivatives: {
+        oiBias: strOrNull(derivatives.oiBias),
+        oiChange: numOrNull(derivatives.oiChange),
+        fundingRate: numOrNull(derivatives.fundingRate),
+        fundingBias: strOrNull(derivatives.fundingBias),
+        fundingRisk: strOrNull(derivatives.fundingRisk),
+        openInterest: numOrNull(derivatives.openInterest),
+        derivativesBias: strOrNull(derivatives.derivativesBias),
+      },
+      obGate: {
+        status: strOrNull(obGate.status),
+        reason: strOrNull(obGate.reason),
+        score: numOrNull(obGate.score),
+        passed: boolOrNull(obGate.passed),
+        blockedReason: strOrNull(obGate.blockedReason),
+      },
+      missingFields: strArray(regimeEvidence.missingFields),
+      availableFields: strArray(regimeEvidence.availableFields),
+      notes: strArray(regimeEvidence.notes),
+    },
     dynamicRegrid: {
       marketMode: strOrNull(loop.marketMode ?? loop.market_mode ?? perf.marketMode ?? perf.market_mode),
       regime: strOrNull(loop.regime ?? perf.regime),
@@ -129,6 +201,14 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
         activationAllowed: boolOrNull(candidate.activationAllowed),
       },
     },
+  };
+}
+
+function mapEvidenceValue(value: unknown): PaperVM["regimeEvidence"]["indicators"]["adx"] {
+  const wrapped = obj(value);
+  return {
+    value: scalarOrNull(wrapped.value),
+    source: strOrNull(wrapped.source),
   };
 }
 

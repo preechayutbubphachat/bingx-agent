@@ -12,6 +12,7 @@ import {
   type PaperEpochDiagnostics,
   type RegridReadiness,
 } from "@/lib/grid/regridReadiness";
+import { buildRegimeEvidence, type RegimeEvidence } from "@/lib/paper/regimeEvidence";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
@@ -54,6 +55,7 @@ export interface PaperLoopDiagnostics {
   runtimeMonitor: PaperRuntimeMonitor;
   regridReadiness: RegridReadiness;
   paperEpoch: PaperEpochDiagnostics;
+  regimeEvidence: RegimeEvidence;
 }
 
 export interface RuntimeMonitorCounters {
@@ -85,6 +87,7 @@ export interface PaperLoopDiagnosticsContext {
     pass?: boolean | null;
     requiredMinSpacingPct?: number | null;
   } | null;
+  regimeEvidence?: RegimeEvidence | null;
 }
 
 function priceVsGridOf(price: number | null, lower: number | null, upper: number | null): PriceVsGrid {
@@ -223,6 +226,12 @@ export function buildPaperLoopDiagnostics(
     candidateGridMid: candidate.candidateGridMid,
     readinessStatus: regridReadiness.status,
   });
+  const regimeEvidence = context.regimeEvidence ?? buildRegimeEvidence({
+    decision: null,
+    marketSnapshot: null,
+    planStatusState: null,
+    sourceInfo: null,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -273,5 +282,6 @@ export function buildPaperLoopDiagnostics(
     },
     regridReadiness,
     paperEpoch,
+    regimeEvidence,
   };
 }

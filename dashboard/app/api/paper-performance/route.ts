@@ -33,6 +33,8 @@ import { computePaperPerformance } from "@/lib/paperPerformance";
 import { readPaperJournal } from "@/lib/readPaperJournal";
 import { buildPaperLoopDiagnostics } from "@/lib/paper/paperLoopDiagnostics";
 import { readRuntimeMonitorCounters } from "@/lib/paper/runtimeMonitorCounters";
+import { readLatest } from "@/lib/readLatest";
+import { buildRegimeEvidence } from "@/lib/paper/regimeEvidence";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -48,12 +50,20 @@ export async function GET() {
     try {
       const summary = await readPaperJournal();
       const runtimeCounters = await readRuntimeMonitorCounters().catch(() => null);
+      const latest = await readLatest().catch(() => null);
+      const regimeEvidence = buildRegimeEvidence({
+        decision: latest?.decision ?? null,
+        marketSnapshot: latest?.marketSnapshot ?? null,
+        planStatusState: latest?.planStatusState ?? null,
+        sourceInfo: latest?.sourceInfo ?? null,
+      });
       paperLoopDiagnostics = buildPaperLoopDiagnostics(summary, runtimeCounters, {
         closedCycles: report.edgeDiagnostics?.closedCycles ?? 0,
         costGate: {
           pass: report.costGate?.pass ?? null,
           requiredMinSpacingPct: report.costGate?.requiredMinSpacingPct ?? null,
         },
+        regimeEvidence,
       });
     } catch {
       paperLoopDiagnostics = null;

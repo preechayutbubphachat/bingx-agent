@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildPaperLoopDiagnostics } from "./paperLoopDiagnostics";
 import type { PaperJournalSummary, PaperEventSummary } from "@/lib/readPaperJournal";
+import { buildRegimeEvidence } from "./regimeEvidence";
 
 function ev(p: Partial<PaperEventSummary>): PaperEventSummary {
   return {
@@ -132,4 +133,23 @@ test("runtime monitor WATCH when a fill is newer than no-trade while out of grid
 
   assert.equal(d.runtimeMonitor.buyCountStable, false);
   assert.equal(d.runtimeMonitor.monitorStatus, "WATCH");
+});
+
+test("regime evidence is exposed additively when upstream evidence is provided", () => {
+  const regimeEvidence = buildRegimeEvidence({
+    decision: { market_mode: "GRID_NEUTRAL", regime: "RANGE" },
+    marketSnapshot: {},
+    planStatusState: null,
+    sourceInfo: null,
+  });
+  const d = buildPaperLoopDiagnostics(
+    summary({ recentEvents: [] }),
+    null,
+    { regimeEvidence }
+  );
+
+  assert.equal(d.regimeEvidence.decision.marketMode, "GRID_NEUTRAL");
+  assert.equal(d.regimeEvidence.decision.regime, "RANGE");
+  assert.equal(d.regimeEvidence.indicators.adx.value, null);
+  assert.equal(d.regimeEvidence.indicators.adx.source, "missing");
 });

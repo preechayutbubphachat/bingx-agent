@@ -61,6 +61,7 @@ export interface PaperVM {
   runtimeMonitor: RuntimeMonitorVM;
   regridReadiness: RegridReadinessVM;
   paperEpoch: PaperEpochVM;
+  regimeEvidence: RegimeEvidenceVM;
 }
 
 export interface DynamicRegridCandidateVM {
@@ -126,6 +127,71 @@ export interface PaperEpochVM {
   nextEpochCandidateId: string | null;
   nextEpochStatus: string | null;
   oldExposurePolicy: string[];
+}
+
+export interface EvidenceValueVM {
+  value: string | number | boolean | null;
+  source: string | null;
+}
+
+export interface RegimeEvidenceVM {
+  evidenceCompleteness: {
+    status: "complete" | "partial" | "missing" | "unknown";
+    scorePct: number;
+    availableCount: number;
+    expectedCount: number;
+  };
+  sourceFreshness: {
+    latestDecisionAt: string | null;
+    marketSnapshotAt: string | null;
+    planStatusStateAt: string | null;
+    warnings: string[];
+  };
+  decision: {
+    marketMode: string | null;
+    regime: string | null;
+    trendDir: string | null;
+    trendTriggerRule: string | null;
+    trendInvalidation: string | number | null;
+    smcBias: string | null;
+    structureState: string | null;
+    bos: string | boolean | null;
+    choch: string | boolean | null;
+    mss: string | boolean | null;
+    sweep: string | boolean | null;
+    obContext: string | null;
+    fvgContext: string | null;
+  };
+  indicators: {
+    adx: EvidenceValueVM;
+    plusDI: EvidenceValueVM;
+    minusDI: EvidenceValueVM;
+    rsi: EvidenceValueVM;
+    atr: EvidenceValueVM;
+    atrPct: EvidenceValueVM;
+    bbw: EvidenceValueVM;
+    macd: EvidenceValueVM;
+    emaSlope: EvidenceValueVM;
+  };
+  derivatives: {
+    oiBias: string | null;
+    oiChange: number | null;
+    fundingRate: number | null;
+    fundingBias: string | null;
+    fundingRisk: string | null;
+    openInterest: number | null;
+    derivativesBias: string | null;
+  };
+  obGate: {
+    status: string | null;
+    reason: string | null;
+    score: number | null;
+    passed: boolean | null;
+    blockedReason: string | null;
+  };
+  missingFields: string[];
+  availableFields: string[];
+  notes: string[];
 }
 
 export interface TopHudVM {

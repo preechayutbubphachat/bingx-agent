@@ -249,6 +249,13 @@ test("canonical market regime diagnostics are additive and do not change readine
   assert.equal(d.canonicalMarketRegime?.regime, "DOWNTREND");
   assert.equal(d.canonicalMarketRegime?.paperActivationAllowed, false);
   assert.equal(d.canonicalMarketRegime?.liveActivationAllowed, false);
+  assert.equal(d.canonicalRegimeGate.status, "TREND_CHECK_REQUIRED");
+  assert.equal(d.canonicalRegimeGate.blocking, true);
+  assert.equal(d.canonicalRegimeGate.paperActivationAllowed, false);
+  assert.equal(d.canonicalRegimeGate.liveActivationAllowed, false);
+  assert.equal(d.regridReadinessBeforeCanonicalGate.status, d.regridReadiness.status);
+  assert.equal(d.regridReadinessAfterCanonicalGate?.status, "NOT_READY");
+  assert.equal(d.canonicalRegimeGateShadowCompare.changed, false);
   assert.equal(d.regridReadiness.status, "NOT_READY");
   assert.equal(d.regridReadiness.paperActivationAllowed, false);
   assert.equal(d.regridReadiness.liveActivationAllowed, false);

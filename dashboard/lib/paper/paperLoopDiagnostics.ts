@@ -17,6 +17,12 @@ import type {
   CanonicalMarketRegime,
   MultiTimeframeIndicatorEvidence,
 } from "../market-regime/canonicalMarketRegime.ts";
+import {
+  applyCanonicalRegimeGateShadow,
+  buildCanonicalRegimeGate,
+  type CanonicalRegimeGate,
+  type CanonicalRegimeGateShadowCompare,
+} from "../market-regime/canonicalRegimeGate.ts";
 import type { TrendZoneShadow } from "../market-regime/trendZoneBuilder.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
@@ -67,6 +73,10 @@ export interface PaperLoopDiagnostics {
   multiTimeframeIndicatorEvidence: MultiTimeframeIndicatorEvidence | null;
   /** Phase D — read-only trend zone shadow (never used for orders) */
   trendZoneCandidate: TrendZoneShadow | null;
+  canonicalRegimeGate: CanonicalRegimeGate;
+  regridReadinessBeforeCanonicalGate: RegridReadiness;
+  regridReadinessAfterCanonicalGate: RegridReadiness | null;
+  canonicalRegimeGateShadowCompare: Pick<CanonicalRegimeGateShadowCompare, "changed" | "downgradeReason">;
 }
 
 export interface RuntimeMonitorCounters {
@@ -261,6 +271,11 @@ export function buildPaperLoopDiagnostics(
     emaSlope: evidenceNumber(regimeEvidence.indicators.emaSlope),
     freshness: regimeEvidence.indicatorEvidence?.freshness ?? null,
   });
+  const canonicalRegimeGate = buildCanonicalRegimeGate({
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    currentRegridReadiness: regridReadiness,
+  });
+  const canonicalRegimeGateShadowCompare = applyCanonicalRegimeGateShadow(regridReadiness, canonicalRegimeGate);
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -316,5 +331,12 @@ export function buildPaperLoopDiagnostics(
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
+    canonicalRegimeGate,
+    regridReadinessBeforeCanonicalGate: regridReadiness,
+    regridReadinessAfterCanonicalGate: canonicalRegimeGateShadowCompare.after,
+    canonicalRegimeGateShadowCompare: {
+      changed: canonicalRegimeGateShadowCompare.changed,
+      downgradeReason: canonicalRegimeGateShadowCompare.downgradeReason,
+    },
   };
 }

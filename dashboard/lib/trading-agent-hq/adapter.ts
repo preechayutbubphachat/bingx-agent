@@ -83,6 +83,11 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const loop = obj(perf.paperLoopDiagnostics);
   const runtimeMonitor = obj(loop.runtimeMonitor);
   const readiness = obj(loop.regridReadiness);
+  const readinessBeforeCanonicalGate = obj(loop.regridReadinessBeforeCanonicalGate);
+  const readinessAfterCanonicalGateRaw = loop.regridReadinessAfterCanonicalGate;
+  const readinessAfterCanonicalGate = obj(readinessAfterCanonicalGateRaw);
+  const canonicalRegimeGate = obj(loop.canonicalRegimeGate);
+  const canonicalRegimeGateShadowCompare = obj(loop.canonicalRegimeGateShadowCompare);
   const epoch = obj(loop.paperEpoch);
   const indicatorGate = obj(loop.indicatorGate);
   const canonicalRegime = obj(loop.canonicalMarketRegime);
@@ -139,20 +144,26 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
         : str(runtimeMonitor.monitorStatus, "UNKNOWN") === "WATCH" ? "WATCH" : "UNKNOWN",
       monitorSummary: strOrNull(runtimeMonitor.monitorSummary),
     },
-    regridReadiness: {
-      status: str(readiness.status, "UNKNOWN") === "NOT_READY"
-        ? "NOT_READY"
-        : str(readiness.status, "UNKNOWN") === "WATCH"
-          ? "WATCH"
-          : str(readiness.status, "UNKNOWN") === "READY_FOR_OPERATOR_REVIEW" ? "READY_FOR_OPERATOR_REVIEW" : "UNKNOWN",
-      score: num(readiness.score, 0),
-      passedGates: strArray(readiness.passedGates),
-      failedGates: strArray(readiness.failedGates),
-      warnings: strArray(readiness.warnings),
-      nextAction: strOrNull(readiness.nextAction),
-      operatorReviewRequired: bool(readiness.operatorReviewRequired),
-      paperActivationAllowed: bool(readiness.paperActivationAllowed),
-      liveActivationAllowed: bool(readiness.liveActivationAllowed),
+    regridReadiness: mapRegridReadiness(readiness),
+    regridReadinessBeforeCanonicalGate: Object.keys(readinessBeforeCanonicalGate).length
+      ? mapRegridReadiness(readinessBeforeCanonicalGate)
+      : mapRegridReadiness(readiness),
+    regridReadinessAfterCanonicalGate: readinessAfterCanonicalGateRaw == null || !Object.keys(readinessAfterCanonicalGate).length
+      ? null
+      : mapRegridReadiness(readinessAfterCanonicalGate),
+    canonicalRegimeGate: {
+      status: mapCanonicalRegimeGateStatus(str(canonicalRegimeGate.status, "UNKNOWN_DATA_BLOCK")),
+      blocking: bool(canonicalRegimeGate.blocking),
+      downgradeOnly: canonicalRegimeGate.downgradeOnly === false ? false : true,
+      reasons: strArray(canonicalRegimeGate.reasons),
+      warnings: strArray(canonicalRegimeGate.warnings),
+      affectedModes: strArray(canonicalRegimeGate.affectedModes),
+      paperActivationAllowed: bool(canonicalRegimeGate.paperActivationAllowed),
+      liveActivationAllowed: bool(canonicalRegimeGate.liveActivationAllowed),
+    },
+    canonicalRegimeGateShadowCompare: {
+      changed: bool(canonicalRegimeGateShadowCompare.changed),
+      downgradeReason: strOrNull(canonicalRegimeGateShadowCompare.downgradeReason),
     },
     paperEpoch: {
       currentEpochId: strOrNull(epoch.currentEpochId),
@@ -311,12 +322,42 @@ function mapEvidenceValue(value: unknown): PaperVM["regimeEvidence"]["indicators
   };
 }
 
+function mapRegridReadiness(readiness: AnyObj): PaperVM["regridReadiness"] {
+  return {
+    status: mapRegridReadinessStatus(str(readiness.status, "UNKNOWN")),
+    score: num(readiness.score, 0),
+    passedGates: strArray(readiness.passedGates),
+    failedGates: strArray(readiness.failedGates),
+    warnings: strArray(readiness.warnings),
+    nextAction: strOrNull(readiness.nextAction),
+    operatorReviewRequired: bool(readiness.operatorReviewRequired),
+    paperActivationAllowed: bool(readiness.paperActivationAllowed),
+    liveActivationAllowed: bool(readiness.liveActivationAllowed),
+  };
+}
+
+function mapRegridReadinessStatus(status: string): PaperVM["regridReadiness"]["status"] {
+  if (status === "NOT_READY") return "NOT_READY";
+  if (status === "WATCH") return "WATCH";
+  if (status === "READY_FOR_OPERATOR_REVIEW") return "READY_FOR_OPERATOR_REVIEW";
+  return "UNKNOWN";
+}
+
 function mapIndicatorGateStatus(status: string): PaperVM["indicatorGate"]["status"] {
   if (status === "TREND_DOWN_BLOCK") return "TREND_DOWN_BLOCK";
   if (status === "VOLATILITY_BLOCK") return "VOLATILITY_BLOCK";
   if (status === "RECOVERY_WATCH") return "RECOVERY_WATCH";
   if (status === "RANGE_WATCH") return "RANGE_WATCH";
   return "INSUFFICIENT_DATA";
+}
+
+function mapCanonicalRegimeGateStatus(status: string): PaperVM["canonicalRegimeGate"]["status"] {
+  if (status === "PASSIVE_SHADOW") return "PASSIVE_SHADOW";
+  if (status === "BLOCK_NEUTRAL_GRID") return "BLOCK_NEUTRAL_GRID";
+  if (status === "TREND_CHECK_REQUIRED") return "TREND_CHECK_REQUIRED";
+  if (status === "NO_TRADE_REQUIRED") return "NO_TRADE_REQUIRED";
+  if (status === "VOLATILITY_BLOCK") return "VOLATILITY_BLOCK";
+  return "UNKNOWN_DATA_BLOCK";
 }
 
 function mapIndicatorGateConfidence(confidence: string): PaperVM["indicatorGate"]["confidence"] {

@@ -64,6 +64,10 @@ export interface PaperVM {
   regimeEvidence: RegimeEvidenceVM;
   indicatorGate: IndicatorGateVM;
   canonicalMarketRegime: CanonicalMarketRegimeVM;
+  canonicalRegimeGate: CanonicalRegimeGateVM;
+  regridReadinessBeforeCanonicalGate: RegridReadinessVM;
+  regridReadinessAfterCanonicalGate: RegridReadinessVM | null;
+  canonicalRegimeGateShadowCompare: CanonicalRegimeGateShadowCompareVM;
   trendZoneCandidate: TrendZoneCandidateVM | null;
 }
 
@@ -184,6 +188,22 @@ export interface CanonicalMarketRegimeVM {
   shadowOnly: boolean;
   paperActivationAllowed: boolean;
   liveActivationAllowed: boolean;
+}
+
+export interface CanonicalRegimeGateVM {
+  status: "PASSIVE_SHADOW" | "BLOCK_NEUTRAL_GRID" | "TREND_CHECK_REQUIRED" | "NO_TRADE_REQUIRED" | "UNKNOWN_DATA_BLOCK" | "VOLATILITY_BLOCK";
+  blocking: boolean;
+  downgradeOnly: boolean;
+  reasons: string[];
+  warnings: string[];
+  affectedModes: string[];
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+}
+
+export interface CanonicalRegimeGateShadowCompareVM {
+  changed: boolean;
+  downgradeReason: string | null;
 }
 
 export interface EvidenceValueVM {

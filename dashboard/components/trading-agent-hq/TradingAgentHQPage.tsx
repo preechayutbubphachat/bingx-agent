@@ -19,6 +19,7 @@ import DynamicRegridStatusCard from "./DynamicRegridStatusCard";
 import RegridPhase2AReadinessCard from "./RegridPhase2AReadinessCard";
 import RuntimeMonitorCard from "./RuntimeMonitorCard";
 import RegimeEvidenceCard from "./RegimeEvidenceCard";
+import IndicatorGateShadowCard from "./IndicatorGateShadowCard";
 import TrendRegimeConfirmationCard from "./TrendRegimeConfirmationCard";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
@@ -133,6 +134,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         </div>
         <RegridPhase2AReadinessCard paper={vm.paper} />
         <RegimeEvidenceCard paper={vm.paper} />
+        <IndicatorGateShadowCard paper={vm.paper} />
         <TrendRegimeConfirmationCard paper={vm.paper} />
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">

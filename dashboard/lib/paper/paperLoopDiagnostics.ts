@@ -12,6 +12,7 @@ import {
   type PaperEpochDiagnostics,
   type RegridReadiness,
 } from "../grid/regridReadiness.ts";
+import { evaluateIndicatorGate, type IndicatorGate } from "../grid/indicatorGate.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -56,6 +57,7 @@ export interface PaperLoopDiagnostics {
   regridReadiness: RegridReadiness;
   paperEpoch: PaperEpochDiagnostics;
   regimeEvidence: RegimeEvidence;
+  indicatorGate: IndicatorGate;
 }
 
 export interface RuntimeMonitorCounters {
@@ -104,6 +106,10 @@ function firstMatch<T>(events: PaperEventSummary[], pick: (e: PaperEventSummary)
     if (v != null) return v;
   }
   return null;
+}
+
+function evidenceNumber(value: { value: number | string | boolean | null } | null | undefined): number | null {
+  return typeof value?.value === "number" && Number.isFinite(value.value) ? value.value : null;
 }
 
 export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLoopDiagnostics;
@@ -232,6 +238,17 @@ export function buildPaperLoopDiagnostics(
     planStatusState: null,
     sourceInfo: null,
   });
+  const indicatorGate = evaluateIndicatorGate({
+    adx: evidenceNumber(regimeEvidence.indicators.adx),
+    plusDI: evidenceNumber(regimeEvidence.indicators.plusDI),
+    minusDI: evidenceNumber(regimeEvidence.indicators.minusDI),
+    rsi: evidenceNumber(regimeEvidence.indicators.rsi),
+    atrPct: evidenceNumber(regimeEvidence.indicators.atrPct),
+    bbw: evidenceNumber(regimeEvidence.indicators.bbw),
+    macdHistogram: evidenceNumber(regimeEvidence.indicators.macdHistogram),
+    emaSlope: evidenceNumber(regimeEvidence.indicators.emaSlope),
+    freshness: regimeEvidence.indicatorEvidence?.freshness ?? null,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -283,5 +300,6 @@ export function buildPaperLoopDiagnostics(
     regridReadiness,
     paperEpoch,
     regimeEvidence,
+    indicatorGate,
   };
 }

@@ -45,6 +45,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const runtimeMonitor = obj(loop.runtimeMonitor);
   const readiness = obj(loop.regridReadiness);
   const epoch = obj(loop.paperEpoch);
+  const indicatorGate = obj(loop.indicatorGate);
   const dynamicGrid = obj(loop.dynamicGrid);
   const candidate = obj(dynamicGrid.candidate);
   const regimeEvidence = obj(loop.regimeEvidence);
@@ -118,6 +119,16 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       nextEpochCandidateId: strOrNull(epoch.nextEpochCandidateId),
       nextEpochStatus: strOrNull(epoch.nextEpochStatus),
       oldExposurePolicy: strArray(epoch.oldExposurePolicy),
+    },
+    indicatorGate: {
+      status: mapIndicatorGateStatus(str(indicatorGate.status, "INSUFFICIENT_DATA")),
+      reasons: strArray(indicatorGate.reasons),
+      passed: strArray(indicatorGate.passed),
+      failed: strArray(indicatorGate.failed),
+      confidence: mapIndicatorGateConfidence(str(indicatorGate.confidence, "low")),
+      blocking: bool(indicatorGate.blocking),
+      paperActivationAllowed: bool(indicatorGate.paperActivationAllowed),
+      liveActivationAllowed: bool(indicatorGate.liveActivationAllowed),
     },
     regimeEvidence: {
       evidenceCompleteness: {
@@ -228,6 +239,20 @@ function mapEvidenceValue(value: unknown): PaperVM["regimeEvidence"]["indicators
     value: scalarOrNull(wrapped.value),
     source: strOrNull(wrapped.source),
   };
+}
+
+function mapIndicatorGateStatus(status: string): PaperVM["indicatorGate"]["status"] {
+  if (status === "TREND_DOWN_BLOCK") return "TREND_DOWN_BLOCK";
+  if (status === "VOLATILITY_BLOCK") return "VOLATILITY_BLOCK";
+  if (status === "RECOVERY_WATCH") return "RECOVERY_WATCH";
+  if (status === "RANGE_WATCH") return "RANGE_WATCH";
+  return "INSUFFICIENT_DATA";
+}
+
+function mapIndicatorGateConfidence(confidence: string): PaperVM["indicatorGate"]["confidence"] {
+  if (confidence === "high") return "high";
+  if (confidence === "medium") return "medium";
+  return "low";
 }
 
 function mapCostGateStatus(status: string): PaperVM["costGateStatus"] {

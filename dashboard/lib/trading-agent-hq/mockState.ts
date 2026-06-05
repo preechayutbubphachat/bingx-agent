@@ -69,6 +69,16 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
         "DO_NOT_USE_FOR_EXPECTANCY",
       ],
     },
+    indicatorGate: {
+      status: "INSUFFICIENT_DATA",
+      reasons: ["mock_data_not_runtime_evidence"],
+      passed: [],
+      failed: ["missing_indicator_evidence"],
+      confidence: "low",
+      blocking: true,
+      paperActivationAllowed: false,
+      liveActivationAllowed: false,
+    },
     regimeEvidence: {
       evidenceCompleteness: {
         status: "partial",

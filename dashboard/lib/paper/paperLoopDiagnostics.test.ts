@@ -153,3 +153,53 @@ test("regime evidence is exposed additively when upstream evidence is provided",
   assert.equal(d.regimeEvidence.indicators.adx.value, null);
   assert.equal(d.regimeEvidence.indicators.adx.source, "missing");
 });
+
+test("indicator gate is shadow-only and does not change regrid readiness", () => {
+  const regimeEvidence = buildRegimeEvidence({
+    decision: { market_mode: "GRID_NEUTRAL", regime: "RANGE" },
+    marketSnapshot: {},
+    planStatusState: null,
+    sourceInfo: null,
+    indicatorEvidence: {
+      adx: 35.44,
+      plusDI: 14.7,
+      minusDI: 29.43,
+      rsi: 40.51,
+      atr: 480,
+      atrPct: 0.75,
+      bbw: 0.03,
+      macd: -248.06,
+      macdSignal: -155.97,
+      macdHistogram: -92.09,
+      emaSlope: -104.55,
+      source: "market_snapshot",
+      calculatedAt: "2026-06-05T00:00:00.000Z",
+      candleCount: 120,
+      timeframe: "15m",
+      freshness: { latestCandleAt: "2026-06-05T00:00:00.000Z", ageMs: 60_000 },
+      missingFields: [],
+      notes: [],
+    },
+  });
+  const d = buildPaperLoopDiagnostics(
+    summary({
+      buyFillCount: 14,
+      sellFillCount: 0,
+      recentEvents: [
+        ev({ gridLower: 72480, gridUpper: 78053, gridMid: 75266, currentPrice: 63598.5, noTradeReason: "price_below_grid_lower" }),
+      ],
+    }),
+    null,
+    { regimeEvidence }
+  );
+
+  assert.equal(d.indicatorGate.status, "TREND_DOWN_BLOCK");
+  assert.equal(d.indicatorGate.blocking, true);
+  assert.equal(d.indicatorGate.paperActivationAllowed, false);
+  assert.equal(d.indicatorGate.liveActivationAllowed, false);
+  assert.equal(d.regridReadiness.paperActivationAllowed, false);
+  assert.equal(d.regridReadiness.liveActivationAllowed, false);
+  assert.equal(d.regridReadiness.status, "NOT_READY");
+  assert.ok(d.regridReadiness.failedGates.includes("stable_candles_pending"));
+  assert.ok(d.regridReadiness.warnings.includes("closed_cycles_remain_zero_do_not_fake_edge"));
+});

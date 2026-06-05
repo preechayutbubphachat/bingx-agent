@@ -62,6 +62,7 @@ export interface PaperVM {
   regridReadiness: RegridReadinessVM;
   paperEpoch: PaperEpochVM;
   regimeEvidence: RegimeEvidenceVM;
+  indicatorGate: IndicatorGateVM;
 }
 
 export interface DynamicRegridCandidateVM {
@@ -127,6 +128,17 @@ export interface PaperEpochVM {
   nextEpochCandidateId: string | null;
   nextEpochStatus: string | null;
   oldExposurePolicy: string[];
+}
+
+export interface IndicatorGateVM {
+  status: "INSUFFICIENT_DATA" | "TREND_DOWN_BLOCK" | "VOLATILITY_BLOCK" | "RECOVERY_WATCH" | "RANGE_WATCH";
+  reasons: string[];
+  passed: string[];
+  failed: string[];
+  confidence: "low" | "medium" | "high";
+  blocking: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
 }
 
 export interface EvidenceValueVM {

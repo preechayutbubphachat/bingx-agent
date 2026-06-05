@@ -45,6 +45,7 @@ Phase 2-B = **Manual Paper Activation Plan สำหรับ dynamic grid epoch
 - cost gate ผ่าน: `candidateSpacingPct > roundTripCostPct × 2.5`
 - data freshness ผ่าน (decision/snapshot drift ≤ 1%)
 - price source ใช้ **latest close** ถูกต้อง
+- indicator readiness gate ไม่ block: ห้าม `TREND_CHECK`, `VOLATILITY_BLOCK`, หรือ `INSUFFICIENT_DATA`
 - regime ไม่ใช่ strong trend สวน neutral grid
 - volatility ไม่สุดขั้ว
 - old exposure policy = explicit `QUARANTINE_OLD_ONE_SIDED_EXPOSURE`
@@ -52,6 +53,39 @@ Phase 2-B = **Manual Paper Activation Plan สำหรับ dynamic grid epoch
 - `liveActivationAllowed` = **false** เสมอ
 
 > ถ้าข้อใดไม่ผ่าน → **คง Phase 2-A (NO_TRADE)** · ห้ามขอ Phase 2-B
+
+---
+
+## 2.1) Indicator-Based Readiness Gate dependency (future implementation)
+Phase 2-B ต้องใช้ `indicatorEvidence` เป็นหลักฐานประกอบก่อนขอ manual paper activation แต่ gate นี้ยังเป็น **design-only** และต้องมี Codex handoff แยกเมื่อพร้อม implement
+
+```ts
+indicatorGate = {
+  status: "TREND_CHECK" | "RANGE_WATCH" | "RECOVERY_WATCH" | "VOLATILITY_BLOCK" | "INSUFFICIENT_DATA",
+  reasons: [],
+  passed: [],
+  failed: [],
+  confidence,
+  paperActivationAllowed: false,
+  liveActivationAllowed: false
+}
+```
+
+**BLOCK states (ห้าม request Phase 2-B):**
+- `TREND_CHECK` จาก `TREND_DOWN_BLOCK`: `ADX > 25 AND -DI > +DI * 1.2 AND MACD histogram < 0 AND EMA slope < 0`
+- `VOLATILITY_BLOCK`: `ATR%` เกิน configured max หรือ `BBW` expanding sharply
+- `INSUFFICIENT_DATA`: indicator ขาด, stale, candle count ไม่พอ, หรือ freshness ไม่ผ่าน
+
+**WATCH states (อ่านอย่างเดียว ยังไม่ใช่ approval):**
+- `RANGE_WATCH`: `ADX < 20 OR DI spread compressing`, `RSI 35-65`, `BBW` ไม่ expanding, `ATR%` ต่ำกว่า configured max
+- `RECOVERY_WATCH`: `RSI > 45`, MACD histogram ดีขึ้น, EMA slope flatten, และ -DI dominance อ่อนลง
+
+**เกณฑ์ Phase 2-B readiness:**
+- `BLOCK` → อยู่ Phase 2-A `NO_TRADE`, ไม่สร้าง request, ไม่เปิด grid
+- `WATCH` → operator ดูหลักฐานได้ แต่ยังต้องผ่าน cost/cooldown/candidate/old exposure gates ทั้งหมด
+- `PASS` ในอนาคตเกิดได้เฉพาะเมื่อ range-like evidence ครบ, ไม่มี trend/volatility block, data fresh, และ operator review paper-only เท่านั้น
+
+**Current runtime example:** ADX=35.44, +DI=14.70, -DI=29.43, MACD histogram=-92.09, EMA slope=-104.55 → `TREND_DOWN_BLOCK` เพราะ `29.43 > 14.70 * 1.2` และ momentum/slope เป็นลบ · neutral grid activation unsafe · Phase 2-B remains blocked · `paperActivationAllowed=false` · `liveActivationAllowed=false`
 
 ---
 

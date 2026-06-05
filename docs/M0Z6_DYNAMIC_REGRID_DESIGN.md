@@ -99,6 +99,59 @@ OUT_OF_RANGE (BELOW/ABOVE_GRID)
 - **ถ้าพบ trend confirmation** → ไม่ regrid neutral · route → `TREND_CHECK` (สำหรับ trend-grid candidate ในเฟสถัดไป) · ระหว่างนั้น `NO_TRADE`
 - **ถ้า regime ไม่ชัด** → `NO_TRADE` reason=`regime_unclear` (default ปลอดภัย)
 
+### 3.1) Indicator-Based Readiness Gate (future design, display evidence only)
+`indicatorEvidence` จาก `market_snapshot.json` / `regimeEvidence` จะเป็น input สำหรับ gate อนาคตเท่านั้น ยังไม่เปลี่ยน paper loop, ยังไม่ activate Phase 2-B, และยังไม่ปลดล็อก M-0B
+
+**Output contract (spec — ยังไม่ implement trading logic):**
+```ts
+indicatorGate = {
+  status: "TREND_CHECK" | "RANGE_WATCH" | "RECOVERY_WATCH" | "VOLATILITY_BLOCK" | "INSUFFICIENT_DATA",
+  reasons: [],
+  passed: [],
+  failed: [],
+  confidence,
+  paperActivationAllowed: false,
+  liveActivationAllowed: false
+}
+```
+
+**Threshold defaults (ต้องเป็น config เมื่อ implement):**
+| Gate | Threshold |
+|---|---|
+| trendAdxMin | `ADX > 25` |
+| diDominanceMultiplier | `-DI > +DI × 1.2` |
+| rangeAdxMax | `ADX < 20` |
+| rsiRange | `35 <= RSI <= 65` |
+| recoveryRsiMin | `RSI > 45` |
+| atrPctMax | configurable risk ceiling; ห้าม hard-code จาก sample เดียว |
+| bbwExpansionMax | configurable expansion ceiling; ใช้การเทียบกับ window ก่อนหน้า ไม่ใช้ค่าเดียวตัดสิน |
+
+**Gate definitions:**
+- `TREND_DOWN_BLOCK` → `status="TREND_CHECK"` เมื่อ `ADX > 25 AND -DI > +DI * 1.2 AND MACD histogram < 0 AND EMA slope < 0` · neutral grid activation ไม่ปลอดภัย
+- `RANGE_WATCH` → `status="RANGE_WATCH"` เมื่อ `ADX < 20 OR DI spread compressing`, `RSI` อยู่ช่วง `35-65`, `BBW` ไม่ expanding, และ `ATR%` ต่ำกว่า configured max
+- `VOLATILITY_BLOCK` → `status="VOLATILITY_BLOCK"` เมื่อ `ATR%` สูงกว่า configured max หรือ `BBW` expanding sharply
+- `RECOVERY_WATCH` → `status="RECOVERY_WATCH"` เมื่อ `RSI > 45`, MACD histogram ดีขึ้น, EMA slope เริ่ม flatten, และ -DI dominance อ่อนลง
+- `INSUFFICIENT_DATA` → indicator ขาด, stale, candle count ไม่พอ, หรือ freshness ไม่ผ่าน
+
+**PASS / WATCH / BLOCK criteria:**
+- `BLOCK`: `TREND_DOWN_BLOCK`, `VOLATILITY_BLOCK`, `INSUFFICIENT_DATA`, หรือ evidence stale/malformed → คง `NO_TRADE`
+- `WATCH`: `RANGE_WATCH` หรือ `RECOVERY_WATCH` → แสดงว่าเริ่มน่าตรวจ แต่ยังไม่ใช่ permission เปิด grid
+- `PASS` ในอนาคตต้องผ่านพร้อมกัน: range-like evidence, no trend block, no volatility block, data fresh, regrid candidate/cost/cooldown/old exposure gates ผ่าน และยังต้อง operator review ของ Phase 2-B
+
+**Current runtime example (2026-06 evidence):**
+| Field | Value | Gate impact |
+|---|---:|---|
+| ADX | 35.44 | ผ่าน trend strength (`>25`) |
+| +DI | 14.70 | ถูก -DI dominate |
+| -DI | 29.43 | `29.43 > 14.70 × 1.2 = 17.64` |
+| RSI | 40.51 | ยังไม่ recovery เหนือ 45 |
+| ATR% | 0.75 | ใช้ดู volatility เทียบ config |
+| BBW | 0.030 | ใช้ดู expansion เทียบ window |
+| MACD histogram | -92.09 | bearish momentum |
+| EMA slope | -104.55 | slope ลง |
+
+ผลลัพธ์ที่ออกแบบไว้: `TREND_DOWN_BLOCK` → `indicatorGate.status="TREND_CHECK"` · `paperActivationAllowed=false` · `liveActivationAllowed=false` · Phase 2-B ยัง blocked เพราะ downtrend pressure ยืนยันแล้วและ neutral grid activation ไม่ปลอดภัย
+
 ## 4) เมื่อไหร่ "resume grid" (เปิด grid ใหม่)
 ทั้งหมดต้องจริงพร้อมกัน:
 1. ผ่าน gate 1–7 (§2)

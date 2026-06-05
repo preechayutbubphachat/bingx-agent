@@ -52,6 +52,15 @@
 - Dynamic Grid activation ต้องผ่าน **operator approval อย่างชัดเจน (Phase 2-B paper-only design)** ก่อนเสมอ
 - No-Trade ขณะนอก grid = decision ที่ถูกต้อง — ห้าม regrid เพื่อให้ได้เทรด · ห้าม force BUY/SELL · ห้าม fake closedCycles
 
+### Trend Strategy Paper — Phase T-0 (DESIGN ONLY, 2026-06)
+> เอกสาร: `docs/TREND_STRATEGY_PAPER_DESIGN.md` · **กลยุทธ์ trend-following แยกจาก Grid · design เท่านั้น**
+- ใช้ canonicalMarketRegime + indicatorGate + trendZoneCandidate + multiTF + 5m confirm · setup = pullback-confirm (ห้ามไล่ราคา)
+- **แยกจาก Grid:** share canonicalRegime/multiTF/freshness/risk gates แต่ **ไม่ share** closedCycles/expectancy/exposure accounting/activation approval
+- `trendPaperEpoch` แยก · old grid BUY exposure = `QUARANTINE_OLD_GRID_EXPOSURE` (ไม่ force SELL · ไม่นับเป็น trend evidence)
+- Roadmap: T-0 design → T-1 shadow → T-2 manual paper armed → T-3 paper execution → T-4 trend edge review · **live ห้ามตลอดจนกว่ามี approval แยก**
+- **Blocked:** T-1+ implementation (รอ operator approve + Codex handoff) · paper/live activation=false · Phase 2-B · M-0B
+- ตัวอย่าง DOWNTREND ปัจจุบัน → trendStrategy.status=NO_TRADE (ราคาเลย sell zone + ใกล้ t1 = ห้ามไล่)
+
 ### Dynamic Regrid Phase 2-B — Manual Paper Activation Plan (DESIGN ONLY, 2026-06)
 > เอกสาร: `docs/M0Z6_DYNAMIC_REGRID_PHASE2B_MANUAL_PAPER_ACTIVATION_PLAN.md` · **design/planning เท่านั้น — ยังไม่ implement**
 - นิยาม: Manual Paper Activation Gate (`NOT_REQUESTED→REQUESTED→OPERATOR_APPROVED/REJECTED/EXPIRED`) + paper epoch plan (previous=INVALIDATED_RANGE/quarantine, next=CANDIDATE) + state machine 8 steps + fail paths

@@ -61,6 +61,8 @@ Manual Paper Activation Plan — `docs/M0Z6_DYNAMIC_REGRID_PHASE2B_MANUAL_PAPER_
 
 ---
 
+> **หมายเหตุระบบแยก:** Trend Strategy (DOWNTREND/UPTREND pullback-confirm) = คนละระบบกับ Grid นี้ — ดู `docs/TREND_STRATEGY_PAPER_DESIGN.md` (Phase T-0 design) · Grid จัดการ range/neutral/regrid · ทั้งสอง share regime/indicators แต่ไม่ share closedCycles/expectancy/exposure/activation
+
 ## 0) หลักการ
 - ราคา นอก grid = `REGRID_REQUIRED` (no-trade) เป็น **ค่าเริ่มต้นที่ปลอดภัย** เสมอ
 - การ "regrid" คือสร้าง candidate grid ใหม่รอบราคาปัจจุบัน → **ต้องผ่าน gate หลายชั้น + cooldown** ก่อน activate

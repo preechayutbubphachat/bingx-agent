@@ -96,6 +96,7 @@ Read-only Exchange Sync: Not yet approved
 Phase M-0B: BLOCKED
 EXCHANGE_MANUAL_APPROVAL: not_approved
 Dynamic Regrid Phase 2-A: ACTIVE (read-only readiness/diagnostics — no grid open, no order)
+Trend Strategy Phase T-0: DESIGN ONLY (docs/TREND_STRATEGY_PAPER_DESIGN.md — แยกจาก Grid, no execution)
 activationAllowed / paperActivationAllowed / liveActivationAllowed: false
 ```
 

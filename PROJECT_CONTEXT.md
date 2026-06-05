@@ -63,7 +63,7 @@ Phase M-0B remains **BLOCKED**. Dynamic Regrid Phase 2-A เป็น read-only 
 
 **Next Actions:**
 1. Monitor Phase 2-A บน `/agent-hq` (ดู `docs/M0Z6_DYNAMIC_REGRID_PHASE2A_MONITORING.md`)
-2. **Do NOT activate Phase 2-B yet** — ยังไม่เปิด dynamic grid
+2. **Do NOT activate Phase 2-B yet** — Phase 2-B = DESIGN ONLY (`docs/M0Z6_DYNAMIC_REGRID_PHASE2B_MANUAL_PAPER_ACTIVATION_PLAN.md`); activation ต้อง operator approve + Codex handoff แยก
 3. รอ readiness gates: stable candles, cooldown, candidate quality, regime confirmation
 4. คง old one-sided exposure quarantined (ไม่ force SELL ปิด · ไม่ใช้ประเมิน edge)
 5. No live / order / approval changes · คง M-0B BLOCKED

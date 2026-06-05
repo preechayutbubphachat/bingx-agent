@@ -52,6 +52,13 @@
 - Dynamic Grid activation ต้องผ่าน **operator approval อย่างชัดเจน (Phase 2-B paper-only design)** ก่อนเสมอ
 - No-Trade ขณะนอก grid = decision ที่ถูกต้อง — ห้าม regrid เพื่อให้ได้เทรด · ห้าม force BUY/SELL · ห้าม fake closedCycles
 
+### Dynamic Regrid Phase 2-B — Manual Paper Activation Plan (DESIGN ONLY, 2026-06)
+> เอกสาร: `docs/M0Z6_DYNAMIC_REGRID_PHASE2B_MANUAL_PAPER_ACTIVATION_PLAN.md` · **design/planning เท่านั้น — ยังไม่ implement**
+- นิยาม: Manual Paper Activation Gate (`NOT_REQUESTED→REQUESTED→OPERATOR_APPROVED/REJECTED/EXPIRED`) + paper epoch plan (previous=INVALIDATED_RANGE/quarantine, next=CANDIDATE) + state machine 8 steps + fail paths
+- Operator approval (paper-only) **แยกจาก** `EXCHANGE_MANUAL_APPROVAL` · `liveActivationAllowed=false` เสมอ · `paperActivationAllowed=false` จนกว่า operator approve
+- **Blocked:** Phase 2-B implementation (รอ operator approve + Codex handoff แยก) · live ตลอด Phase 2 · M-0B
+- Non-goals: ไม่ place order · ไม่แก้ `paper_cycle.sh` · ไม่ activate grid · ไม่ approve exchange · ไม่ unlock M-0B · ไม่แปลง old BUY→SELL · ไม่ fake closedCycles
+
 ### Next Stage
 **Paper Evidence Accumulation → M-0B** (🔒 M-0B BLOCKED) — รอ: (1) closed cycles สะสม (ราคาต้องข้าม grid mid ให้เกิด SELL), (2) sample ~30 closed cycles เพื่อประเมิน edge, (3) `/public` 16-item visual PASS, (4) operator independent review, (5) `EXCHANGE_MANUAL_APPROVAL=approved` (หลังทุก gate PASS). M-0B = Read-only Exchange API Implementation ยัง BLOCKED จนกว่า paper evidence + approval ครบ
 

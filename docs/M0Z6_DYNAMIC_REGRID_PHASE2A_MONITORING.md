@@ -68,6 +68,8 @@ M-0B                               = BLOCKED_EXPECTED
 ---
 
 ## 5) Phase 2-B entry criteria (ห้ามเริ่มจนกว่าครบทุกข้อ)
+> Phase 2-B design เต็ม: `docs/M0Z6_DYNAMIC_REGRID_PHASE2B_MANUAL_PAPER_ACTIVATION_PLAN.md` (DESIGN ONLY)
+
 Phase 2-B (เปิด dynamic grid จริง — paper) **ต้องไม่เริ่ม** จนกว่า:
 1. stableCandleCount เพิ่มและคงที่ข้ามหลาย cycle
 2. cooldownRemaining ถึง 0

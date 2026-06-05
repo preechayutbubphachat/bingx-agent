@@ -56,6 +56,9 @@ Phase 2-A is still visibility-only and paper-only. It prepares operator review s
 
 > `READY_FOR_OPERATOR_REVIEW` = สัญญาณให้ operator ตรวจเท่านั้น ไม่ใช่ execution permission · activation จริง = Phase 2-B (operator approve อย่างชัดเจน, paper-only) · live ยังบล็อกตลอด Phase 2
 
+### Phase 2-B (next, DESIGN ONLY)
+Manual Paper Activation Plan — `docs/M0Z6_DYNAMIC_REGRID_PHASE2B_MANUAL_PAPER_ACTIVATION_PLAN.md`: Manual Paper Activation Gate + paper epoch (previous=INVALIDATED_RANGE/quarantine, next=CANDIDATE) + state machine 8 steps + fail paths + future additive API (`phase2B`, `paperEpoch.nextEpoch`). **design เท่านั้น · implement = Codex handoff แยก · operator approve (paper-only, แยกจาก EXCHANGE_MANUAL_APPROVAL) · liveActivationAllowed=false เสมอ · M-0B BLOCKED**
+
 ---
 
 ## 0) หลักการ

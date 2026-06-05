@@ -22,6 +22,7 @@ import RegimeEvidenceCard from "./RegimeEvidenceCard";
 import CanonicalMarketRegimeCard from "./CanonicalMarketRegimeCard";
 import IndicatorGateShadowCard from "./IndicatorGateShadowCard";
 import TrendRegimeConfirmationCard from "./TrendRegimeConfirmationCard";
+import TrendZoneCandidateCard from "./TrendZoneCandidateCard";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
 const edgeStatusLabel = (status: string) =>
@@ -138,6 +139,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         <RegimeEvidenceCard paper={vm.paper} />
         <IndicatorGateShadowCard paper={vm.paper} />
         <TrendRegimeConfirmationCard paper={vm.paper} />
+        <TrendZoneCandidateCard paper={vm.paper} />
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
           <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />

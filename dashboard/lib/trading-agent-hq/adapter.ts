@@ -6,6 +6,7 @@
 
 import type {
   TradingAgentHQViewModel, AgentVM, AgentId, AgentStatus, LogEntry, PaperVM, SafetyVM,
+  TrendZoneCandidateVM,
 } from "./viewModel";
 
 /* loose shapes — endpoints are public-safe JSON; we read defensively */
@@ -34,6 +35,44 @@ function mapSafety(ph: AnyObj): SafetyVM {
     productionTradingReady: bool(ph.productionReady),
     exchangeManualApproval: str(ph.exchangeManualApproval, "not_approved") === "approved" ? "approved" : "not_approved",
     phase: str(ph.phase, "UNKNOWN"),
+  };
+}
+
+function mapTrendZoneCandidate(raw: unknown): TrendZoneCandidateVM | null {
+  if (!raw || typeof raw !== "object") return null;
+  const t = raw as AnyObj;
+  const targets = obj(t.targets);
+  const entry = obj(t.entry);
+  const smc = obj(t.smc);
+  const pull = Array.isArray(t.pullbackZone) && t.pullbackZone.length === 2
+    ? ([numOrNull(t.pullbackZone[0]), numOrNull(t.pullbackZone[1])] as const)
+    : null;
+  const buildStatus = str(t.buildStatus, "UNKNOWN");
+  const dirRaw = str(t.dir);
+  const entryType = str(entry.type);
+  return {
+    buildStatus: (["READY", "INSUFFICIENT_DATA", "NOT_TREND", "FAILED"].includes(buildStatus)
+      ? buildStatus
+      : "UNKNOWN") as TrendZoneCandidateVM["buildStatus"],
+    dir: dirRaw === "UP" || dirRaw === "DOWN" ? dirRaw : null,
+    pullbackZone: pull && pull[0] != null && pull[1] != null ? [pull[0], pull[1]] : null,
+    invalidation: numOrNull(t.invalidation),
+    triggerRule: strOrNull(t.triggerRule),
+    targets: { t1: numOrNull(targets.t1), t2: numOrNull(targets.t2) },
+    entry: {
+      type: entryType === "LIMIT" || entryType === "CONFIRM" ? entryType : null,
+      hint: strOrNull(entry.hint),
+    },
+    smc: {
+      swingHigh1h: numOrNull(smc.swingHigh1h),
+      swingLow1h: numOrNull(smc.swingLow1h),
+      eq1h: numOrNull(smc.eq1h),
+      liquidityNote: strOrNull(smc.liquidityNote),
+    },
+    warnings: strArray(t.warnings),
+    shadowOnly: bool(t.shadowOnly),
+    paperActivationAllowed: bool(t.paperActivationAllowed),
+    liveActivationAllowed: bool(t.liveActivationAllowed),
   };
 }
 
@@ -160,6 +199,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       paperActivationAllowed: bool(canonicalRegime.paperActivationAllowed),
       liveActivationAllowed: bool(canonicalRegime.liveActivationAllowed),
     },
+    trendZoneCandidate: mapTrendZoneCandidate(loop.trendZoneCandidate),
     regimeEvidence: {
       evidenceCompleteness: {
         status: str(completeness.status, "unknown") === "complete"

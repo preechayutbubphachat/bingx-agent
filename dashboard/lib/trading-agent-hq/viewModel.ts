@@ -64,6 +64,22 @@ export interface PaperVM {
   regimeEvidence: RegimeEvidenceVM;
   indicatorGate: IndicatorGateVM;
   canonicalMarketRegime: CanonicalMarketRegimeVM;
+  trendZoneCandidate: TrendZoneCandidateVM | null;
+}
+
+export interface TrendZoneCandidateVM {
+  buildStatus: "READY" | "INSUFFICIENT_DATA" | "NOT_TREND" | "FAILED" | "UNKNOWN";
+  dir: "UP" | "DOWN" | null;
+  pullbackZone: [number, number] | null;
+  invalidation: number | null;
+  triggerRule: string | null;
+  targets: { t1: number | null; t2: number | null };
+  entry: { type: "LIMIT" | "CONFIRM" | null; hint: string | null };
+  smc: { swingHigh1h: number | null; swingLow1h: number | null; eq1h: number | null; liquidityNote: string | null };
+  warnings: string[];
+  shadowOnly: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
 }
 
 export interface DynamicRegridCandidateVM {

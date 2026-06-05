@@ -17,6 +17,7 @@ import type {
   CanonicalMarketRegime,
   MultiTimeframeIndicatorEvidence,
 } from "../market-regime/canonicalMarketRegime.ts";
+import type { TrendZoneShadow } from "../market-regime/trendZoneBuilder.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -64,6 +65,8 @@ export interface PaperLoopDiagnostics {
   indicatorGate: IndicatorGate;
   canonicalMarketRegime: CanonicalMarketRegime | null;
   multiTimeframeIndicatorEvidence: MultiTimeframeIndicatorEvidence | null;
+  /** Phase D — read-only trend zone shadow (never used for orders) */
+  trendZoneCandidate: TrendZoneShadow | null;
 }
 
 export interface RuntimeMonitorCounters {
@@ -98,6 +101,7 @@ export interface PaperLoopDiagnosticsContext {
   regimeEvidence?: RegimeEvidence | null;
   canonicalMarketRegime?: CanonicalMarketRegime | null;
   multiTimeframeIndicatorEvidence?: MultiTimeframeIndicatorEvidence | null;
+  trendZoneCandidate?: TrendZoneShadow | null;
 }
 
 function priceVsGridOf(price: number | null, lower: number | null, upper: number | null): PriceVsGrid {
@@ -311,5 +315,6 @@ export function buildPaperLoopDiagnostics(
     indicatorGate,
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
+    trendZoneCandidate: context.trendZoneCandidate ?? null,
   };
 }

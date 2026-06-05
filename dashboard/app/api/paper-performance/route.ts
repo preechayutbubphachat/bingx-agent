@@ -41,6 +41,7 @@ import {
   buildCanonicalMarketRegime,
   buildMultiTimeframeIndicatorEvidence,
 } from "@/lib/market-regime/canonicalMarketRegime";
+import { buildTrendZoneShadow } from "@/lib/market-regime/trendZoneBuilder";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -80,6 +81,21 @@ export async function GET() {
         derivatives: regimeEvidence.derivatives,
         legacyPlanMode: typeof latest?.decision?.market_mode === "string" ? latest.decision.market_mode : null,
       });
+      // Phase D — Trend Zone Builder Shadow (read-only diagnostics, never used for orders)
+      const candles1h = latest?.marketSnapshot ? getCandlesFromSnapshot(latest.marketSnapshot, "1H") : [];
+      const tf1h = multiTimeframeIndicatorEvidence["1H"];
+      const sessionMeta = (latest?.marketSnapshot as { meta?: { session?: { current?: string; risk_overlay?: { false_breakout_risk?: string } } } } | null)?.meta?.session ?? null;
+      const latest1hClose = candles1h.length ? candles1h[candles1h.length - 1]?.close ?? null : null;
+      const trendZoneCandidate = buildTrendZoneShadow({
+        regime: canonicalMarketRegime.regime,
+        direction: canonicalMarketRegime.direction,
+        candles1h,
+        atr1h: tf1h?.atr ?? null,
+        ema50_1h: tf1h?.ema50 ?? null,
+        session: sessionMeta?.current ?? null,
+        sweepRisk: sessionMeta?.risk_overlay?.false_breakout_risk ?? null,
+        latestPrice: latest1hClose ?? (candles15m.length ? candles15m[candles15m.length - 1]?.close ?? null : null),
+      });
       paperLoopDiagnostics = buildPaperLoopDiagnostics(summary, runtimeCounters, {
         closedCycles: report.edgeDiagnostics?.closedCycles ?? 0,
         costGate: {
@@ -89,6 +105,7 @@ export async function GET() {
         regimeEvidence,
         canonicalMarketRegime,
         multiTimeframeIndicatorEvidence,
+        trendZoneCandidate,
       });
     } catch {
       paperLoopDiagnostics = null;

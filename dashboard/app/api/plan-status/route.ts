@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { computeLiquidityMagnetFromCandles } from "@/lib/liquidityMagnet";
 import { buildSourceInfo, readRuntimeJson, resolveRuntimeDir } from "@/lib/readLatest";
+import { buildTrendZoneShadow } from "@/lib/market-regime/trendZoneBuilder";
 import { safeJsonErrorResponse } from "@/lib/safeJsonResponse";
 import { computeIndicatorEvidence } from "@/lib/indicators/computeIndicators";
 import {
@@ -2745,11 +2746,31 @@ export async function GET() {
 
 
     // ---------------- Response ----------------
+    // Phase D — Trend Zone Builder Shadow (read-only diagnostics, additive; never used for orders)
+    // reuse canonicalMarketRegime + multiTimeframeIndicatorEvidence already computed above
+    let trendZoneCandidate = null;
+    try {
+        const sess1 = (store as { meta?: { session?: { current?: string; risk_overlay?: { false_breakout_risk?: string } } } } | null)?.meta?.session ?? null;
+        trendZoneCandidate = buildTrendZoneShadow({
+            regime: canonicalMarketRegime.regime,
+            direction: canonicalMarketRegime.direction,
+            candles1h: agg1h,
+            atr1h: multiTimeframeIndicatorEvidence["1H"]?.atr ?? null,
+            ema50_1h: multiTimeframeIndicatorEvidence["1H"]?.ema50 ?? null,
+            session: sess1?.current ?? null,
+            sweepRisk: sess1?.risk_overlay?.false_breakout_risk ?? null,
+            latestPrice: last1h?.close ?? null,
+        });
+    } catch {
+        trendZoneCandidate = null;
+    }
+
     return NextResponse.json({
         ok: true,
         data_dir: dataDir,
         symbol: sym,
         sourceInfo,
+        trendZoneCandidate,
 
         updated_at: Date.now(),
         source_updated_at: sourceUpdatedAt ?? null,

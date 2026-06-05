@@ -106,6 +106,20 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       paperActivationAllowed: false,
       liveActivationAllowed: false,
     },
+    trendZoneCandidate: {
+      buildStatus: "NOT_TREND",
+      dir: null,
+      pullbackZone: null,
+      invalidation: null,
+      triggerRule: null,
+      targets: { t1: null, t2: null },
+      entry: { type: null, hint: null },
+      smc: { swingHigh1h: null, swingLow1h: null, eq1h: null, liquidityNote: null },
+      warnings: ["mock_data_not_runtime_evidence"],
+      shadowOnly: true,
+      paperActivationAllowed: false,
+      liveActivationAllowed: false,
+    },
     regimeEvidence: {
       evidenceCompleteness: {
         status: "partial",

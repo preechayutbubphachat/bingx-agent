@@ -204,7 +204,7 @@ test("indicator gate is shadow-only and does not change regrid readiness", () =>
   assert.ok(d.regridReadiness.warnings.includes("closed_cycles_remain_zero_do_not_fake_edge"));
 });
 
-test("canonical market regime diagnostics are additive and do not change readiness", () => {
+test("canonical regime gate enforcement uses after readiness as the active readiness", () => {
   const d = buildPaperLoopDiagnostics(
     summary({
       buyFillCount: 14,
@@ -253,10 +253,18 @@ test("canonical market regime diagnostics are additive and do not change readine
   assert.equal(d.canonicalRegimeGate.blocking, true);
   assert.equal(d.canonicalRegimeGate.paperActivationAllowed, false);
   assert.equal(d.canonicalRegimeGate.liveActivationAllowed, false);
-  assert.equal(d.regridReadinessBeforeCanonicalGate.status, d.regridReadiness.status);
+  assert.notStrictEqual(d.regridReadinessBeforeCanonicalGate, d.regridReadiness);
+  assert.strictEqual(d.regridReadiness, d.regridReadinessAfterCanonicalGate);
+  assert.equal(d.canonicalRegimeGateEnforcement.enabled, true);
+  assert.equal(d.canonicalRegimeGateEnforcement.mode, "STRICTER_ONLY");
+  assert.equal(d.canonicalRegimeGateEnforcement.activeReadinessSource, "regridReadinessAfterCanonicalGate");
+  assert.equal(d.canonicalRegimeGateEnforcement.beforeStatus, d.regridReadinessBeforeCanonicalGate.status);
+  assert.equal(d.canonicalRegimeGateEnforcement.afterStatus, d.regridReadiness.status);
   assert.equal(d.regridReadinessAfterCanonicalGate?.status, "NOT_READY");
   assert.equal(d.canonicalRegimeGateShadowCompare.changed, false);
   assert.equal(d.regridReadiness.status, "NOT_READY");
   assert.equal(d.regridReadiness.paperActivationAllowed, false);
   assert.equal(d.regridReadiness.liveActivationAllowed, false);
+  assert.equal(d.canonicalRegimeGateEnforcement.paperActivationAllowed, false);
+  assert.equal(d.canonicalRegimeGateEnforcement.liveActivationAllowed, false);
 });

@@ -75,8 +75,21 @@ export interface PaperLoopDiagnostics {
   trendZoneCandidate: TrendZoneShadow | null;
   canonicalRegimeGate: CanonicalRegimeGate;
   regridReadinessBeforeCanonicalGate: RegridReadiness;
-  regridReadinessAfterCanonicalGate: RegridReadiness | null;
+  regridReadinessAfterCanonicalGate: RegridReadiness;
   canonicalRegimeGateShadowCompare: Pick<CanonicalRegimeGateShadowCompare, "changed" | "downgradeReason">;
+  canonicalRegimeGateEnforcement: CanonicalRegimeGateEnforcement;
+}
+
+export interface CanonicalRegimeGateEnforcement {
+  enabled: true;
+  mode: "STRICTER_ONLY";
+  activeReadinessSource: "regridReadinessAfterCanonicalGate";
+  beforeStatus: RegridReadiness["status"];
+  afterStatus: RegridReadiness["status"];
+  changed: boolean;
+  downgradeReason: string | null;
+  paperActivationAllowed: false;
+  liveActivationAllowed: false;
 }
 
 export interface RuntimeMonitorCounters {
@@ -225,7 +238,7 @@ export function buildPaperLoopDiagnostics(
   const monitorSummary: PaperRuntimeMonitor["monitorSummary"] =
     monitorStatus === "PASS" ? "STABLE_RUNTIME_PASS" : "WATCH_RUNTIME";
   const closedCycles = context.closedCycles ?? 0;
-  const regridReadiness = evaluateRegridReadiness({
+  const regridReadinessBeforeCanonicalGate = evaluateRegridReadiness({
     currentPrice,
     gridLower,
     gridUpper,
@@ -247,13 +260,6 @@ export function buildPaperLoopDiagnostics(
     staleData: paperLoopState === "STALE_DATA",
     runtimeAuditCritical: false,
   });
-  const paperEpoch = buildPaperEpochDiagnostics({
-    priceVsGrid,
-    buyFillCount: summary.buyFillCount,
-    sellFillCount: summary.sellFillCount,
-    candidateGridMid: candidate.candidateGridMid,
-    readinessStatus: regridReadiness.status,
-  });
   const regimeEvidence = context.regimeEvidence ?? buildRegimeEvidence({
     decision: null,
     marketSnapshot: null,
@@ -273,9 +279,29 @@ export function buildPaperLoopDiagnostics(
   });
   const canonicalRegimeGate = buildCanonicalRegimeGate({
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
-    currentRegridReadiness: regridReadiness,
+    currentRegridReadiness: regridReadinessBeforeCanonicalGate,
   });
-  const canonicalRegimeGateShadowCompare = applyCanonicalRegimeGateShadow(regridReadiness, canonicalRegimeGate);
+  const canonicalRegimeGateShadowCompare = applyCanonicalRegimeGateShadow(regridReadinessBeforeCanonicalGate, canonicalRegimeGate);
+  const regridReadinessAfterCanonicalGate = canonicalRegimeGateShadowCompare.after ?? regridReadinessBeforeCanonicalGate;
+  const regridReadiness = regridReadinessAfterCanonicalGate;
+  const canonicalRegimeGateEnforcement: CanonicalRegimeGateEnforcement = {
+    enabled: true,
+    mode: "STRICTER_ONLY",
+    activeReadinessSource: "regridReadinessAfterCanonicalGate",
+    beforeStatus: regridReadinessBeforeCanonicalGate.status,
+    afterStatus: regridReadinessAfterCanonicalGate.status,
+    changed: canonicalRegimeGateShadowCompare.changed,
+    downgradeReason: canonicalRegimeGateShadowCompare.downgradeReason,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+  };
+  const paperEpoch = buildPaperEpochDiagnostics({
+    priceVsGrid,
+    buyFillCount: summary.buyFillCount,
+    sellFillCount: summary.sellFillCount,
+    candidateGridMid: candidate.candidateGridMid,
+    readinessStatus: regridReadiness.status,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -332,11 +358,12 @@ export function buildPaperLoopDiagnostics(
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
     canonicalRegimeGate,
-    regridReadinessBeforeCanonicalGate: regridReadiness,
-    regridReadinessAfterCanonicalGate: canonicalRegimeGateShadowCompare.after,
+    regridReadinessBeforeCanonicalGate,
+    regridReadinessAfterCanonicalGate,
     canonicalRegimeGateShadowCompare: {
       changed: canonicalRegimeGateShadowCompare.changed,
       downgradeReason: canonicalRegimeGateShadowCompare.downgradeReason,
     },
+    canonicalRegimeGateEnforcement,
   };
 }

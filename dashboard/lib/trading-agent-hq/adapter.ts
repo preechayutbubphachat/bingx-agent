@@ -88,6 +88,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const readinessAfterCanonicalGate = obj(readinessAfterCanonicalGateRaw);
   const canonicalRegimeGate = obj(loop.canonicalRegimeGate);
   const canonicalRegimeGateShadowCompare = obj(loop.canonicalRegimeGateShadowCompare);
+  const canonicalRegimeGateEnforcement = obj(loop.canonicalRegimeGateEnforcement);
   const epoch = obj(loop.paperEpoch);
   const indicatorGate = obj(loop.indicatorGate);
   const canonicalRegime = obj(loop.canonicalMarketRegime);
@@ -149,7 +150,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       ? mapRegridReadiness(readinessBeforeCanonicalGate)
       : mapRegridReadiness(readiness),
     regridReadinessAfterCanonicalGate: readinessAfterCanonicalGateRaw == null || !Object.keys(readinessAfterCanonicalGate).length
-      ? null
+      ? mapRegridReadiness(readiness)
       : mapRegridReadiness(readinessAfterCanonicalGate),
     canonicalRegimeGate: {
       status: mapCanonicalRegimeGateStatus(str(canonicalRegimeGate.status, "UNKNOWN_DATA_BLOCK")),
@@ -164,6 +165,19 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     canonicalRegimeGateShadowCompare: {
       changed: bool(canonicalRegimeGateShadowCompare.changed),
       downgradeReason: strOrNull(canonicalRegimeGateShadowCompare.downgradeReason),
+    },
+    canonicalRegimeGateEnforcement: {
+      enabled: bool(canonicalRegimeGateEnforcement.enabled),
+      mode: str(canonicalRegimeGateEnforcement.mode, "UNKNOWN") === "STRICTER_ONLY" ? "STRICTER_ONLY" : "UNKNOWN",
+      activeReadinessSource: str(canonicalRegimeGateEnforcement.activeReadinessSource, "UNKNOWN") === "regridReadinessAfterCanonicalGate"
+        ? "regridReadinessAfterCanonicalGate"
+        : "UNKNOWN",
+      beforeStatus: mapRegridReadinessStatus(str(canonicalRegimeGateEnforcement.beforeStatus, str(readinessBeforeCanonicalGate.status, "UNKNOWN"))),
+      afterStatus: mapRegridReadinessStatus(str(canonicalRegimeGateEnforcement.afterStatus, str(readinessAfterCanonicalGate.status ?? readiness.status, "UNKNOWN"))),
+      changed: bool(canonicalRegimeGateEnforcement.changed),
+      downgradeReason: strOrNull(canonicalRegimeGateEnforcement.downgradeReason ?? canonicalRegimeGateShadowCompare.downgradeReason),
+      paperActivationAllowed: bool(canonicalRegimeGateEnforcement.paperActivationAllowed),
+      liveActivationAllowed: bool(canonicalRegimeGateEnforcement.liveActivationAllowed),
     },
     paperEpoch: {
       currentEpochId: strOrNull(epoch.currentEpochId),

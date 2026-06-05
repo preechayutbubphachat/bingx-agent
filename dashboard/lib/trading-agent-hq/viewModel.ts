@@ -66,8 +66,9 @@ export interface PaperVM {
   canonicalMarketRegime: CanonicalMarketRegimeVM;
   canonicalRegimeGate: CanonicalRegimeGateVM;
   regridReadinessBeforeCanonicalGate: RegridReadinessVM;
-  regridReadinessAfterCanonicalGate: RegridReadinessVM | null;
+  regridReadinessAfterCanonicalGate: RegridReadinessVM;
   canonicalRegimeGateShadowCompare: CanonicalRegimeGateShadowCompareVM;
+  canonicalRegimeGateEnforcement: CanonicalRegimeGateEnforcementVM;
   trendZoneCandidate: TrendZoneCandidateVM | null;
 }
 
@@ -204,6 +205,18 @@ export interface CanonicalRegimeGateVM {
 export interface CanonicalRegimeGateShadowCompareVM {
   changed: boolean;
   downgradeReason: string | null;
+}
+
+export interface CanonicalRegimeGateEnforcementVM {
+  enabled: boolean;
+  mode: "STRICTER_ONLY" | "UNKNOWN";
+  activeReadinessSource: "regridReadinessAfterCanonicalGate" | "UNKNOWN";
+  beforeStatus: RegridReadinessVM["status"];
+  afterStatus: RegridReadinessVM["status"];
+  changed: boolean;
+  downgradeReason: string | null;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
 }
 
 export interface EvidenceValueVM {

@@ -111,7 +111,7 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       blocking: true,
       downgradeOnly: true,
       reasons: ["mock_data_not_runtime_evidence", "missing_canonical_market_regime"],
-      warnings: ["shadow_compare_only_no_active_readiness_change"],
+      warnings: ["stricter_only_enforcement_display_only_mock"],
       affectedModes: ["NEUTRAL_GRID", "DYNAMIC_NEUTRAL_GRID", "PHASE_2B_ACTIVATION"],
       paperActivationAllowed: false,
       liveActivationAllowed: false,
@@ -141,6 +141,17 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
     canonicalRegimeGateShadowCompare: {
       changed: false,
       downgradeReason: "mock_already_not_ready",
+    },
+    canonicalRegimeGateEnforcement: {
+      enabled: true,
+      mode: "STRICTER_ONLY",
+      activeReadinessSource: "regridReadinessAfterCanonicalGate",
+      beforeStatus: "NOT_READY",
+      afterStatus: "NOT_READY",
+      changed: false,
+      downgradeReason: "mock_already_not_ready",
+      paperActivationAllowed: false,
+      liveActivationAllowed: false,
     },
     trendZoneCandidate: {
       buildStatus: "NOT_TREND",

@@ -29,6 +29,7 @@ const REASON_LABELS: Record<string, string> = {
   missing_canonical_market_regime: "ยังไม่มี canonical market regime",
   unknown_canonical_regime_blocks_activation: "regime ยังไม่ชัด จึงบล็อกการเปิดกริด",
   shadow_compare_only_no_active_readiness_change: "Shadow Compare เท่านั้น ยังไม่เปลี่ยน readiness จริง",
+  stricter_only_enforcement_display_only_mock: "ข้อมูลจำลอง: enforcement แบบลด readiness เท่านั้น",
   legacy_plan_mode_ignored_by_canonical_regime_gate: "ไม่ใช้ latest_decision.market_mode เป็นแหล่งตัดสินหลัก",
   missing_regrid_readiness_for_shadow_compare: "ยังไม่มี readiness สำหรับ Shadow Compare",
 };
@@ -80,6 +81,7 @@ function ListBlock({ title, items, translate = true }: { title: string; items: s
 export default function CanonicalRegimeGateCard({ paper }: CanonicalRegimeGateCardProps) {
   const gate = paper.canonicalRegimeGate;
   const compare = paper.canonicalRegimeGateShadowCompare;
+  const enforcement = paper.canonicalRegimeGateEnforcement;
 
   return (
     <section className="rounded-lg border border-[#d1b58c] bg-[#f7eadc] p-3 text-[#3f2f22] shadow-sm">
@@ -87,7 +89,7 @@ export default function CanonicalRegimeGateCard({ paper }: CanonicalRegimeGateCa
         <div>
           <h2 className="text-sm font-black text-[#2f241b]">Canonical Regime Gate (Stricter-only)</h2>
           <p className="mt-0.5 text-[11px] font-bold text-[#80644c]">
-            Shadow Compare อ่านอย่างเดียว ยังไม่เปลี่ยน readiness จริง
+            Stricter-only Enforcement เปิดใช้งานแล้ว
           </p>
         </div>
         <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-[#5b4432]">
@@ -96,19 +98,23 @@ export default function CanonicalRegimeGateCard({ paper }: CanonicalRegimeGateCa
       </div>
 
       <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-black leading-relaxed text-amber-950">
-        Gate นี้ทำให้ระบบเข้มขึ้นเท่านั้น ไม่มีสิทธิ์ปลดล็อก · ตอนนี้เป็น Shadow Compare ยังไม่เปลี่ยน readiness จริง ·
-        ถ้า regime เป็นเทรนด์ลง จะบล็อก Neutral Grid · ยังไม่เปิด Phase 2-B และยังไม่ปลดล็อก M-0B
+        Stricter-only Enforcement เปิดใช้งานแล้ว: Gate นี้ลด readiness ได้เท่านั้น ไม่มีสิทธิ์ปลดล็อก ·
+        ถ้า regime เป็นเทรนด์ลง จะบล็อก Neutral Grid · ยังไม่เปิด Phase 2-B · ยังไม่ปลดล็อก M-0B · ไม่ส่งคำสั่งเทรด
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="สถานะ Gate" value={STATUS_LABELS[gate.status]} />
+        <Field label="Active readiness source" value={enforcement.activeReadinessSource === "regridReadinessAfterCanonicalGate" ? "after" : "UNKNOWN"} />
+        <Field label="Enforcement enabled" value={boolLabel(enforcement.enabled)} />
+        <Field label="Enforcement mode" value={enforcement.mode} />
         <Field label="blocking" value={boolLabel(gate.blocking)} />
         <Field label="downgradeOnly" value={boolLabel(gate.downgradeOnly)} />
-        <Field label="changed ใน Shadow" value={boolLabel(compare.changed)} />
-        <Field label="readiness ก่อน Gate" value={readinessLabel(paper.regridReadinessBeforeCanonicalGate)} />
-        <Field label="readiness หลัง Gate" value={readinessLabel(paper.regridReadinessAfterCanonicalGate)} />
-        <Field label="downgrade reason" value={compare.downgradeReason ?? "ไม่มี"} />
-        <Field label="paper/live allowed" value={`${activationLabel(gate.paperActivationAllowed)} / ${activationLabel(gate.liveActivationAllowed)}`} />
+        <Field label="Changed" value={boolLabel(enforcement.changed || compare.changed)} />
+        <Field label="Readiness ก่อนใช้ regime" value={readinessLabel(paper.regridReadinessBeforeCanonicalGate)} />
+        <Field label="Readiness หลังใช้ regime" value={readinessLabel(paper.regridReadinessAfterCanonicalGate)} />
+        <Field label="Downgrade reason" value={enforcement.downgradeReason ?? compare.downgradeReason ?? "ไม่มี"} />
+        <Field label="paperActivationAllowed" value={activationLabel(enforcement.paperActivationAllowed || gate.paperActivationAllowed)} />
+        <Field label="liveActivationAllowed" value={activationLabel(enforcement.liveActivationAllowed || gate.liveActivationAllowed)} />
       </div>
 
       <div className="mt-3 grid gap-2 lg:grid-cols-3">

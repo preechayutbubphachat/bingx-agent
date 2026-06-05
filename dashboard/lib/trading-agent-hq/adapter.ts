@@ -240,6 +240,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       countTowardGridClosedCycles: bool(trendPaperEpoch.countTowardGridClosedCycles),
       countTowardTrendEvidence: bool(trendPaperEpoch.countTowardTrendEvidence),
     },
+    trendTransitionMonitor: mapTrendTransitionMonitor(obj(loop.trendTransitionMonitor)),
     regimeEvidence: {
       evidenceCompleteness: {
         status: str(completeness.status, "unknown") === "complete"
@@ -381,6 +382,37 @@ function mapTrendStrategy(raw: AnyObj): PaperVM["trendStrategy"] {
     shadowOnly: bool(raw.shadowOnly),
     reasons: strArray(raw.reasons),
     warnings: strArray(raw.warnings),
+  };
+}
+
+function mapTrendTransitionMonitor(raw: AnyObj): PaperVM["trendTransitionMonitor"] {
+  const wf = obj(raw.watchedFields);
+  const zone = Array.isArray(wf.entryZone) && wf.entryZone.length === 2
+    ? ([numOrNull(wf.entryZone[0]), numOrNull(wf.entryZone[1])] as const)
+    : null;
+  const statusRaw = str(raw.status, "UNKNOWN");
+  const validStatus = ["IDLE_NO_TRADE", "WATCHING_PULLBACK", "ENTRY_ZONE_REACHED", "AWAITING_CONFIRMATION", "RISK_REJECTED", "SETUP_INVALIDATED", "REGIME_CHANGED", "SAFETY_BLOCK"];
+  const sevRaw = str(raw.severity, "info");
+  const dirRaw = str(wf.direction, "");
+  return {
+    status: (validStatus.includes(statusRaw) ? statusRaw : "UNKNOWN") as PaperVM["trendTransitionMonitor"]["status"],
+    severity: (["info", "watch", "warning", "critical"].includes(sevRaw) ? sevRaw : "info") as PaperVM["trendTransitionMonitor"]["severity"],
+    message: strOrNull(raw.message),
+    operatorAction: strOrNull(raw.operatorAction),
+    shouldNotifyOperator: bool(raw.shouldNotifyOperator),
+    checkedAt: strOrNull(raw.checkedAt),
+    watchedFields: {
+      trendStatus: strOrNull(wf.trendStatus),
+      riskStatus: strOrNull(wf.riskStatus),
+      direction: dirRaw === "LONG" || dirRaw === "SHORT" ? dirRaw : null,
+      currentPrice: numOrNull(wf.currentPrice),
+      entryZone: zone && zone[0] != null && zone[1] != null ? [zone[0], zone[1]] : null,
+      invalidation: numOrNull(wf.invalidation),
+      target1: numOrNull(wf.target1),
+      rewardRisk: numOrNull(wf.rewardRisk),
+    },
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
   };
 }
 

@@ -202,6 +202,26 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       countTowardGridClosedCycles: false,
       countTowardTrendEvidence: false,
     },
+    trendTransitionMonitor: {
+      status: "IDLE_NO_TRADE",
+      severity: "info",
+      message: "ข้อมูลจำลอง: ยังไม่มี trend setup",
+      operatorAction: "รอ pullback ใหม่ ห้ามไล่ราคา",
+      shouldNotifyOperator: false,
+      checkedAt: null,
+      watchedFields: {
+        trendStatus: "NO_TRADE",
+        riskStatus: "NO_TRADE_NEAR_TARGET",
+        direction: null,
+        currentPrice: null,
+        entryZone: null,
+        invalidation: null,
+        target1: null,
+        rewardRisk: null,
+      },
+      paperActivationAllowed: false,
+      liveActivationAllowed: false,
+    },
     regimeEvidence: {
       evidenceCompleteness: {
         status: "partial",

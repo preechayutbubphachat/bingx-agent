@@ -72,6 +72,28 @@ export interface PaperVM {
   trendZoneCandidate: TrendZoneCandidateVM | null;
   trendStrategy: TrendStrategyVM;
   trendPaperEpoch: TrendPaperEpochVM;
+  trendTransitionMonitor: TrendTransitionMonitorVM;
+}
+
+export interface TrendTransitionMonitorVM {
+  status: "IDLE_NO_TRADE" | "WATCHING_PULLBACK" | "ENTRY_ZONE_REACHED" | "AWAITING_CONFIRMATION" | "RISK_REJECTED" | "SETUP_INVALIDATED" | "REGIME_CHANGED" | "SAFETY_BLOCK" | "UNKNOWN";
+  severity: "info" | "watch" | "warning" | "critical";
+  message: string | null;
+  operatorAction: string | null;
+  shouldNotifyOperator: boolean;
+  checkedAt: string | null;
+  watchedFields: {
+    trendStatus: string | null;
+    riskStatus: string | null;
+    direction: "LONG" | "SHORT" | null;
+    currentPrice: number | null;
+    entryZone: [number, number] | null;
+    invalidation: number | null;
+    target1: number | null;
+    rewardRisk: number | null;
+  };
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
 }
 
 export interface TrendZoneCandidateVM {

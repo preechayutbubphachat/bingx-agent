@@ -24,6 +24,12 @@ import {
   type CanonicalRegimeGateShadowCompare,
 } from "../market-regime/canonicalRegimeGate.ts";
 import type { TrendZoneShadow } from "../market-regime/trendZoneBuilder.ts";
+import {
+  buildTrendPaperEpoch,
+  evaluateTrendStrategy,
+  type TrendPaperEpoch,
+  type TrendStrategy,
+} from "../trend/trendStrategy.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -78,6 +84,8 @@ export interface PaperLoopDiagnostics {
   regridReadinessAfterCanonicalGate: RegridReadiness;
   canonicalRegimeGateShadowCompare: Pick<CanonicalRegimeGateShadowCompare, "changed" | "downgradeReason">;
   canonicalRegimeGateEnforcement: CanonicalRegimeGateEnforcement;
+  trendStrategy: TrendStrategy;
+  trendPaperEpoch: TrendPaperEpoch;
 }
 
 export interface CanonicalRegimeGateEnforcement {
@@ -125,6 +133,7 @@ export interface PaperLoopDiagnosticsContext {
   canonicalMarketRegime?: CanonicalMarketRegime | null;
   multiTimeframeIndicatorEvidence?: MultiTimeframeIndicatorEvidence | null;
   trendZoneCandidate?: TrendZoneShadow | null;
+  session?: string | null;
 }
 
 function priceVsGridOf(price: number | null, lower: number | null, upper: number | null): PriceVsGrid {
@@ -302,6 +311,26 @@ export function buildPaperLoopDiagnostics(
     candidateGridMid: candidate.candidateGridMid,
     readinessStatus: regridReadiness.status,
   });
+  const trendStrategy = evaluateTrendStrategy({
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    indicatorGate,
+    trendZoneCandidate: context.trendZoneCandidate ?? null,
+    multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
+    currentPrice,
+    priceVsGrid,
+    session: context.session ?? null,
+    derivatives: regimeEvidence.derivatives,
+    obGate: regimeEvidence.obGate,
+    oldGridExposure: {
+      buyFillCount: summary.buyFillCount,
+      sellFillCount: summary.sellFillCount,
+    },
+    freshness: {
+      stale: context.canonicalMarketRegime?.sourceFreshness?.status === "stale",
+      warnings: context.canonicalMarketRegime?.sourceFreshness?.warnings ?? [],
+    },
+  });
+  const trendPaperEpoch = buildTrendPaperEpoch(trendStrategy);
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -365,5 +394,7 @@ export function buildPaperLoopDiagnostics(
       downgradeReason: canonicalRegimeGateShadowCompare.downgradeReason,
     },
     canonicalRegimeGateEnforcement,
+    trendStrategy,
+    trendPaperEpoch,
   };
 }

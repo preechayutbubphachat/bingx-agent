@@ -70,6 +70,8 @@ export interface PaperVM {
   canonicalRegimeGateShadowCompare: CanonicalRegimeGateShadowCompareVM;
   canonicalRegimeGateEnforcement: CanonicalRegimeGateEnforcementVM;
   trendZoneCandidate: TrendZoneCandidateVM | null;
+  trendStrategy: TrendStrategyVM;
+  trendPaperEpoch: TrendPaperEpochVM;
 }
 
 export interface TrendZoneCandidateVM {
@@ -85,6 +87,43 @@ export interface TrendZoneCandidateVM {
   shadowOnly: boolean;
   paperActivationAllowed: boolean;
   liveActivationAllowed: boolean;
+}
+
+export interface TrendStrategyVM {
+  enabled: boolean;
+  phase: "T-1_SHADOW" | "UNKNOWN";
+  status: "NO_TRADE" | "WATCHING_PULLBACK" | "SETUP_READY" | "AWAITING_CONFIRMATION" | "RISK_REJECTED" | "INVALIDATED" | "UNKNOWN";
+  direction: "LONG" | "SHORT" | null;
+  setupReason: string | null;
+  entryZone: [number, number] | null;
+  currentPrice: number | null;
+  distanceToEntryZonePct: number | null;
+  invalidation: number | null;
+  target1: number | null;
+  target2: number | null;
+  rewardRisk: number | null;
+  confirmationRequired: boolean;
+  confirmationStatus: "NOT_REQUIRED" | "WAITING_5M_CONFIRM" | "CONFIRMED" | "FAILED" | "INSUFFICIENT_DATA" | "UNKNOWN";
+  riskStatus: "PASS" | "NO_TRADE_NEAR_TARGET" | "NO_TRADE_BAD_RR" | "NO_TRADE_STALE_DATA" | "NO_TRADE_VOLATILITY" | "NO_TRADE_CONFLICTING_FLOW" | "NO_TRADE_OLD_EXPOSURE" | "UNKNOWN";
+  oldExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE" | "UNKNOWN";
+  countTowardGridClosedCycles: boolean;
+  countTowardTrendEvidence: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  shadowOnly: boolean;
+  reasons: string[];
+  warnings: string[];
+}
+
+export interface TrendPaperEpochVM {
+  epochId: string | null;
+  source: "TREND_STRATEGY" | "UNKNOWN";
+  phase: "T-1_SHADOW" | "UNKNOWN";
+  status: TrendStrategyVM["status"];
+  direction: TrendStrategyVM["direction"];
+  oldGridExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE" | "UNKNOWN";
+  countTowardGridClosedCycles: boolean;
+  countTowardTrendEvidence: boolean;
 }
 
 export interface DynamicRegridCandidateVM {

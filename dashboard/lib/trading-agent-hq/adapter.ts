@@ -89,6 +89,8 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const canonicalRegimeGate = obj(loop.canonicalRegimeGate);
   const canonicalRegimeGateShadowCompare = obj(loop.canonicalRegimeGateShadowCompare);
   const canonicalRegimeGateEnforcement = obj(loop.canonicalRegimeGateEnforcement);
+  const trendStrategy = obj(loop.trendStrategy);
+  const trendPaperEpoch = obj(loop.trendPaperEpoch);
   const epoch = obj(loop.paperEpoch);
   const indicatorGate = obj(loop.indicatorGate);
   const canonicalRegime = obj(loop.canonicalMarketRegime);
@@ -225,6 +227,19 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       liveActivationAllowed: bool(canonicalRegime.liveActivationAllowed),
     },
     trendZoneCandidate: mapTrendZoneCandidate(loop.trendZoneCandidate),
+    trendStrategy: mapTrendStrategy(trendStrategy),
+    trendPaperEpoch: {
+      epochId: strOrNull(trendPaperEpoch.epochId),
+      source: str(trendPaperEpoch.source, "UNKNOWN") === "TREND_STRATEGY" ? "TREND_STRATEGY" : "UNKNOWN",
+      phase: str(trendPaperEpoch.phase, "UNKNOWN") === "T-1_SHADOW" ? "T-1_SHADOW" : "UNKNOWN",
+      status: mapTrendStrategyStatus(str(trendPaperEpoch.status, "UNKNOWN")),
+      direction: mapTrendStrategyDirection(str(trendPaperEpoch.direction, "")),
+      oldGridExposurePolicy: str(trendPaperEpoch.oldGridExposurePolicy, "UNKNOWN") === "QUARANTINE_OLD_GRID_EXPOSURE"
+        ? "QUARANTINE_OLD_GRID_EXPOSURE"
+        : "UNKNOWN",
+      countTowardGridClosedCycles: bool(trendPaperEpoch.countTowardGridClosedCycles),
+      countTowardTrendEvidence: bool(trendPaperEpoch.countTowardTrendEvidence),
+    },
     regimeEvidence: {
       evidenceCompleteness: {
         status: str(completeness.status, "unknown") === "complete"
@@ -334,6 +349,75 @@ function mapEvidenceValue(value: unknown): PaperVM["regimeEvidence"]["indicators
     value: scalarOrNull(wrapped.value),
     source: strOrNull(wrapped.source),
   };
+}
+
+function mapTrendStrategy(raw: AnyObj): PaperVM["trendStrategy"] {
+  const zone = Array.isArray(raw.entryZone) && raw.entryZone.length === 2
+    ? ([numOrNull(raw.entryZone[0]), numOrNull(raw.entryZone[1])] as const)
+    : null;
+  return {
+    enabled: bool(raw.enabled),
+    phase: str(raw.phase, "UNKNOWN") === "T-1_SHADOW" ? "T-1_SHADOW" : "UNKNOWN",
+    status: mapTrendStrategyStatus(str(raw.status, "UNKNOWN")),
+    direction: mapTrendStrategyDirection(str(raw.direction, "")),
+    setupReason: strOrNull(raw.setupReason),
+    entryZone: zone && zone[0] != null && zone[1] != null ? [zone[0], zone[1]] : null,
+    currentPrice: numOrNull(raw.currentPrice),
+    distanceToEntryZonePct: numOrNull(raw.distanceToEntryZonePct),
+    invalidation: numOrNull(raw.invalidation),
+    target1: numOrNull(raw.target1),
+    target2: numOrNull(raw.target2),
+    rewardRisk: numOrNull(raw.rewardRisk),
+    confirmationRequired: bool(raw.confirmationRequired),
+    confirmationStatus: mapTrendConfirmationStatus(str(raw.confirmationStatus, "UNKNOWN")),
+    riskStatus: mapTrendRiskStatus(str(raw.riskStatus, "UNKNOWN")),
+    oldExposurePolicy: str(raw.oldExposurePolicy, "UNKNOWN") === "QUARANTINE_OLD_GRID_EXPOSURE"
+      ? "QUARANTINE_OLD_GRID_EXPOSURE"
+      : "UNKNOWN",
+    countTowardGridClosedCycles: bool(raw.countTowardGridClosedCycles),
+    countTowardTrendEvidence: bool(raw.countTowardTrendEvidence),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    shadowOnly: bool(raw.shadowOnly),
+    reasons: strArray(raw.reasons),
+    warnings: strArray(raw.warnings),
+  };
+}
+
+function mapTrendStrategyStatus(status: string): PaperVM["trendStrategy"]["status"] {
+  if (status === "NO_TRADE") return "NO_TRADE";
+  if (status === "WATCHING_PULLBACK") return "WATCHING_PULLBACK";
+  if (status === "SETUP_READY") return "SETUP_READY";
+  if (status === "AWAITING_CONFIRMATION") return "AWAITING_CONFIRMATION";
+  if (status === "RISK_REJECTED") return "RISK_REJECTED";
+  if (status === "INVALIDATED") return "INVALIDATED";
+  return "UNKNOWN";
+}
+
+function mapTrendStrategyDirection(direction: string): PaperVM["trendStrategy"]["direction"] {
+  if (direction === "LONG") return "LONG";
+  if (direction === "SHORT") return "SHORT";
+  return null;
+}
+
+function mapTrendConfirmationStatus(status: string): PaperVM["trendStrategy"]["confirmationStatus"] {
+  if (status === "NOT_REQUIRED") return "NOT_REQUIRED";
+  if (status === "WAITING_5M_CONFIRM") return "WAITING_5M_CONFIRM";
+  if (status === "CONFIRMED") return "CONFIRMED";
+  if (status === "FAILED") return "FAILED";
+  if (status === "INSUFFICIENT_DATA") return "INSUFFICIENT_DATA";
+  return "UNKNOWN";
+}
+
+function mapTrendRiskStatus(status: string): PaperVM["trendStrategy"]["riskStatus"] {
+  if (status === "PASS") return "PASS";
+  if (status === "NO_TRADE_NEAR_TARGET") return "NO_TRADE_NEAR_TARGET";
+  if (status === "NO_TRADE_BAD_RR") return "NO_TRADE_BAD_RR";
+  if (status === "NO_TRADE_STALE_DATA") return "NO_TRADE_STALE_DATA";
+  if (status === "NO_TRADE_VOLATILITY") return "NO_TRADE_VOLATILITY";
+  if (status === "NO_TRADE_CONFLICTING_FLOW") return "NO_TRADE_CONFLICTING_FLOW";
+  if (status === "NO_TRADE_OLD_EXPOSURE") return "NO_TRADE_OLD_EXPOSURE";
+  return "UNKNOWN";
 }
 
 function mapRegridReadiness(readiness: AnyObj): PaperVM["regridReadiness"] {

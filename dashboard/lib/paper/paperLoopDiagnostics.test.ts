@@ -215,6 +215,32 @@ test("canonical regime gate enforcement uses after readiness as the active readi
     }),
     null,
     {
+      regimeEvidence: buildRegimeEvidence({
+        decision: { market_mode: "TREND", regime: "DOWNTREND" },
+        marketSnapshot: {},
+        planStatusState: null,
+        sourceInfo: null,
+        indicatorEvidence: {
+          adx: 35.44,
+          plusDI: 14.7,
+          minusDI: 29.43,
+          rsi: 40.51,
+          atr: 480,
+          atrPct: 0.75,
+          bbw: 0.03,
+          macd: -248.06,
+          macdSignal: -155.97,
+          macdHistogram: -92.09,
+          emaSlope: -104.55,
+          source: "market_snapshot",
+          calculatedAt: "2026-06-05T00:00:00.000Z",
+          candleCount: 120,
+          timeframe: "15m",
+          freshness: { latestCandleAt: "2026-06-05T00:00:00.000Z", ageMs: 60_000 },
+          missingFields: [],
+          notes: [],
+        },
+      }),
       canonicalMarketRegime: {
         regime: "DOWNTREND",
         direction: "BEARISH",
@@ -267,4 +293,87 @@ test("canonical regime gate enforcement uses after readiness as the active readi
   assert.equal(d.regridReadiness.liveActivationAllowed, false);
   assert.equal(d.canonicalRegimeGateEnforcement.paperActivationAllowed, false);
   assert.equal(d.canonicalRegimeGateEnforcement.liveActivationAllowed, false);
+});
+
+test("trend strategy shadow diagnostics are additive and never activate paper or live", () => {
+  const d = buildPaperLoopDiagnostics(
+    summary({
+      buyFillCount: 14,
+      sellFillCount: 0,
+      recentEvents: [
+        ev({ gridLower: 72480, gridUpper: 78053, gridMid: 75266, currentPrice: 63580, noTradeReason: "price_below_grid_lower" }),
+      ],
+    }),
+    null,
+    {
+      regimeEvidence: buildRegimeEvidence({
+        decision: { market_mode: "TREND", regime: "DOWNTREND" },
+        marketSnapshot: {},
+        planStatusState: null,
+        sourceInfo: null,
+        indicatorEvidence: {
+          adx: 35.44,
+          plusDI: 14.7,
+          minusDI: 29.43,
+          rsi: 40.51,
+          atr: 480,
+          atrPct: 0.75,
+          bbw: 0.03,
+          macd: -248.06,
+          macdSignal: -155.97,
+          macdHistogram: -92.09,
+          emaSlope: -104.55,
+          source: "market_snapshot",
+          calculatedAt: "2026-06-05T00:00:00.000Z",
+          candleCount: 120,
+          timeframe: "15m",
+          freshness: { latestCandleAt: "2026-06-05T00:00:00.000Z", ageMs: 60_000 },
+          missingFields: [],
+          notes: [],
+        },
+      }),
+      canonicalMarketRegime: {
+        regime: "DOWNTREND",
+        direction: "BEARISH",
+        confidence: 80,
+        confidenceLabel: "high",
+        reasons: ["trend_down_confirmed_by_indicators"],
+        warnings: [],
+        allowedModes: ["NO_TRADE", "TREND_CHECK"],
+        blockedModes: ["NEUTRAL_GRID", "DYNAMIC_NEUTRAL_GRID", "PHASE_2B_ACTIVATION"],
+        sourcePriority: ["market_snapshot.klines"],
+        ignoredLegacyFields: ["latest_decision.market_mode"],
+        sourceFreshness: { status: "fresh", generatedAt: null, latestCandleAtByTimeframe: {}, warnings: [] },
+        evidenceCompleteness: { status: "partial", scorePct: 80, availableGroups: ["multi_timeframe_indicators"], missingGroups: [] },
+        shadowOnly: true,
+        paperActivationAllowed: false,
+        liveActivationAllowed: false,
+      },
+      trendZoneCandidate: {
+        buildStatus: "READY",
+        dir: "DOWN",
+        pullbackZone: [65000, 66000],
+        invalidation: 67000,
+        triggerRule: "wait_5m_confirm",
+        targets: { t1: 63500, t2: 62000 },
+        entry: { type: "CONFIRM", hint: "wait" },
+        smc: { swingHigh1h: 67000, swingLow1h: 63500, eq1h: 65250, liquidityNote: null },
+        warnings: [],
+        shadowOnly: true,
+        paperActivationAllowed: false,
+        liveActivationAllowed: false,
+      },
+    },
+  );
+
+  assert.equal(d.trendStrategy.phase, "T-1_SHADOW");
+  assert.equal(d.trendStrategy.direction, "SHORT");
+  assert.equal(d.trendStrategy.status, "NO_TRADE");
+  assert.equal(d.trendStrategy.riskStatus, "NO_TRADE_NEAR_TARGET");
+  assert.equal(d.trendStrategy.paperActivationAllowed, false);
+  assert.equal(d.trendStrategy.liveActivationAllowed, false);
+  assert.equal(d.trendStrategy.countTowardGridClosedCycles, false);
+  assert.equal(d.trendStrategy.countTowardTrendEvidence, false);
+  assert.equal(d.trendPaperEpoch.source, "TREND_STRATEGY");
+  assert.equal(d.trendPaperEpoch.countTowardGridClosedCycles, false);
 });

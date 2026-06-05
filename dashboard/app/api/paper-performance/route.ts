@@ -106,6 +106,7 @@ export async function GET() {
         canonicalMarketRegime,
         multiTimeframeIndicatorEvidence,
         trendZoneCandidate,
+        session: sessionMeta?.current ?? null,
       });
     } catch {
       paperLoopDiagnostics = null;

@@ -38,6 +38,10 @@ import {
   evaluateTrendManualPaperArmGate,
   type TrendManualPaperArmGate,
 } from "../trend/trendManualPaperArmGate.ts";
+import {
+  evaluateTrendPaperExecutionPreflight,
+  type TrendPaperExecutionPreflight,
+} from "../trend/trendPaperExecutionPreflight.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -96,6 +100,7 @@ export interface PaperLoopDiagnostics {
   trendPaperEpoch: TrendPaperEpoch;
   trendTransitionMonitor: TrendTransitionMonitor;
   trendManualPaperArmGate: TrendManualPaperArmGate;
+  trendPaperExecutionPreflight: TrendPaperExecutionPreflight;
 }
 
 export interface CanonicalRegimeGateEnforcement {
@@ -360,6 +365,16 @@ export function buildPaperLoopDiagnostics(
     },
     checkedAt: summary.lastPaperEventAt ?? null,
   });
+  const trendPaperExecutionPreflight = evaluateTrendPaperExecutionPreflight({
+    trendManualPaperArmGate,
+    trendStrategy,
+    trendZoneCandidate: context.trendZoneCandidate ?? null,
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    currentPrice,
+    freshness: {
+      stale: context.canonicalMarketRegime?.sourceFreshness?.status === "stale",
+    },
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -427,5 +442,6 @@ export function buildPaperLoopDiagnostics(
     trendPaperEpoch,
     trendTransitionMonitor,
     trendManualPaperArmGate,
+    trendPaperExecutionPreflight,
   };
 }

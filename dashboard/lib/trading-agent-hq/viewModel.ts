@@ -74,6 +74,28 @@ export interface PaperVM {
   trendPaperEpoch: TrendPaperEpochVM;
   trendTransitionMonitor: TrendTransitionMonitorVM;
   trendManualPaperArmGate: TrendManualPaperArmGateVM;
+  trendPaperExecutionPreflight: TrendPaperExecutionPreflightVM;
+}
+
+export interface TrendPaperExecutionPreflightVM {
+  phase: "T-3_PREFLIGHT" | "UNKNOWN";
+  status: "NOT_READY" | "READY_FOR_PAPER_SIMULATION_REVIEW" | "BLOCKED" | "EXPIRED" | "INVALIDATED" | "UNKNOWN";
+  requiredInputs: string[];
+  passedInputs: string[];
+  failedInputs: string[];
+  setupId: string | null;
+  direction: "LONG" | "SHORT" | null;
+  entry: number | null;
+  stopLoss: number | null;
+  takeProfit1: number | null;
+  takeProfit2: number | null;
+  rewardRisk: number | null;
+  paperArmAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  journalWriteAllowed: boolean;
+  simulatedFillAllowed: boolean;
+  notes: string[];
 }
 
 export interface TrendManualPaperArmGateVM {

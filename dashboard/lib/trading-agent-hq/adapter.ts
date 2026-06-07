@@ -242,6 +242,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     },
     trendTransitionMonitor: mapTrendTransitionMonitor(obj(loop.trendTransitionMonitor)),
     trendManualPaperArmGate: mapTrendManualPaperArmGate(obj(loop.trendManualPaperArmGate)),
+    trendPaperExecutionPreflight: mapTrendPaperExecutionPreflight(obj(loop.trendPaperExecutionPreflight)),
     regimeEvidence: {
       evidenceCompleteness: {
         status: str(completeness.status, "unknown") === "complete"
@@ -383,6 +384,32 @@ function mapTrendStrategy(raw: AnyObj): PaperVM["trendStrategy"] {
     shadowOnly: bool(raw.shadowOnly),
     reasons: strArray(raw.reasons),
     warnings: strArray(raw.warnings),
+  };
+}
+
+function mapTrendPaperExecutionPreflight(raw: AnyObj): PaperVM["trendPaperExecutionPreflight"] {
+  const statusRaw = str(raw.status, "UNKNOWN");
+  const validStatus = ["NOT_READY", "READY_FOR_PAPER_SIMULATION_REVIEW", "BLOCKED", "EXPIRED", "INVALIDATED"];
+  const dirRaw = str(raw.direction);
+  return {
+    phase: str(raw.phase, "UNKNOWN") === "T-3_PREFLIGHT" ? "T-3_PREFLIGHT" : "UNKNOWN",
+    status: (validStatus.includes(statusRaw) ? statusRaw : "UNKNOWN") as PaperVM["trendPaperExecutionPreflight"]["status"],
+    requiredInputs: strArray(raw.requiredInputs),
+    passedInputs: strArray(raw.passedInputs),
+    failedInputs: strArray(raw.failedInputs),
+    setupId: strOrNull(raw.setupId),
+    direction: dirRaw === "LONG" || dirRaw === "SHORT" ? dirRaw : null,
+    entry: numOrNull(raw.entry),
+    stopLoss: numOrNull(raw.stopLoss),
+    takeProfit1: numOrNull(raw.takeProfit1),
+    takeProfit2: numOrNull(raw.takeProfit2),
+    rewardRisk: numOrNull(raw.rewardRisk),
+    paperArmAllowed: bool(raw.paperArmAllowed),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    journalWriteAllowed: bool(raw.journalWriteAllowed),
+    simulatedFillAllowed: bool(raw.simulatedFillAllowed),
+    notes: strArray(raw.notes),
   };
 }
 

@@ -73,6 +73,21 @@ export interface PaperVM {
   trendStrategy: TrendStrategyVM;
   trendPaperEpoch: TrendPaperEpochVM;
   trendTransitionMonitor: TrendTransitionMonitorVM;
+  trendManualPaperArmGate: TrendManualPaperArmGateVM;
+}
+
+export interface TrendManualPaperArmGateVM {
+  phase: "T-2_DESIGN" | "T-2_READY_FOR_OPERATOR" | "T-2_ARMED" | "T-2_REJECTED" | "T-2_EXPIRED" | "UNKNOWN";
+  status: "NOT_READY" | "READY_FOR_OPERATOR_REVIEW" | "OPERATOR_ARMED_PAPER_ONLY" | "REJECTED_BY_OPERATOR" | "EXPIRED" | "BLOCKED" | "UNKNOWN";
+  requiredConditions: string[];
+  passedConditions: string[];
+  failedConditions: string[];
+  operatorActionRequired: boolean;
+  setupId: string | null;
+  expiryAt: string | null;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  notes: string[];
 }
 
 export interface TrendTransitionMonitorVM {

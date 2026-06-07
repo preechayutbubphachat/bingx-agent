@@ -241,6 +241,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       countTowardTrendEvidence: bool(trendPaperEpoch.countTowardTrendEvidence),
     },
     trendTransitionMonitor: mapTrendTransitionMonitor(obj(loop.trendTransitionMonitor)),
+    trendManualPaperArmGate: mapTrendManualPaperArmGate(obj(loop.trendManualPaperArmGate)),
     regimeEvidence: {
       evidenceCompleteness: {
         status: str(completeness.status, "unknown") === "complete"
@@ -382,6 +383,26 @@ function mapTrendStrategy(raw: AnyObj): PaperVM["trendStrategy"] {
     shadowOnly: bool(raw.shadowOnly),
     reasons: strArray(raw.reasons),
     warnings: strArray(raw.warnings),
+  };
+}
+
+function mapTrendManualPaperArmGate(raw: AnyObj): PaperVM["trendManualPaperArmGate"] {
+  const phaseRaw = str(raw.phase, "UNKNOWN");
+  const validPhase = ["T-2_DESIGN", "T-2_READY_FOR_OPERATOR", "T-2_ARMED", "T-2_REJECTED", "T-2_EXPIRED"];
+  const statusRaw = str(raw.status, "UNKNOWN");
+  const validStatus = ["NOT_READY", "READY_FOR_OPERATOR_REVIEW", "OPERATOR_ARMED_PAPER_ONLY", "REJECTED_BY_OPERATOR", "EXPIRED", "BLOCKED"];
+  return {
+    phase: (validPhase.includes(phaseRaw) ? phaseRaw : "UNKNOWN") as PaperVM["trendManualPaperArmGate"]["phase"],
+    status: (validStatus.includes(statusRaw) ? statusRaw : "UNKNOWN") as PaperVM["trendManualPaperArmGate"]["status"],
+    requiredConditions: strArray(raw.requiredConditions),
+    passedConditions: strArray(raw.passedConditions),
+    failedConditions: strArray(raw.failedConditions),
+    operatorActionRequired: bool(raw.operatorActionRequired),
+    setupId: strOrNull(raw.setupId),
+    expiryAt: strOrNull(raw.expiryAt),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    notes: strArray(raw.notes),
   };
 }
 

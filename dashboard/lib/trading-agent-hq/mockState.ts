@@ -222,6 +222,19 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       paperActivationAllowed: false,
       liveActivationAllowed: false,
     },
+    trendManualPaperArmGate: {
+      phase: "T-2_DESIGN",
+      status: "NOT_READY",
+      requiredConditions: ["trend_status_awaiting_or_setup_ready", "risk_status_pass", "zone_build_ready"],
+      passedConditions: [],
+      failedConditions: ["trend_status_awaiting_or_setup_ready"],
+      operatorActionRequired: false,
+      setupId: null,
+      expiryAt: null,
+      paperActivationAllowed: false,
+      liveActivationAllowed: false,
+      notes: ["ข้อมูลจำลอง: ยังไม่พร้อม arm"],
+    },
     regimeEvidence: {
       evidenceCompleteness: {
         status: "partial",

@@ -52,6 +52,12 @@
 - Dynamic Grid activation ต้องผ่าน **operator approval อย่างชัดเจน (Phase 2-B paper-only design)** ก่อนเสมอ
 - No-Trade ขณะนอก grid = decision ที่ถูกต้อง — ห้าม regrid เพื่อให้ได้เทรด · ห้าม force BUY/SELL · ห้าม fake closedCycles
 
+### Trend Strategy T-3 — Execution Readiness Packet (Go/No-Go gate, 2026-06)
+> เอกสาร: `docs/TREND_STRATEGY_T3_EXECUTION_READINESS_PACKET.md` · readiness gate ก่อน implement T-3 execution
+- checklist (upstream phases + runtime + code) · operator approval packet (paperArmAllowed=future intent, paperActivation=false จนกว่า implement, live=false) · risk params · stop/kill · evidence separation · Codex handoff template
+- **Go/No-Go ปัจจุบัน = HOLD** (preflight NOT_READY เพราะ NO_TRADE_NEAR_TARGET · ยังไม่มี operator approval · T-3 execution ยังไม่เริ่ม)
+- safety: trend evidence ไม่นับเป็น grid closedCycles · old exposure quarantined · no live · no M-0B unlock · no Phase 2-B
+
 ### Trend Strategy Phase T-3 — Paper Simulated Execution Plan (DESIGN ONLY, 2026-06)
 > เอกสาร: `docs/TREND_STRATEGY_T3_PAPER_EXECUTION_PLAN.md` · **design เท่านั้น — paper-only simulation, no order, no live, no BingX API**
 - `trendPaperOrder` (PAPER_SIMULATED) + `trend_paper_journal.jsonl` แยก + conservative fill (SL-before-TP worst-case) + exit/risk limits + trend evidence metrics

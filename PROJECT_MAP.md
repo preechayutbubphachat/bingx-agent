@@ -52,6 +52,14 @@
 - Dynamic Grid activation ต้องผ่าน **operator approval อย่างชัดเจน (Phase 2-B paper-only design)** ก่อนเสมอ
 - No-Trade ขณะนอก grid = decision ที่ถูกต้อง — ห้าม regrid เพื่อให้ได้เทรด · ห้าม force BUY/SELL · ห้าม fake closedCycles
 
+### Trend Strategy Phase T-3 — Paper Simulated Execution Plan (DESIGN ONLY, 2026-06)
+> เอกสาร: `docs/TREND_STRATEGY_T3_PAPER_EXECUTION_PLAN.md` · **design เท่านั้น — paper-only simulation, no order, no live, no BingX API**
+- `trendPaperOrder` (PAPER_SIMULATED) + `trend_paper_journal.jsonl` แยก + conservative fill (SL-before-TP worst-case) + exit/risk limits + trend evidence metrics
+- **แยกจาก grid เด็ดขาด:** trendClosedTrades/trendExpectancy/trend epoch ≠ grid closedCycles/expectancy/epoch · ไม่แปลง old grid BUY→trend SELL · ไม่ปน expectancy
+- precondition: operator arm (T-2 OPERATOR_ARMED_PAPER_ONLY) + 5m confirm + paperArmAllowed (operator) · `liveActivationAllowed`=false เสมอ
+- T-4 Edge Review = ประเมิน trend expectancy/drawdown (skill expectancy-risk-of-ruin) · T-4 ≠ live · live ต้อง approval แยก + M-0B
+- Status: T-1/T-1M/T-2 implemented (shadow/monitor/arm-gate) · T-3 = design · M-0B BLOCKED
+
 ### Trend Strategy Phase T-2 — Manual Paper Arm Plan (DESIGN ONLY, 2026-06)
 > เอกสาร: `docs/TREND_STRATEGY_T2_MANUAL_PAPER_ARM_PLAN.md` · **design เท่านั้น — ไม่มีปุ่ม arm, ไม่ส่ง order**
 - `trendManualPaperArmGate` (NOT_READY→READY_FOR_OPERATOR_REVIEW→OPERATOR_ARMED_PAPER_ONLY/REJECTED/EXPIRED/BLOCKED) + required conditions (status AWAITING_CONFIRMATION/SETUP_READY + risk PASS + RR≥min + confirm WAITING_5M + zone READY + regime match + fresh + old exposure quarantined) + expiry (15m/3×5m)

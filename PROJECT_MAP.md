@@ -58,6 +58,7 @@
 - Go/No-Go: HOLD / CONTINUE_PAPER / PARAMETER_REVIEW / PAUSE_STRATEGY / READY_FOR_LIMITED_CANARY_REVIEW (= review signal เท่านั้น ไม่ใช่ live)
 - **T-4 ≠ live ready** · live ต้อง M-0B + paper-to-live migration gate + operator approval แยก · trend expectancy ไม่ปลดล็อก grid และกลับกัน · ไม่ปน closedCycles
 - ใช้ skill `expectancy-risk-of-ruin` + `trade-journal-attribution` ตอน implement · `paperActivationAllowed`/`liveActivationAllowed`=false
+- **T-4 Metrics Shadow Contract (IMPLEMENTED read-only):** `dashboard/lib/trend/trendEdgeReview.ts` (+`.test.ts` 15/15) — pure evaluator `evaluateTrendEdgeReview` · ยังไม่มี journal → ปัจจุบัน `status=INSUFFICIENT_DATA` (closedTrades=0, expectancy=null) · wired `paperLoopDiagnostics.trendEdgeReview` · Agent HQ card `TrendEdgeReviewCard.tsx` (อ่านอย่างเดียว 0 ปุ่ม) · ไม่อ่าน/เขียน journal ไม่จำลอง fill ไม่ส่ง order · activation/unlock ทั้งหมด false
 
 ### Trend Strategy T-3 — Execution Readiness Packet (Go/No-Go gate, 2026-06)
 > เอกสาร: `docs/TREND_STRATEGY_T3_EXECUTION_READINESS_PACKET.md` · readiness gate ก่อน implement T-3 execution

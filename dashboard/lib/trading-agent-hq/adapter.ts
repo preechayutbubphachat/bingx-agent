@@ -243,6 +243,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendTransitionMonitor: mapTrendTransitionMonitor(obj(loop.trendTransitionMonitor)),
     trendManualPaperArmGate: mapTrendManualPaperArmGate(obj(loop.trendManualPaperArmGate)),
     trendPaperExecutionPreflight: mapTrendPaperExecutionPreflight(obj(loop.trendPaperExecutionPreflight)),
+    trendEdgeReview: mapTrendEdgeReview(obj(loop.trendEdgeReview)),
     regimeEvidence: {
       evidenceCompleteness: {
         status: str(completeness.status, "unknown") === "complete"
@@ -409,6 +410,37 @@ function mapTrendPaperExecutionPreflight(raw: AnyObj): PaperVM["trendPaperExecut
     liveActivationAllowed: bool(raw.liveActivationAllowed),
     journalWriteAllowed: bool(raw.journalWriteAllowed),
     simulatedFillAllowed: bool(raw.simulatedFillAllowed),
+    notes: strArray(raw.notes),
+  };
+}
+
+function mapTrendEdgeReview(raw: AnyObj): PaperVM["trendEdgeReview"] {
+  const statusRaw = str(raw.status, "UNKNOWN");
+  const validStatus = ["NO_DATA", "INSUFFICIENT_DATA", "EARLY_SAMPLE", "USABLE_SAMPLE", "REVIEW_SAMPLE", "PRODUCTION_CANDIDATE_REVIEW"];
+  const tierRaw = str(raw.sampleTier, "unknown");
+  const validTier = ["none", "early", "usable", "review", "production_candidate"];
+  const decisionRaw = str(raw.decision, "UNKNOWN");
+  const validDecision = ["HOLD", "CONTINUE_PAPER", "PARAMETER_REVIEW", "PAUSE_STRATEGY", "READY_FOR_LIMITED_CANARY_REVIEW"];
+  return {
+    phase: str(raw.phase, "UNKNOWN") === "T-4_EDGE_REVIEW" ? "T-4_EDGE_REVIEW" : "UNKNOWN",
+    status: (validStatus.includes(statusRaw) ? statusRaw : "UNKNOWN") as PaperVM["trendEdgeReview"]["status"],
+    trendClosedTrades: typeof raw.trendClosedTrades === "number" && Number.isFinite(raw.trendClosedTrades) ? raw.trendClosedTrades : 0,
+    sampleTier: (validTier.includes(tierRaw) ? tierRaw : "unknown") as PaperVM["trendEdgeReview"]["sampleTier"],
+    winRate: numOrNull(raw.winRate),
+    averageWinR: numOrNull(raw.averageWinR),
+    averageLossR: numOrNull(raw.averageLossR),
+    expectancyR: numOrNull(raw.expectancyR),
+    netExpectancyAfterCosts: numOrNull(raw.netExpectancyAfterCosts),
+    profitFactor: numOrNull(raw.profitFactor),
+    maxDrawdownR: numOrNull(raw.maxDrawdownR),
+    maxConsecutiveLosses: numOrNull(raw.maxConsecutiveLosses),
+    riskOfRuinEstimate: numOrNull(raw.riskOfRuinEstimate),
+    costDrag: numOrNull(raw.costDrag),
+    slippageAttribution: numOrNull(raw.slippageAttribution),
+    fundingAttribution: numOrNull(raw.fundingAttribution),
+    decision: (validDecision.includes(decisionRaw) ? decisionRaw : "UNKNOWN") as PaperVM["trendEdgeReview"]["decision"],
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
     notes: strArray(raw.notes),
   };
 }

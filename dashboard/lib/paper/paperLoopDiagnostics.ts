@@ -42,6 +42,10 @@ import {
   evaluateTrendPaperExecutionPreflight,
   type TrendPaperExecutionPreflight,
 } from "../trend/trendPaperExecutionPreflight.ts";
+import {
+  evaluateTrendEdgeReview,
+  type TrendEdgeReview,
+} from "../trend/trendEdgeReview.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -101,6 +105,8 @@ export interface PaperLoopDiagnostics {
   trendTransitionMonitor: TrendTransitionMonitor;
   trendManualPaperArmGate: TrendManualPaperArmGate;
   trendPaperExecutionPreflight: TrendPaperExecutionPreflight;
+  /** Phase T-4 — read-only trend edge / expectancy review (no journal yet → INSUFFICIENT_DATA) */
+  trendEdgeReview: TrendEdgeReview;
 }
 
 export interface CanonicalRegimeGateEnforcement {
@@ -375,6 +381,9 @@ export function buildPaperLoopDiagnostics(
       stale: context.canonicalMarketRegime?.sourceFreshness?.status === "stale",
     },
   });
+  // T-4 — read-only edge review. No trend_paper_journal/execution exists yet, so the
+  // closed-trade source is present-but-empty → INSUFFICIENT_DATA (trendClosedTrades = 0).
+  const trendEdgeReview = evaluateTrendEdgeReview({ closedTrades: [] });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -443,5 +452,6 @@ export function buildPaperLoopDiagnostics(
     trendTransitionMonitor,
     trendManualPaperArmGate,
     trendPaperExecutionPreflight,
+    trendEdgeReview,
   };
 }

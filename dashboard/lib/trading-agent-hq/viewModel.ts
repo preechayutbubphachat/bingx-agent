@@ -75,6 +75,30 @@ export interface PaperVM {
   trendTransitionMonitor: TrendTransitionMonitorVM;
   trendManualPaperArmGate: TrendManualPaperArmGateVM;
   trendPaperExecutionPreflight: TrendPaperExecutionPreflightVM;
+  trendEdgeReview: TrendEdgeReviewVM;
+}
+
+export interface TrendEdgeReviewVM {
+  phase: "T-4_EDGE_REVIEW" | "UNKNOWN";
+  status: "NO_DATA" | "INSUFFICIENT_DATA" | "EARLY_SAMPLE" | "USABLE_SAMPLE" | "REVIEW_SAMPLE" | "PRODUCTION_CANDIDATE_REVIEW" | "UNKNOWN";
+  trendClosedTrades: number;
+  sampleTier: "none" | "early" | "usable" | "review" | "production_candidate" | "unknown";
+  winRate: number | null;
+  averageWinR: number | null;
+  averageLossR: number | null;
+  expectancyR: number | null;
+  netExpectancyAfterCosts: number | null;
+  profitFactor: number | null;
+  maxDrawdownR: number | null;
+  maxConsecutiveLosses: number | null;
+  riskOfRuinEstimate: number | null;
+  costDrag: number | null;
+  slippageAttribution: number | null;
+  fundingAttribution: number | null;
+  decision: "HOLD" | "CONTINUE_PAPER" | "PARAMETER_REVIEW" | "PAUSE_STRATEGY" | "READY_FOR_LIMITED_CANARY_REVIEW" | "UNKNOWN";
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  notes: string[];
 }
 
 export interface TrendPaperExecutionPreflightVM {

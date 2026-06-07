@@ -97,6 +97,7 @@ Phase M-0B: BLOCKED
 EXCHANGE_MANUAL_APPROVAL: not_approved
 Dynamic Regrid Phase 2-A: ACTIVE (read-only readiness/diagnostics — no grid open, no order)
 Trend Strategy Phase T-0: DESIGN ONLY (docs/TREND_STRATEGY_PAPER_DESIGN.md — แยกจาก Grid, no execution)
+Trend Strategy T-1/T-1M: ACTIVE shadow+monitor (read-only) · T-2 manual paper arm = DESIGN ONLY (no arm button, no order)
 activationAllowed / paperActivationAllowed / liveActivationAllowed: false
 ```
 

@@ -134,7 +134,7 @@ currentPrice≈61847.3
 ## 10) Stage roadmap
 - **T-0 Design (now):** docs only
 - **T-1 Shadow:** compute `trendStrategy` object + แสดงบน Agent HQ · **no execution**
-- **T-2 Manual Paper Armed:** operator arm paper-only trend setup ได้ · **ยังไม่ live**
+- **T-2 Manual Paper Armed:** operator arm paper-only trend setup ได้ · **ยังไม่ live** · design: `docs/TREND_STRATEGY_T2_MANUAL_PAPER_ARM_PLAN.md` (arm gate + required conditions + expiry; armed ≠ executed)
 - **T-3 Paper Execution:** paper-only simulated trend orders · trend evidence แยก
 - **T-4 Trend Edge Review:** closed trend trades · expectancy · drawdown · failure reasons
 > **live ห้ามตลอด** จนกว่าจะมี approval แยกต่างหาก (คนละตัวกับ paper arm และคนละตัวกับ EXCHANGE_MANUAL_APPROVAL)

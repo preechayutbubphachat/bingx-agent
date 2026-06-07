@@ -52,6 +52,13 @@
 - Dynamic Grid activation ต้องผ่าน **operator approval อย่างชัดเจน (Phase 2-B paper-only design)** ก่อนเสมอ
 - No-Trade ขณะนอก grid = decision ที่ถูกต้อง — ห้าม regrid เพื่อให้ได้เทรด · ห้าม force BUY/SELL · ห้าม fake closedCycles
 
+### Trend Strategy Phase T-2 — Manual Paper Arm Plan (DESIGN ONLY, 2026-06)
+> เอกสาร: `docs/TREND_STRATEGY_T2_MANUAL_PAPER_ARM_PLAN.md` · **design เท่านั้น — ไม่มีปุ่ม arm, ไม่ส่ง order**
+- `trendManualPaperArmGate` (NOT_READY→READY_FOR_OPERATOR_REVIEW→OPERATOR_ARMED_PAPER_ONLY/REJECTED/EXPIRED/BLOCKED) + required conditions (status AWAITING_CONFIRMATION/SETUP_READY + risk PASS + RR≥min + confirm WAITING_5M + zone READY + regime match + fresh + old exposure quarantined) + expiry (15m/3×5m)
+- **armed (T-2) ≠ executed (T-3)** · arm ไม่สร้าง order/fill/evidence · paper/liveActivationAllowed=false · แยกจาก Phase 2-B + EXCHANGE_MANUAL_APPROVAL
+- T-3 (paper simulated execution) = เฟสถัดไป: trend paper journal แยก, ไม่ปนกับ grid closedCycles/expectancy
+- Status: T-1+T-1M active (shadow+monitor) · T-2 = design · M-0B BLOCKED
+
 ### Trend Strategy Paper — Phase T-0 (DESIGN ONLY, 2026-06)
 > เอกสาร: `docs/TREND_STRATEGY_PAPER_DESIGN.md` · **กลยุทธ์ trend-following แยกจาก Grid · design เท่านั้น**
 - ใช้ canonicalMarketRegime + indicatorGate + trendZoneCandidate + multiTF + 5m confirm · setup = pullback-confirm (ห้ามไล่ราคา)

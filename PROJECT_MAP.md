@@ -52,6 +52,13 @@
 - Dynamic Grid activation ต้องผ่าน **operator approval อย่างชัดเจน (Phase 2-B paper-only design)** ก่อนเสมอ
 - No-Trade ขณะนอก grid = decision ที่ถูกต้อง — ห้าม regrid เพื่อให้ได้เทรด · ห้าม force BUY/SELL · ห้าม fake closedCycles
 
+### Trend Strategy T-4 — Edge Review & Expectancy (DESIGN ONLY, 2026-06)
+> เอกสาร: `docs/TREND_STRATEGY_T4_EDGE_REVIEW_PLAN.md` · ออกแบบการประเมิน trend paper evidence **หลัง** T-3 มีจริง
+- closed-trade definition · metrics (netExpectancyAfterCosts = ตัวตัดสิน · winRate/avgR/profitFactor/maxDrawdownR/riskOfRuin/costDrag) · sample tiers (early<10 / usable / review / production≥30) · failure taxonomy 9 · attribution (regime/session/indicator/zone/confirm)
+- Go/No-Go: HOLD / CONTINUE_PAPER / PARAMETER_REVIEW / PAUSE_STRATEGY / READY_FOR_LIMITED_CANARY_REVIEW (= review signal เท่านั้น ไม่ใช่ live)
+- **T-4 ≠ live ready** · live ต้อง M-0B + paper-to-live migration gate + operator approval แยก · trend expectancy ไม่ปลดล็อก grid และกลับกัน · ไม่ปน closedCycles
+- ใช้ skill `expectancy-risk-of-ruin` + `trade-journal-attribution` ตอน implement · `paperActivationAllowed`/`liveActivationAllowed`=false
+
 ### Trend Strategy T-3 — Execution Readiness Packet (Go/No-Go gate, 2026-06)
 > เอกสาร: `docs/TREND_STRATEGY_T3_EXECUTION_READINESS_PACKET.md` · readiness gate ก่อน implement T-3 execution
 - checklist (upstream phases + runtime + code) · operator approval packet (paperArmAllowed=future intent, paperActivation=false จนกว่า implement, live=false) · risk params · stop/kill · evidence separation · Codex handoff template

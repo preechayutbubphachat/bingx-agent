@@ -71,6 +71,7 @@
 - `trendPaperOrder` (PAPER_SIMULATED) + `trend_paper_journal.jsonl` แยก + conservative fill (SL-before-TP worst-case) + exit/risk limits + trend evidence metrics
 - **แยกจาก grid เด็ดขาด:** trendClosedTrades/trendExpectancy/trend epoch ≠ grid closedCycles/expectancy/epoch · ไม่แปลง old grid BUY→trend SELL · ไม่ปน expectancy
 - precondition: operator arm (T-2 OPERATOR_ARMED_PAPER_ONLY) + 5m confirm + paperArmAllowed (operator) · `liveActivationAllowed`=false เสมอ
+- **T-3A hardening patch (implemented):** `trendPaperExecutionEngine` เข้า paper entry ได้เฉพาะ arm gate = `OPERATOR_ARMED_PAPER_ONLY` เท่านั้น · `READY_FOR_OPERATOR_REVIEW` → NO_ACTION/`OPERATOR_ARM_REQUIRED` (review-only ไม่ auto-enter) · default env `TREND_PAPER_SIMULATION_ENABLED=false` → NO_ACTION
 - T-4 Edge Review = ประเมิน trend expectancy/drawdown (skill expectancy-risk-of-ruin) · T-4 ≠ live · live ต้อง approval แยก + M-0B
 - Status: T-1/T-1M/T-2 implemented (shadow/monitor/arm-gate) · T-3 = design · M-0B BLOCKED
 

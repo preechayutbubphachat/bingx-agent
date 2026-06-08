@@ -53,8 +53,8 @@ const SHORT_STRATEGY: TrendStrategy = {
 };
 
 const ARM_READY: TrendManualPaperArmGate = {
-  phase: "T-2_READY_FOR_OPERATOR",
-  status: "READY_FOR_OPERATOR_REVIEW",
+  phase: "T-2_ARMED",
+  status: "OPERATOR_ARMED_PAPER_ONLY",
   requiredConditions: [],
   passedConditions: [],
   failedConditions: [],
@@ -203,6 +203,28 @@ test("no action when preflight not ready", () => {
   });
   assert.equal(result.action, "NO_ACTION");
   assert.equal(result.reason, "PREFLIGHT_NOT_READY");
+});
+
+test("T-3A hardening: READY_FOR_OPERATOR_REVIEW does NOT auto-enter (operator arm required)", () => {
+  const result = run({
+    trendManualPaperArmGate: { ...ARM_READY, phase: "T-2_READY_FOR_OPERATOR", status: "READY_FOR_OPERATOR_REVIEW" },
+  });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "OPERATOR_ARM_REQUIRED");
+  assert.equal(result.journalEventDraft, null);
+  assert.equal(result.liveActivationAllowed, false);
+  assert.equal(result.exchangeOrderAllowed, false);
+});
+
+test("T-3A hardening: OPERATOR_ARMED_PAPER_ONLY is the only valid entry trigger", () => {
+  const result = run({
+    trendManualPaperArmGate: { ...ARM_READY, phase: "T-2_ARMED", status: "OPERATOR_ARMED_PAPER_ONLY" },
+  });
+  assert.equal(result.action, "CREATE_PAPER_ENTRY");
+  assert.equal(result.journalEventDraft?.countTowardGridClosedCycles, false);
+  assert.equal(result.journalEventDraft?.oldExposurePolicy, "QUARANTINE_OLD_GRID_EXPOSURE");
+  assert.equal(result.liveActivationAllowed, false);
+  assert.equal(result.exchangeOrderAllowed, false);
 });
 
 test("entry created when all gates pass", () => {

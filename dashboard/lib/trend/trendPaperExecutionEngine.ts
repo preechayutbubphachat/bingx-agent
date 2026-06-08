@@ -601,7 +601,10 @@ export function evaluateTrendPaperExecutionEngine(
   if (strategy.oldExposurePolicy !== "QUARANTINE_OLD_GRID_EXPOSURE") return noAction("OLD_GRID_EXPOSURE_NOT_QUARANTINED");
   if (!(strategy.status === "AWAITING_CONFIRMATION" || strategy.status === "SETUP_READY")) return noAction("TREND_STRATEGY_NOT_ENTRY_READY");
   if (strategy.riskStatus !== "PASS") return noAction("TREND_STRATEGY_RISK_NOT_PASS");
-  if (!(armGate.status === "READY_FOR_OPERATOR_REVIEW" || armGate.status === "OPERATOR_ARMED_PAPER_ONLY")) return noAction("ARM_GATE_NOT_READY");
+  // Hardening (T-3A patch): only an explicit operator arm may trigger a paper entry.
+  // READY_FOR_OPERATOR_REVIEW is notify/review-only — it must NOT auto-enter.
+  if (armGate.status === "READY_FOR_OPERATOR_REVIEW") return noAction("OPERATOR_ARM_REQUIRED");
+  if (armGate.status !== "OPERATOR_ARMED_PAPER_ONLY") return noAction("ARM_GATE_NOT_READY");
   if (preflight.status !== "READY_FOR_PAPER_SIMULATION_REVIEW") return noAction("PREFLIGHT_NOT_READY");
   if (zone.buildStatus !== "READY") return noAction("TREND_ZONE_NOT_READY");
   if (!regimeMatches(input.canonicalMarketRegime, strategy.direction)) return noAction("REGIME_DIRECTION_MISMATCH");

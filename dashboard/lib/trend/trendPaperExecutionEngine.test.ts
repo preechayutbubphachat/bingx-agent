@@ -13,6 +13,27 @@ import type { TrendManualPaperArmGate } from "./trendManualPaperArmGate.ts";
 import type { TrendPaperExecutionPreflight } from "./trendPaperExecutionPreflight.ts";
 import type { TrendZoneShadow } from "../market-regime/trendZoneBuilder.ts";
 import type { CanonicalMarketRegime, TimeframeIndicatorEvidence } from "../market-regime/canonicalMarketRegime.ts";
+import type { TrendPaperArmSession } from "./trendPaperArmSession.ts";
+
+const ARM_SESSION_ACTIVE: TrendPaperArmSession = {
+  schemaVersion: "trend-paper-arm-session/1",
+  sessionId: "sess-1",
+  status: "ACTIVE",
+  symbol: "BTC-USDT",
+  direction: "SHORT",
+  startedAt: "2026-06-07T23:00:00.000Z",
+  expiresAt: "2026-06-08T01:00:00.000Z",
+  maxEntries: 3,
+  usedEntries: 0,
+  maxRiskPerTradePct: 1,
+  maxSessionRiskPct: 3,
+  approvedBy: "OPERATOR",
+  paperOnly: true,
+  liveActivationAllowed: false,
+  exchangeOrderAllowed: false,
+  oldExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE",
+  notes: [],
+};
 
 const CONFIG: TrendPaperExecutionConfig = {
   enabled: true,
@@ -174,6 +195,7 @@ function run(overrides: Partial<Parameters<typeof evaluateTrendPaperExecutionEng
   return evaluateTrendPaperExecutionEngine({
     trendStrategy: SHORT_STRATEGY,
     trendManualPaperArmGate: ARM_READY,
+    trendPaperArmSession: ARM_SESSION_ACTIVE,
     trendPaperExecutionPreflight: PREFLIGHT_READY,
     trendZoneCandidate: ZONE_READY,
     canonicalMarketRegime: DOWN_REGIME,
@@ -223,6 +245,34 @@ test("T-3A hardening: OPERATOR_ARMED_PAPER_ONLY is the only valid entry trigger"
   assert.equal(result.action, "CREATE_PAPER_ENTRY");
   assert.equal(result.journalEventDraft?.countTowardGridClosedCycles, false);
   assert.equal(result.journalEventDraft?.oldExposurePolicy, "QUARANTINE_OLD_GRID_EXPOSURE");
+  assert.equal(result.liveActivationAllowed, false);
+  assert.equal(result.exchangeOrderAllowed, false);
+});
+
+test("T-3B: armed but no session → NO_ACTION / PAPER_ARM_SESSION_NOT_ACTIVE", () => {
+  const result = run({ trendPaperArmSession: null });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "PAPER_ARM_SESSION_NOT_ACTIVE");
+  assert.equal(result.journalEventDraft, null);
+  assert.equal(result.liveActivationAllowed, false);
+  assert.equal(result.exchangeOrderAllowed, false);
+});
+
+test("T-3B: expired session → NO_ACTION / PAPER_ARM_SESSION_EXPIRED", () => {
+  const result = run({ trendPaperArmSession: { ...ARM_SESSION_ACTIVE, startedAt: "2026-06-07T22:00:00.000Z", expiresAt: "2026-06-07T23:30:00.000Z" } });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "PAPER_ARM_SESSION_EXPIRED");
+});
+
+test("T-3B: limit reached → NO_ACTION / PAPER_ARM_SESSION_LIMIT_REACHED", () => {
+  const result = run({ trendPaperArmSession: { ...ARM_SESSION_ACTIVE, maxEntries: 2, usedEntries: 2 } });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "PAPER_ARM_SESSION_LIMIT_REACHED");
+});
+
+test("T-3B: active session + all gates → CREATE_PAPER_ENTRY", () => {
+  const result = run({ trendPaperArmSession: ARM_SESSION_ACTIVE });
+  assert.equal(result.action, "CREATE_PAPER_ENTRY");
   assert.equal(result.liveActivationAllowed, false);
   assert.equal(result.exchangeOrderAllowed, false);
 });

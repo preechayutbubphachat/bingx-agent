@@ -20,6 +20,7 @@ import {
   appendTrendPaperJournalEvent,
   readTrendPaperJournalSnapshot,
 } from "@/lib/trend/trendPaperJournalWriter";
+import { readTrendPaperArmSession } from "@/lib/trend/trendPaperArmSession";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -113,12 +114,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const [summary, runtimeCounters, latest, trendPaperJournalSnapshot] = await Promise.all([
+    const [summary, runtimeCounters, latest, trendPaperJournalSnapshot, trendPaperArmSessionSnapshot] = await Promise.all([
       readPaperJournal(),
       readRuntimeMonitorCounters().catch(() => null),
       readLatest(),
       readTrendPaperJournalSnapshot(),
+      readTrendPaperArmSession().catch(() => null),
     ]);
+    // Read-only: the route NEVER creates or mutates the session. An entry requires an
+    // OPERATOR_ARMED_PAPER_ONLY gate AND an externally-created ACTIVE session file.
+    const trendPaperArmSession = trendPaperArmSessionSnapshot?.session ?? null;
 
     const candles15m = latest?.marketSnapshot ? getCandlesFromSnapshot(latest.marketSnapshot, "15M") : [];
     const candles5m = latest?.marketSnapshot ? getCandlesFromSnapshot(latest.marketSnapshot, "5M") : [];
@@ -165,11 +170,13 @@ export async function POST(req: NextRequest) {
       latest5mCandles: candles5m,
       trendPaperJournalSnapshot,
       trendPaperExecutionConfig,
+      trendPaperArmSession,
     });
 
     const engineResult = evaluateTrendPaperExecutionEngine({
       trendStrategy: diagnostics.trendStrategy,
       trendManualPaperArmGate: diagnostics.trendManualPaperArmGate,
+      trendPaperArmSession,
       trendPaperExecutionPreflight: diagnostics.trendPaperExecutionPreflight,
       trendZoneCandidate: diagnostics.trendZoneCandidate,
       canonicalMarketRegime: diagnostics.canonicalMarketRegime,
@@ -210,6 +217,7 @@ export async function POST(req: NextRequest) {
       diagnostics: {
         trendPaperExecutionPreflight: diagnostics.trendPaperExecutionPreflight,
         trendPaperExecutionEngine: diagnostics.trendPaperExecutionEngine,
+        trendPaperArmSession: diagnostics.trendPaperArmSession,
         trendEdgeReview: diagnostics.trendEdgeReview,
       },
       journalState: {

@@ -54,6 +54,11 @@ import {
   type TrendPaperExecutionSnapshot,
 } from "../trend/trendPaperExecutionEngine.ts";
 import type { TrendPaperJournalSnapshot } from "../trend/trendPaperJournalWriter.ts";
+import {
+  summarizeTrendPaperArmSession,
+  type TrendPaperArmSession,
+  type TrendPaperArmSessionView,
+} from "../trend/trendPaperArmSession.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -114,6 +119,8 @@ export interface PaperLoopDiagnostics {
   trendManualPaperArmGate: TrendManualPaperArmGate;
   trendPaperExecutionPreflight: TrendPaperExecutionPreflight;
   trendPaperExecutionEngine: TrendPaperExecutionSnapshot;
+  /** T-3B — read-only paper arm session view (time-boxed operator approval window) */
+  trendPaperArmSession: TrendPaperArmSessionView;
   /** Phase T-4 — read-only trend edge / expectancy review (no journal yet → INSUFFICIENT_DATA) */
   trendEdgeReview: TrendEdgeReview;
 }
@@ -167,6 +174,7 @@ export interface PaperLoopDiagnosticsContext {
   latest5mCandles?: TrendPaperExecutionCandle[] | null;
   trendPaperJournalSnapshot?: TrendPaperJournalSnapshot | null;
   trendPaperExecutionConfig?: TrendPaperExecutionConfig | null;
+  trendPaperArmSession?: TrendPaperArmSession | null;
 }
 
 const DEFAULT_TREND_PAPER_EXECUTION_CONFIG: TrendPaperExecutionConfig = {
@@ -413,9 +421,12 @@ export function buildPaperLoopDiagnostics(
     closedTrades: trendPaperJournalSnapshot ? trendPaperJournalSnapshot.closedTrades : [],
     journalExists: trendPaperJournalSnapshot ? trendPaperJournalSnapshot.exists : true,
   });
+  const trendPaperArmSessionRaw = context.trendPaperArmSession ?? null;
+  const trendPaperArmSession = summarizeTrendPaperArmSession(trendPaperArmSessionRaw, summary.checkedAt);
   const trendPaperExecutionResult = evaluateTrendPaperExecutionEngine({
     trendStrategy,
     trendManualPaperArmGate,
+    trendPaperArmSession: trendPaperArmSessionRaw,
     trendPaperExecutionPreflight,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
@@ -505,6 +516,7 @@ export function buildPaperLoopDiagnostics(
     trendManualPaperArmGate,
     trendPaperExecutionPreflight,
     trendPaperExecutionEngine,
+    trendPaperArmSession,
     trendEdgeReview,
   };
 }

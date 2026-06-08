@@ -7,6 +7,11 @@ import type { TrendManualPaperArmGate } from "./trendManualPaperArmGate.ts";
 import type { TrendPaperExecutionPreflight } from "./trendPaperExecutionPreflight.ts";
 import type { TrendStrategy } from "./trendStrategy.ts";
 import type { TrendClosedTradeInput, TrendEdgeReview } from "./trendEdgeReview.ts";
+import {
+  isTrendPaperArmSessionActive,
+  deriveTrendPaperArmSessionStatus,
+  type TrendPaperArmSession,
+} from "./trendPaperArmSession.ts";
 
 export type TrendPaperExecutionMode = "PAPER_SIMULATION_ONLY";
 export type TrendPaperEngineAction =
@@ -77,6 +82,7 @@ export interface TrendPaperOrderIntent {
 export interface TrendPaperExecutionInput {
   trendStrategy: TrendStrategy | null | undefined;
   trendManualPaperArmGate: TrendManualPaperArmGate | null | undefined;
+  trendPaperArmSession?: TrendPaperArmSession | null | undefined;
   trendPaperExecutionPreflight: TrendPaperExecutionPreflight | null | undefined;
   trendZoneCandidate: TrendZoneShadow | null | undefined;
   canonicalMarketRegime: CanonicalMarketRegime | null | undefined;
@@ -605,6 +611,23 @@ export function evaluateTrendPaperExecutionEngine(
   // READY_FOR_OPERATOR_REVIEW is notify/review-only — it must NOT auto-enter.
   if (armGate.status === "READY_FOR_OPERATOR_REVIEW") return noAction("OPERATOR_ARM_REQUIRED");
   if (armGate.status !== "OPERATOR_ARMED_PAPER_ONLY") return noAction("ARM_GATE_NOT_READY");
+
+  // T-3B: time-boxed, entry-capped operator approval window must also be ACTIVE.
+  const session = input.trendPaperArmSession ?? null;
+  const sessionStatus = deriveTrendPaperArmSessionStatus(session, nowIso);
+  if (!session || sessionStatus === "MISSING" || sessionStatus === "INACTIVE" || sessionStatus === "REVOKED") {
+    return noAction("PAPER_ARM_SESSION_NOT_ACTIVE");
+  }
+  if (sessionStatus === "EXPIRED") return noAction("PAPER_ARM_SESSION_EXPIRED");
+  if (sessionStatus === "LIMIT_REACHED") return noAction("PAPER_ARM_SESSION_LIMIT_REACHED");
+  if (!isTrendPaperArmSessionActive(session, nowIso)) return noAction("PAPER_ARM_SESSION_NOT_ACTIVE");
+  if (!(session.direction === "ANY" || session.direction === strategy.direction)) {
+    return noAction("PAPER_ARM_SESSION_DIRECTION_NOT_ALLOWED");
+  }
+  if (finite(config.riskPerTradePct) && finite(session.maxRiskPerTradePct) && config.riskPerTradePct > session.maxRiskPerTradePct) {
+    return noAction("PAPER_ARM_SESSION_RISK_EXCEEDS_CAP");
+  }
+
   if (preflight.status !== "READY_FOR_PAPER_SIMULATION_REVIEW") return noAction("PREFLIGHT_NOT_READY");
   if (zone.buildStatus !== "READY") return noAction("TREND_ZONE_NOT_READY");
   if (!regimeMatches(input.canonicalMarketRegime, strategy.direction)) return noAction("REGIME_DIRECTION_MISMATCH");

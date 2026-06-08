@@ -244,6 +244,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendManualPaperArmGate: mapTrendManualPaperArmGate(obj(loop.trendManualPaperArmGate)),
     trendPaperExecutionPreflight: mapTrendPaperExecutionPreflight(obj(loop.trendPaperExecutionPreflight)),
     trendPaperExecutionEngine: mapTrendPaperExecutionEngine(obj(loop.trendPaperExecutionEngine)),
+    trendPaperArmSession: mapTrendPaperArmSession(obj(loop.trendPaperArmSession)),
     trendEdgeReview: mapTrendEdgeReview(obj(loop.trendEdgeReview)),
     regimeEvidence: {
       evidenceCompleteness: {
@@ -412,6 +413,32 @@ function mapTrendPaperExecutionPreflight(raw: AnyObj): PaperVM["trendPaperExecut
     journalWriteAllowed: bool(raw.journalWriteAllowed),
     simulatedFillAllowed: bool(raw.simulatedFillAllowed),
     notes: strArray(raw.notes),
+  };
+}
+
+function mapTrendPaperArmSession(raw: AnyObj): PaperVM["trendPaperArmSession"] {
+  const statusRaw = str(raw.status, "UNKNOWN");
+  const validStatus = ["INACTIVE", "ACTIVE", "EXPIRED", "REVOKED", "LIMIT_REACHED", "MISSING"];
+  const dirRaw = str(raw.direction);
+  const validDir = ["LONG", "SHORT", "ANY"];
+  return {
+    present: bool(raw.present),
+    status: (validStatus.includes(statusRaw) ? statusRaw : "UNKNOWN") as PaperVM["trendPaperArmSession"]["status"],
+    sessionId: strOrNull(raw.sessionId),
+    direction: (validDir.includes(dirRaw) ? dirRaw : null) as PaperVM["trendPaperArmSession"]["direction"],
+    symbol: strOrNull(raw.symbol),
+    startedAt: strOrNull(raw.startedAt),
+    expiresAt: strOrNull(raw.expiresAt),
+    timeRemainingMs: numOrNull(raw.timeRemainingMs),
+    maxEntries: numOrNull(raw.maxEntries),
+    usedEntries: numOrNull(raw.usedEntries),
+    remainingEntries: numOrNull(raw.remainingEntries),
+    maxRiskPerTradePct: numOrNull(raw.maxRiskPerTradePct),
+    maxSessionRiskPct: numOrNull(raw.maxSessionRiskPct),
+    active: bool(raw.active),
+    paperOnly: raw.paperOnly !== false,
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    exchangeOrderAllowed: bool(raw.exchangeOrderAllowed),
   };
 }
 

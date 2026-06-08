@@ -77,6 +77,27 @@ export interface PaperVM {
   trendPaperExecutionPreflight: TrendPaperExecutionPreflightVM;
   trendPaperExecutionEngine: TrendPaperExecutionEngineVM;
   trendEdgeReview: TrendEdgeReviewVM;
+  trendPaperArmSession: TrendPaperArmSessionVM;
+}
+
+export interface TrendPaperArmSessionVM {
+  present: boolean;
+  status: "INACTIVE" | "ACTIVE" | "EXPIRED" | "REVOKED" | "LIMIT_REACHED" | "MISSING" | "UNKNOWN";
+  sessionId: string | null;
+  direction: "LONG" | "SHORT" | "ANY" | null;
+  symbol: string | null;
+  startedAt: string | null;
+  expiresAt: string | null;
+  timeRemainingMs: number | null;
+  maxEntries: number | null;
+  usedEntries: number | null;
+  remainingEntries: number | null;
+  maxRiskPerTradePct: number | null;
+  maxSessionRiskPct: number | null;
+  active: boolean;
+  paperOnly: boolean;
+  liveActivationAllowed: boolean;
+  exchangeOrderAllowed: boolean;
 }
 
 export interface TrendPaperExecutionEngineVM {

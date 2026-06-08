@@ -72,6 +72,8 @@
 - **แยกจาก grid เด็ดขาด:** trendClosedTrades/trendExpectancy/trend epoch ≠ grid closedCycles/expectancy/epoch · ไม่แปลง old grid BUY→trend SELL · ไม่ปน expectancy
 - precondition: operator arm (T-2 OPERATOR_ARMED_PAPER_ONLY) + 5m confirm + paperArmAllowed (operator) · `liveActivationAllowed`=false เสมอ
 - **T-3A hardening patch (implemented):** `trendPaperExecutionEngine` เข้า paper entry ได้เฉพาะ arm gate = `OPERATOR_ARMED_PAPER_ONLY` เท่านั้น · `READY_FOR_OPERATOR_REVIEW` → NO_ACTION/`OPERATOR_ARM_REQUIRED` (review-only ไม่ auto-enter) · default env `TREND_PAPER_SIMULATION_ENABLED=false` → NO_ACTION
+- **T-3B/T-3C (implemented):** `trendPaperArmSession` (time-boxed/entry-capped, read-only) + engine session gate · `trendPaperArmIntentBridge` แปลง READY→ARMED เฉพาะเมื่อ session ACTIVE + `paperArmIntentRequested=true` (upgrade-only, ไม่แตะ engine) · session creation/`usedEntries` persist = manual/future (ยังไม่มี writer)
+- **T-3D Manual Dry Run Runbook (docs):** `docs/TREND_STRATEGY_T3D_MANUAL_DRY_RUN_RUNBOOK.md` — ops 3 step (env-false baseline → สร้าง session `maxEntries:1` หน้าต่าง 15–30 นาที → env-true ยิง route ครั้งเดียว) + cleanup/rollback · **ก่อนติด cron ต้องมี session-consume writer ก่อน** (usedEntries ยังไม่ persist) · status = DRY_RUN_READY แต่ยังไม่รัน
 - T-4 Edge Review = ประเมิน trend expectancy/drawdown (skill expectancy-risk-of-ruin) · T-4 ≠ live · live ต้อง approval แยก + M-0B
 - Status: T-1/T-1M/T-2 implemented (shadow/monitor/arm-gate) · T-3 = design · M-0B BLOCKED
 

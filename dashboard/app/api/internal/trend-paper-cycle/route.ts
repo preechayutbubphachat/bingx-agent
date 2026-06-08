@@ -17,10 +17,14 @@ import {
   type TrendPaperExecutionConfig,
 } from "@/lib/trend/trendPaperExecutionEngine";
 import {
-  appendTrendPaperJournalEvent,
   readTrendPaperJournalSnapshot,
 } from "@/lib/trend/trendPaperJournalWriter";
 import { readTrendPaperArmSession } from "@/lib/trend/trendPaperArmSession";
+import {
+  appendTrendPaperEntryAndConsumeSession,
+  type TrendPaperEntryAppendConsumeResult,
+  type TrendPaperArmSessionConsumeReason,
+} from "@/lib/trend/trendPaperArmSessionWriter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -190,15 +194,29 @@ export async function POST(req: NextRequest) {
       symbol: "BTC-USDT",
     });
 
-    let appendResult: Awaited<ReturnType<typeof appendTrendPaperJournalEvent>> | null = null;
+    let persistenceResult: TrendPaperEntryAppendConsumeResult = {
+      journalAppended: false,
+      journalPath: trendPaperJournalSnapshot.path,
+      sessionConsumed: false,
+      sessionConsumeReason: null as TrendPaperArmSessionConsumeReason | null,
+      sessionBefore: trendPaperArmSession,
+      sessionAfter: null as typeof trendPaperArmSession,
+      operatorAction: null as "inspect session manually" | null,
+    };
     let journalSnapshotAfter = trendPaperJournalSnapshot;
-    if (
-      trendPaperExecutionConfig.enabled &&
-      engineResult.action !== "NO_ACTION" &&
-      engineResult.journalEventDraft &&
-      engineResult.validation?.valid
-    ) {
-      appendResult = await appendTrendPaperJournalEvent(engineResult.journalEventDraft);
+    if (trendPaperExecutionConfig.enabled) {
+      persistenceResult = await appendTrendPaperEntryAndConsumeSession({
+        action: engineResult.action,
+        journalEventDraft: engineResult.journalEventDraft,
+        validation: engineResult.validation,
+        trendPaperArmSession,
+        writerOptions: {
+          expectedSessionId: trendPaperArmSession?.sessionId,
+          now: Date.now(),
+        },
+      });
+    }
+    if (persistenceResult.journalAppended) {
       journalSnapshotAfter = await readTrendPaperJournalSnapshot();
     }
 
@@ -212,8 +230,13 @@ export async function POST(req: NextRequest) {
       action: engineResult.action,
       reason: engineResult.reason,
       validation: engineResult.validation,
-      journalAppended: !!appendResult,
-      journalPath: appendResult?.path ?? trendPaperJournalSnapshot.path,
+      journalAppended: persistenceResult.journalAppended,
+      journalPath: persistenceResult.journalPath,
+      sessionConsumed: persistenceResult.sessionConsumed,
+      sessionConsumeReason: persistenceResult.sessionConsumeReason,
+      sessionBefore: persistenceResult.sessionBefore,
+      sessionAfter: persistenceResult.sessionAfter,
+      operatorAction: persistenceResult.operatorAction,
       engine: engineResult,
       diagnostics: {
         trendPaperExecutionPreflight: diagnostics.trendPaperExecutionPreflight,

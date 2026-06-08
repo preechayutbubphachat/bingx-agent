@@ -43,6 +43,7 @@ import {
 } from "@/lib/market-regime/canonicalMarketRegime";
 import { buildTrendZoneShadow } from "@/lib/market-regime/trendZoneBuilder";
 import { readTrendPaperJournalSnapshot } from "@/lib/trend/trendPaperJournalWriter";
+import { readTrendPaperArmSession } from "@/lib/trend/trendPaperArmSession";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -104,6 +105,7 @@ export async function GET() {
       const sessionMeta = (latest?.marketSnapshot as { meta?: { session?: { current?: string; risk_overlay?: { false_breakout_risk?: string } } } } | null)?.meta?.session ?? null;
       const latest1hClose = candles1h.length ? candles1h[candles1h.length - 1]?.close ?? null : null;
       const trendPaperJournalSnapshot = await readTrendPaperJournalSnapshot().catch(() => null);
+      const trendPaperArmSessionSnapshot = await readTrendPaperArmSession().catch(() => null);
       const trendPaperExecutionConfig = {
         enabled: envBool(process.env.TREND_PAPER_SIMULATION_ENABLED, false),
         mode: "PAPER_SIMULATION_ONLY" as const,
@@ -139,6 +141,7 @@ export async function GET() {
         latest5mCandles: candles5m,
         trendPaperJournalSnapshot,
         trendPaperExecutionConfig,
+        trendPaperArmSession: trendPaperArmSessionSnapshot?.session ?? null,
       });
     } catch {
       paperLoopDiagnostics = null;

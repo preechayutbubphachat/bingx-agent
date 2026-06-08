@@ -377,3 +377,36 @@ test("trend strategy shadow diagnostics are additive and never activate paper or
   assert.equal(d.trendPaperEpoch.source, "TREND_STRATEGY");
   assert.equal(d.trendPaperEpoch.countTowardGridClosedCycles, false);
 });
+
+test("trend paper arm session exposes read-only consumeStatus", () => {
+  const d = buildPaperLoopDiagnostics(
+    summary({ recentEvents: [] }),
+    null,
+    {
+      trendPaperArmSession: {
+        schemaVersion: "trend-paper-arm-session/1",
+        sessionId: "sess-1",
+        status: "ACTIVE",
+        symbol: "BTC-USDT",
+        direction: "SHORT",
+        startedAt: "2026-06-08T00:00:00.000Z",
+        expiresAt: "2026-06-08T01:00:00.000Z",
+        maxEntries: 3,
+        usedEntries: 1,
+        maxRiskPerTradePct: 1,
+        maxSessionRiskPct: 3,
+        approvedBy: "OPERATOR",
+        paperOnly: true,
+        liveActivationAllowed: false,
+        exchangeOrderAllowed: false,
+        oldExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE",
+        notes: [],
+      },
+    }
+  );
+
+  assert.equal(d.trendPaperArmSession.consumeStatus.usedEntries, 1);
+  assert.equal(d.trendPaperArmSession.consumeStatus.maxEntries, 3);
+  assert.equal(d.trendPaperArmSession.consumeStatus.status, "ACTIVE");
+  assert.equal(d.trendPaperArmSession.consumeStatus.lastKnown, "read-only");
+});

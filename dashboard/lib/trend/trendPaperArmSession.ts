@@ -190,6 +190,12 @@ export interface TrendPaperArmSessionView {
   maxRiskPerTradePct: number | null;
   maxSessionRiskPct: number | null;
   active: boolean;
+  consumeStatus: {
+    usedEntries: number | null;
+    maxEntries: number | null;
+    status: TrendPaperArmSessionStatus | "MISSING";
+    lastKnown: "read-only";
+  };
   paperOnly: true;
   liveActivationAllowed: false;
   exchangeOrderAllowed: false;
@@ -209,9 +215,12 @@ export function summarizeTrendPaperArmSession(
     return {
       present: false, status: "MISSING", sessionId: null, direction: null, symbol: null,
       startedAt: null, expiresAt: null, timeRemainingMs: null, maxEntries: null, usedEntries: null,
-      remainingEntries: null, maxRiskPerTradePct: null, maxSessionRiskPct: null, active: false, ...base,
+      remainingEntries: null, maxRiskPerTradePct: null, maxSessionRiskPct: null, active: false,
+      consumeStatus: { usedEntries: null, maxEntries: null, status: "MISSING", lastKnown: "read-only" },
+      ...base,
     };
   }
+  const effectiveStatus = deriveTrendPaperArmSessionStatus(session, now);
   const nowMs = parseTs(now instanceof Date ? now.toISOString() : now);
   const expires = parseTs(session.expiresAt);
   const timeRemainingMs = nowMs != null && expires != null ? Math.max(0, expires - nowMs) : null;
@@ -219,7 +228,7 @@ export function summarizeTrendPaperArmSession(
     ? Math.max(0, session.maxEntries - session.usedEntries) : null;
   return {
     present: true,
-    status: deriveTrendPaperArmSessionStatus(session, now),
+    status: effectiveStatus,
     sessionId: session.sessionId ?? null,
     direction: session.direction ?? null,
     symbol: session.symbol ?? null,
@@ -232,6 +241,12 @@ export function summarizeTrendPaperArmSession(
     maxRiskPerTradePct: finite(session.maxRiskPerTradePct) ? session.maxRiskPerTradePct : null,
     maxSessionRiskPct: finite(session.maxSessionRiskPct) ? session.maxSessionRiskPct : null,
     active: isTrendPaperArmSessionActive(session, now),
+    consumeStatus: {
+      usedEntries: finite(session.usedEntries) ? session.usedEntries : null,
+      maxEntries: finite(session.maxEntries) ? session.maxEntries : null,
+      status: effectiveStatus,
+      lastKnown: "read-only",
+    },
     ...base,
   };
 }

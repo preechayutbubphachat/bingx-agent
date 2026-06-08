@@ -289,6 +289,16 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       liveActivationAllowed: false,
       exchangeOrderAllowed: false,
     },
+    trendPaperArmIntentBridge: {
+      rawStatus: "READY_FOR_OPERATOR_REVIEW",
+      effectiveStatus: "READY_FOR_OPERATOR_REVIEW",
+      source: "SESSION_MISSING",
+      upgradedToArmed: false,
+      paperArmIntentRequested: false,
+      reasons: ["ข้อมูลจำลอง: ไม่มี session arm intent"],
+      paperActivationAllowed: false,
+      liveActivationAllowed: false,
+    },
     trendEdgeReview: {
       phase: "T-4_EDGE_REVIEW",
       status: "INSUFFICIENT_DATA",

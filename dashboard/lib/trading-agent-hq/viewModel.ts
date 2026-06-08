@@ -78,6 +78,18 @@ export interface PaperVM {
   trendPaperExecutionEngine: TrendPaperExecutionEngineVM;
   trendEdgeReview: TrendEdgeReviewVM;
   trendPaperArmSession: TrendPaperArmSessionVM;
+  trendPaperArmIntentBridge: TrendPaperArmIntentBridgeVM;
+}
+
+export interface TrendPaperArmIntentBridgeVM {
+  rawStatus: string | null;
+  effectiveStatus: string | null;
+  source: "RAW_GATE" | "SESSION_ARM_INTENT" | "SESSION_MISSING" | "SESSION_EXPIRED" | "SESSION_NOT_ACTIVE" | "SESSION_LIMIT_REACHED" | "SESSION_NO_ARM_INTENT" | "UNKNOWN";
+  upgradedToArmed: boolean;
+  paperArmIntentRequested: boolean;
+  reasons: string[];
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
 }
 
 export interface TrendPaperArmSessionVM {

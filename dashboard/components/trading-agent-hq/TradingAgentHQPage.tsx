@@ -31,6 +31,7 @@ import TrendPaperExecutionPreflightCard from "./TrendPaperExecutionPreflightCard
 import TrendPaperExecutionEngineCard from "./TrendPaperExecutionEngineCard";
 import TrendEdgeReviewCard from "./TrendEdgeReviewCard";
 import TrendPaperArmSessionCard from "./TrendPaperArmSessionCard";
+import TrendPaperArmIntentBridgeCard from "./TrendPaperArmIntentBridgeCard";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
 const edgeStatusLabel = (status: string) =>
@@ -153,6 +154,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         <TrendTransitionMonitorCard paper={vm.paper} />
         <TrendManualPaperArmGateCard paper={vm.paper} />
         <TrendPaperArmSessionCard paper={vm.paper} />
+        <TrendPaperArmIntentBridgeCard paper={vm.paper} />
         <TrendPaperExecutionPreflightCard paper={vm.paper} />
         <TrendPaperExecutionEngineCard paper={vm.paper} />
         <TrendEdgeReviewCard paper={vm.paper} />

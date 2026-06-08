@@ -59,6 +59,10 @@ import {
   type TrendPaperArmSession,
   type TrendPaperArmSessionView,
 } from "../trend/trendPaperArmSession.ts";
+import {
+  deriveEffectiveTrendManualPaperArmGate,
+  type TrendPaperArmIntentBridgeResult,
+} from "../trend/trendPaperArmIntentBridge.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -121,6 +125,10 @@ export interface PaperLoopDiagnostics {
   trendPaperExecutionEngine: TrendPaperExecutionSnapshot;
   /** T-3B — read-only paper arm session view (time-boxed operator approval window) */
   trendPaperArmSession: TrendPaperArmSessionView;
+  /** T-3C — raw gate (display), effective gate (consumed by engine), and the intent bridge derivation */
+  trendManualPaperArmGateRaw: TrendManualPaperArmGate;
+  trendManualPaperArmGateEffective: TrendManualPaperArmGate;
+  trendPaperArmIntentBridge: TrendPaperArmIntentBridgeResult;
   /** Phase T-4 — read-only trend edge / expectancy review (no journal yet → INSUFFICIENT_DATA) */
   trendEdgeReview: TrendEdgeReview;
 }
@@ -423,9 +431,16 @@ export function buildPaperLoopDiagnostics(
   });
   const trendPaperArmSessionRaw = context.trendPaperArmSession ?? null;
   const trendPaperArmSession = summarizeTrendPaperArmSession(trendPaperArmSessionRaw, summary.checkedAt);
+  // T-3C bridge: derive the effective gate the engine consumes. Raw gate is preserved/exposed for display.
+  const trendPaperArmIntentBridge = deriveEffectiveTrendManualPaperArmGate({
+    trendManualPaperArmGate,
+    trendPaperArmSession: trendPaperArmSessionRaw,
+    now: summary.checkedAt,
+  });
+  const trendManualPaperArmGateEffective = trendPaperArmIntentBridge.effectiveGate ?? trendManualPaperArmGate;
   const trendPaperExecutionResult = evaluateTrendPaperExecutionEngine({
     trendStrategy,
-    trendManualPaperArmGate,
+    trendManualPaperArmGate: trendManualPaperArmGateEffective,
     trendPaperArmSession: trendPaperArmSessionRaw,
     trendPaperExecutionPreflight,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
@@ -514,6 +529,9 @@ export function buildPaperLoopDiagnostics(
     trendPaperEpoch,
     trendTransitionMonitor,
     trendManualPaperArmGate,
+    trendManualPaperArmGateRaw: trendManualPaperArmGate,
+    trendManualPaperArmGateEffective,
+    trendPaperArmIntentBridge,
     trendPaperExecutionPreflight,
     trendPaperExecutionEngine,
     trendPaperArmSession,

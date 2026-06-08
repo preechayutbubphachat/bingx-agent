@@ -245,6 +245,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendPaperExecutionPreflight: mapTrendPaperExecutionPreflight(obj(loop.trendPaperExecutionPreflight)),
     trendPaperExecutionEngine: mapTrendPaperExecutionEngine(obj(loop.trendPaperExecutionEngine)),
     trendPaperArmSession: mapTrendPaperArmSession(obj(loop.trendPaperArmSession)),
+    trendPaperArmIntentBridge: mapTrendPaperArmIntentBridge(obj(loop.trendPaperArmIntentBridge)),
     trendEdgeReview: mapTrendEdgeReview(obj(loop.trendEdgeReview)),
     regimeEvidence: {
       evidenceCompleteness: {
@@ -413,6 +414,21 @@ function mapTrendPaperExecutionPreflight(raw: AnyObj): PaperVM["trendPaperExecut
     journalWriteAllowed: bool(raw.journalWriteAllowed),
     simulatedFillAllowed: bool(raw.simulatedFillAllowed),
     notes: strArray(raw.notes),
+  };
+}
+
+function mapTrendPaperArmIntentBridge(raw: AnyObj): PaperVM["trendPaperArmIntentBridge"] {
+  const sourceRaw = str(raw.source, "UNKNOWN");
+  const validSource = ["RAW_GATE", "SESSION_ARM_INTENT", "SESSION_MISSING", "SESSION_EXPIRED", "SESSION_NOT_ACTIVE", "SESSION_LIMIT_REACHED", "SESSION_NO_ARM_INTENT"];
+  return {
+    rawStatus: strOrNull(raw.rawStatus),
+    effectiveStatus: strOrNull(raw.effectiveStatus),
+    source: (validSource.includes(sourceRaw) ? sourceRaw : "UNKNOWN") as PaperVM["trendPaperArmIntentBridge"]["source"],
+    upgradedToArmed: bool(raw.upgradedToArmed),
+    paperArmIntentRequested: bool(raw.paperArmIntentRequested),
+    reasons: strArray(raw.reasons),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
   };
 }
 

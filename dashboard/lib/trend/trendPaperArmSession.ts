@@ -32,6 +32,8 @@ export interface TrendPaperArmSession {
   maxRiskPerTradePct: number;
   maxSessionRiskPct: number;
   approvedBy: "OPERATOR";
+  /** T-3C: true = operator manually approved paper-only arm for THIS session. NOT live, NOT exchange, NOT M-0B. */
+  paperArmIntentRequested?: boolean;
   paperOnly: true;
   liveActivationAllowed: false;
   exchangeOrderAllowed: false;
@@ -106,6 +108,9 @@ export function validateTrendPaperArmSession(session: unknown): ValidationResult
   }
 
   if (s.approvedBy !== "OPERATOR") errors.push("approvedBy must be OPERATOR");
+  if (s.paperArmIntentRequested !== undefined && typeof s.paperArmIntentRequested !== "boolean") {
+    errors.push("paperArmIntentRequested must be boolean when present");
+  }
 
   // Hard safety invariants — must be exactly these values
   if (s.paperOnly !== true) errors.push("paperOnly must be true");

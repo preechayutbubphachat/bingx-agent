@@ -175,7 +175,8 @@ export async function POST(req: NextRequest) {
 
     const engineResult = evaluateTrendPaperExecutionEngine({
       trendStrategy: diagnostics.trendStrategy,
-      trendManualPaperArmGate: diagnostics.trendManualPaperArmGate,
+      // T-3C: engine consumes the EFFECTIVE gate (raw READY upgraded to ARMED only via valid ACTIVE session intent)
+      trendManualPaperArmGate: diagnostics.trendManualPaperArmGateEffective,
       trendPaperArmSession,
       trendPaperExecutionPreflight: diagnostics.trendPaperExecutionPreflight,
       trendZoneCandidate: diagnostics.trendZoneCandidate,
@@ -218,6 +219,9 @@ export async function POST(req: NextRequest) {
         trendPaperExecutionPreflight: diagnostics.trendPaperExecutionPreflight,
         trendPaperExecutionEngine: diagnostics.trendPaperExecutionEngine,
         trendPaperArmSession: diagnostics.trendPaperArmSession,
+        trendManualPaperArmGateRaw: diagnostics.trendManualPaperArmGateRaw,
+        trendManualPaperArmGateEffective: diagnostics.trendManualPaperArmGateEffective,
+        trendPaperArmIntentBridge: diagnostics.trendPaperArmIntentBridge,
         trendEdgeReview: diagnostics.trendEdgeReview,
       },
       journalState: {

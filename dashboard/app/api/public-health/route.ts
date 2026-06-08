@@ -6,6 +6,12 @@ export const dynamic = "force-dynamic";
 
 type RuntimeFileStatus = "exists" | "missing" | "optional_missing";
 type PublicApprovalStatus = "approved" | "not_approved";
+type RuntimeCoreFilename =
+  | "latest_decision.json"
+  | "market_snapshot.json"
+  | "scheduler_heartbeat.json"
+  | "plan_status.json"
+  | "news_context.json";
 
 const PROJECT_ROOT =
   process.env.BINGX_AGENT_DIR?.trim() ||
@@ -24,9 +30,24 @@ function exchangeManualApproval(): PublicApprovalStatus {
     : "not_approved";
 }
 
-function fileStatus(filename: string, optional = false): RuntimeFileStatus {
+function runtimeFilePath(filename: RuntimeCoreFilename): string {
+  switch (filename) {
+    case "latest_decision.json":
+      return path.join(PROJECT_ROOT, "latest_decision.json");
+    case "market_snapshot.json":
+      return path.join(PROJECT_ROOT, "market_snapshot.json");
+    case "scheduler_heartbeat.json":
+      return path.join(PROJECT_ROOT, "scheduler_heartbeat.json");
+    case "plan_status.json":
+      return path.join(PROJECT_ROOT, "plan_status.json");
+    case "news_context.json":
+      return path.join(PROJECT_ROOT, "news_context.json");
+  }
+}
+
+function fileStatus(filename: RuntimeCoreFilename, optional = false): RuntimeFileStatus {
   try {
-    return fs.existsSync(path.join(PROJECT_ROOT, filename))
+    return fs.existsSync(runtimeFilePath(filename))
       ? "exists"
       : optional
         ? "optional_missing"

@@ -111,8 +111,15 @@ export type RuntimeAuditReport = {
 
 // ─── File Definitions ───────────────────────────────────────────────────────
 
+type AuditRuntimeFileName =
+  | "market_snapshot.json"
+  | "latest_decision.json"
+  | "plan_status.json"
+  | "plan_status_state.json"
+  | "scheduler_heartbeat.json";
+
 type FileSpec = {
-  fileName: string;
+  fileName: AuditRuntimeFileName;
   role: string;
   authority: AuditFileAuthority;
   /** threshold (วินาที) ก่อนถือว่า stale */
@@ -158,6 +165,21 @@ const AUDIT_FILES: FileSpec[] = [
     required: false,
   },
 ];
+
+function auditRuntimeFilePath(rootDir: string, fileName: AuditRuntimeFileName): string {
+  switch (fileName) {
+    case "market_snapshot.json":
+      return path.join(rootDir, "market_snapshot.json");
+    case "latest_decision.json":
+      return path.join(rootDir, "latest_decision.json");
+    case "plan_status.json":
+      return path.join(rootDir, "plan_status.json");
+    case "plan_status_state.json":
+      return path.join(rootDir, "plan_status_state.json");
+    case "scheduler_heartbeat.json":
+      return path.join(rootDir, "scheduler_heartbeat.json");
+  }
+}
 
 // ─── Root Dir Resolution ─────────────────────────────────────────────────────
 
@@ -226,7 +248,7 @@ async function auditFile(
   rootDir: string,
   nowMs: number
 ): Promise<AuditFileResult> {
-  const filePath = path.join(rootDir, spec.fileName);
+  const filePath = auditRuntimeFilePath(rootDir, spec.fileName);
 
   // ── Case 1: check exists ──────────────────────────────────────────────────
   let statResult: Awaited<ReturnType<typeof fs.stat>> | null = null;
@@ -474,7 +496,7 @@ export async function runRuntimeAudit(
         fileName: spec.fileName,
         role: spec.role,
         authority: spec.authority,
-        expectedPath: path.join(rootDir, spec.fileName),
+        expectedPath: auditRuntimeFilePath(rootDir, spec.fileName),
         exists: false,
         readable: false,
         validJson: null,

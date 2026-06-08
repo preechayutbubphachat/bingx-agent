@@ -243,6 +243,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendTransitionMonitor: mapTrendTransitionMonitor(obj(loop.trendTransitionMonitor)),
     trendManualPaperArmGate: mapTrendManualPaperArmGate(obj(loop.trendManualPaperArmGate)),
     trendPaperExecutionPreflight: mapTrendPaperExecutionPreflight(obj(loop.trendPaperExecutionPreflight)),
+    trendPaperExecutionEngine: mapTrendPaperExecutionEngine(obj(loop.trendPaperExecutionEngine)),
     trendEdgeReview: mapTrendEdgeReview(obj(loop.trendEdgeReview)),
     regimeEvidence: {
       evidenceCompleteness: {
@@ -411,6 +412,43 @@ function mapTrendPaperExecutionPreflight(raw: AnyObj): PaperVM["trendPaperExecut
     journalWriteAllowed: bool(raw.journalWriteAllowed),
     simulatedFillAllowed: bool(raw.simulatedFillAllowed),
     notes: strArray(raw.notes),
+  };
+}
+
+function mapTrendPaperExecutionEngine(raw: AnyObj): PaperVM["trendPaperExecutionEngine"] {
+  const position = obj(raw.openTrendPaperPosition);
+  const actionRaw = str(raw.lastAction, "UNKNOWN");
+  const validActions = ["NO_ACTION", "CREATE_PAPER_ENTRY", "CREATE_PAPER_EXIT", "CREATE_PAPER_CANCEL"];
+  const dirRaw = str(position.direction, "");
+  const statusRaw = str(position.status, "UNKNOWN");
+  return {
+    enabled: bool(raw.enabled),
+    mode: str(raw.mode, "UNKNOWN") === "PAPER_SIMULATION_ONLY" ? "PAPER_SIMULATION_ONLY" : "UNKNOWN",
+    lastAction: (validActions.includes(actionRaw) ? actionRaw : "UNKNOWN") as PaperVM["trendPaperExecutionEngine"]["lastAction"],
+    lastReason: strOrNull(raw.lastReason),
+    openTrendPaperPosition: Object.keys(position).length
+      ? {
+          positionId: strOrNull(position.positionId),
+          setupId: strOrNull(position.setupId),
+          direction: dirRaw === "LONG" || dirRaw === "SHORT" ? dirRaw : null,
+          status: (["OPEN", "PARTIAL_TP1", "CLOSED", "CANCELLED"].includes(statusRaw) ? statusRaw : "UNKNOWN") as NonNullable<PaperVM["trendPaperExecutionEngine"]["openTrendPaperPosition"]>["status"],
+          entryPrice: numOrNull(position.entryPrice),
+          stopLoss: numOrNull(position.stopLoss),
+          takeProfit1: numOrNull(position.takeProfit1),
+          takeProfit2: numOrNull(position.takeProfit2),
+          quantityPaper: numOrNull(position.quantityPaper),
+          remainingQuantityPaper: numOrNull(position.remainingQuantityPaper),
+          openedAt: strOrNull(position.openedAt),
+        }
+      : null,
+    lastEntryAt: strOrNull(raw.lastEntryAt),
+    lastExitAt: strOrNull(raw.lastExitAt),
+    trendPaperClosedTrades: num(raw.trendPaperClosedTrades, 0),
+    winRate: numOrNull(raw.winRate),
+    netExpectancyAfterCosts: numOrNull(raw.netExpectancyAfterCosts),
+    paperOnly: bool(raw.paperOnly),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    exchangeOrderAllowed: bool(raw.exchangeOrderAllowed),
   };
 }
 

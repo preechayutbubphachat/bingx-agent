@@ -75,7 +75,36 @@ export interface PaperVM {
   trendTransitionMonitor: TrendTransitionMonitorVM;
   trendManualPaperArmGate: TrendManualPaperArmGateVM;
   trendPaperExecutionPreflight: TrendPaperExecutionPreflightVM;
+  trendPaperExecutionEngine: TrendPaperExecutionEngineVM;
   trendEdgeReview: TrendEdgeReviewVM;
+}
+
+export interface TrendPaperExecutionEngineVM {
+  enabled: boolean;
+  mode: "PAPER_SIMULATION_ONLY" | "UNKNOWN";
+  lastAction: "NO_ACTION" | "CREATE_PAPER_ENTRY" | "CREATE_PAPER_EXIT" | "CREATE_PAPER_CANCEL" | "UNKNOWN";
+  lastReason: string | null;
+  openTrendPaperPosition: {
+    positionId: string | null;
+    setupId: string | null;
+    direction: "LONG" | "SHORT" | null;
+    status: "OPEN" | "PARTIAL_TP1" | "CLOSED" | "CANCELLED" | "UNKNOWN";
+    entryPrice: number | null;
+    stopLoss: number | null;
+    takeProfit1: number | null;
+    takeProfit2: number | null;
+    quantityPaper: number | null;
+    remainingQuantityPaper: number | null;
+    openedAt: string | null;
+  } | null;
+  lastEntryAt: string | null;
+  lastExitAt: string | null;
+  trendPaperClosedTrades: number;
+  winRate: number | null;
+  netExpectancyAfterCosts: number | null;
+  paperOnly: boolean;
+  liveActivationAllowed: boolean;
+  exchangeOrderAllowed: boolean;
 }
 
 export interface TrendEdgeReviewVM {

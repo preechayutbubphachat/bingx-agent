@@ -46,6 +46,14 @@ import {
   evaluateTrendEdgeReview,
   type TrendEdgeReview,
 } from "../trend/trendEdgeReview.ts";
+import {
+  evaluateTrendPaperExecutionEngine,
+  summarizeTrendPaperExecutionSnapshot,
+  type TrendPaperExecutionCandle,
+  type TrendPaperExecutionConfig,
+  type TrendPaperExecutionSnapshot,
+} from "../trend/trendPaperExecutionEngine.ts";
+import type { TrendPaperJournalSnapshot } from "../trend/trendPaperJournalWriter.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -105,6 +113,7 @@ export interface PaperLoopDiagnostics {
   trendTransitionMonitor: TrendTransitionMonitor;
   trendManualPaperArmGate: TrendManualPaperArmGate;
   trendPaperExecutionPreflight: TrendPaperExecutionPreflight;
+  trendPaperExecutionEngine: TrendPaperExecutionSnapshot;
   /** Phase T-4 — read-only trend edge / expectancy review (no journal yet → INSUFFICIENT_DATA) */
   trendEdgeReview: TrendEdgeReview;
 }
@@ -155,7 +164,22 @@ export interface PaperLoopDiagnosticsContext {
   multiTimeframeIndicatorEvidence?: MultiTimeframeIndicatorEvidence | null;
   trendZoneCandidate?: TrendZoneShadow | null;
   session?: string | null;
+  latest5mCandles?: TrendPaperExecutionCandle[] | null;
+  trendPaperJournalSnapshot?: TrendPaperJournalSnapshot | null;
+  trendPaperExecutionConfig?: TrendPaperExecutionConfig | null;
 }
+
+const DEFAULT_TREND_PAPER_EXECUTION_CONFIG: TrendPaperExecutionConfig = {
+  enabled: false,
+  mode: "PAPER_SIMULATION_ONLY",
+  maxConcurrentTrendPositions: 1,
+  riskPerTradePct: 1,
+  minRewardRisk: 1.2,
+  feePct: 0.05,
+  slippagePct: 0.02,
+  allowShort: true,
+  allowLong: true,
+};
 
 function priceVsGridOf(price: number | null, lower: number | null, upper: number | null): PriceVsGrid {
   if (price == null || lower == null || upper == null) return "UNKNOWN";
@@ -381,9 +405,37 @@ export function buildPaperLoopDiagnostics(
       stale: context.canonicalMarketRegime?.sourceFreshness?.status === "stale",
     },
   });
+  const trendPaperExecutionConfig = context.trendPaperExecutionConfig ?? DEFAULT_TREND_PAPER_EXECUTION_CONFIG;
+  const trendPaperJournalSnapshot = context.trendPaperJournalSnapshot ?? null;
   // T-4 — read-only edge review. No trend_paper_journal/execution exists yet, so the
   // closed-trade source is present-but-empty → INSUFFICIENT_DATA (trendClosedTrades = 0).
-  const trendEdgeReview = evaluateTrendEdgeReview({ closedTrades: [] });
+  const trendEdgeReview = evaluateTrendEdgeReview({
+    closedTrades: trendPaperJournalSnapshot ? trendPaperJournalSnapshot.closedTrades : [],
+    journalExists: trendPaperJournalSnapshot ? trendPaperJournalSnapshot.exists : true,
+  });
+  const trendPaperExecutionResult = evaluateTrendPaperExecutionEngine({
+    trendStrategy,
+    trendManualPaperArmGate,
+    trendPaperExecutionPreflight,
+    trendZoneCandidate: context.trendZoneCandidate ?? null,
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
+    currentPrice,
+    latest5mCandles: context.latest5mCandles ?? [],
+    openTrendPaperPosition: trendPaperJournalSnapshot?.openPosition ?? null,
+    config: trendPaperExecutionConfig,
+    symbol: "BTC-USDT",
+    now: summary.checkedAt,
+  });
+  const trendPaperExecutionEngine = summarizeTrendPaperExecutionSnapshot({
+    result: trendPaperExecutionResult,
+    config: trendPaperExecutionConfig,
+    openTrendPaperPosition: trendPaperJournalSnapshot?.openPosition ?? null,
+    lastEntryAt: trendPaperJournalSnapshot?.lastEntryAt ?? null,
+    lastExitAt: trendPaperJournalSnapshot?.lastExitAt ?? null,
+    closedTrades: trendPaperJournalSnapshot?.closedTrades ?? [],
+    edgeReview: trendEdgeReview,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -452,6 +504,7 @@ export function buildPaperLoopDiagnostics(
     trendTransitionMonitor,
     trendManualPaperArmGate,
     trendPaperExecutionPreflight,
+    trendPaperExecutionEngine,
     trendEdgeReview,
   };
 }

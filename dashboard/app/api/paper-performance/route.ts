@@ -42,11 +42,25 @@ import {
   buildMultiTimeframeIndicatorEvidence,
 } from "@/lib/market-regime/canonicalMarketRegime";
 import { buildTrendZoneShadow } from "@/lib/market-regime/trendZoneBuilder";
+import { readTrendPaperJournalSnapshot } from "@/lib/trend/trendPaperJournalWriter";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const PAPER_PERFORMANCE_VERSION = "1.1.0";
+
+function envBool(value: string | undefined, fallback: boolean): boolean {
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return fallback;
+}
+
+function envNumber(value: string | undefined, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
 
 export async function GET() {
   try {
@@ -60,6 +74,9 @@ export async function GET() {
       const latest = await readLatest().catch(() => null);
       const candles15m = latest?.marketSnapshot
         ? getCandlesFromSnapshot(latest.marketSnapshot, "15M")
+        : [];
+      const candles5m = latest?.marketSnapshot
+        ? getCandlesFromSnapshot(latest.marketSnapshot, "5M")
         : [];
       const indicatorEvidence = candles15m.length
         ? computeIndicatorEvidence(candles15m, { timeframe: "15m" })
@@ -86,6 +103,18 @@ export async function GET() {
       const tf1h = multiTimeframeIndicatorEvidence["1H"];
       const sessionMeta = (latest?.marketSnapshot as { meta?: { session?: { current?: string; risk_overlay?: { false_breakout_risk?: string } } } } | null)?.meta?.session ?? null;
       const latest1hClose = candles1h.length ? candles1h[candles1h.length - 1]?.close ?? null : null;
+      const trendPaperJournalSnapshot = await readTrendPaperJournalSnapshot().catch(() => null);
+      const trendPaperExecutionConfig = {
+        enabled: envBool(process.env.TREND_PAPER_SIMULATION_ENABLED, false),
+        mode: "PAPER_SIMULATION_ONLY" as const,
+        maxConcurrentTrendPositions: envNumber(process.env.TREND_PAPER_MAX_CONCURRENT_POSITIONS, 1),
+        riskPerTradePct: envNumber(process.env.TREND_PAPER_RISK_PER_TRADE_PCT, 1),
+        minRewardRisk: envNumber(process.env.TREND_PAPER_MIN_REWARD_RISK, 1.2),
+        feePct: envNumber(process.env.TREND_PAPER_FEE_PCT, 0.05),
+        slippagePct: envNumber(process.env.TREND_PAPER_SLIPPAGE_PCT, 0.02),
+        allowShort: envBool(process.env.TREND_PAPER_ALLOW_SHORT, true),
+        allowLong: envBool(process.env.TREND_PAPER_ALLOW_LONG, true),
+      };
       const trendZoneCandidate = buildTrendZoneShadow({
         regime: canonicalMarketRegime.regime,
         direction: canonicalMarketRegime.direction,
@@ -107,6 +136,9 @@ export async function GET() {
         multiTimeframeIndicatorEvidence,
         trendZoneCandidate,
         session: sessionMeta?.current ?? null,
+        latest5mCandles: candles5m,
+        trendPaperJournalSnapshot,
+        trendPaperExecutionConfig,
       });
     } catch {
       paperLoopDiagnostics = null;

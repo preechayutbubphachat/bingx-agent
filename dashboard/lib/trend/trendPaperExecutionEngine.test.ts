@@ -1,0 +1,308 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  evaluateTrendPaperExecutionEngine,
+  summarizeTrendPaperExecutionSnapshot,
+  type TrendPaperExecutionCandle,
+  type TrendPaperExecutionConfig,
+  type TrendPaperPosition,
+} from "./trendPaperExecutionEngine.ts";
+import type { TrendStrategy } from "./trendStrategy.ts";
+import type { TrendManualPaperArmGate } from "./trendManualPaperArmGate.ts";
+import type { TrendPaperExecutionPreflight } from "./trendPaperExecutionPreflight.ts";
+import type { TrendZoneShadow } from "../market-regime/trendZoneBuilder.ts";
+import type { CanonicalMarketRegime, TimeframeIndicatorEvidence } from "../market-regime/canonicalMarketRegime.ts";
+
+const CONFIG: TrendPaperExecutionConfig = {
+  enabled: true,
+  mode: "PAPER_SIMULATION_ONLY",
+  maxConcurrentTrendPositions: 1,
+  riskPerTradePct: 1,
+  minRewardRisk: 1.2,
+  feePct: 0.05,
+  slippagePct: 0.02,
+  allowShort: true,
+  allowLong: true,
+};
+
+const SHORT_STRATEGY: TrendStrategy = {
+  enabled: false,
+  phase: "T-1_SHADOW",
+  status: "AWAITING_CONFIRMATION",
+  direction: "SHORT",
+  setupReason: "price_inside_pullback_zone_waiting_5m_confirm",
+  entryZone: [63142, 63453],
+  currentPrice: 63300,
+  distanceToEntryZonePct: 0,
+  invalidation: 64552,
+  target1: 61825,
+  target2: 61050,
+  rewardRisk: 1.25,
+  confirmationRequired: true,
+  confirmationStatus: "WAITING_5M_CONFIRM",
+  riskStatus: "PASS",
+  oldExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE",
+  countTowardGridClosedCycles: false,
+  countTowardTrendEvidence: false,
+  paperActivationAllowed: false,
+  liveActivationAllowed: false,
+  shadowOnly: true,
+  reasons: [],
+  warnings: [],
+};
+
+const ARM_READY: TrendManualPaperArmGate = {
+  phase: "T-2_READY_FOR_OPERATOR",
+  status: "READY_FOR_OPERATOR_REVIEW",
+  requiredConditions: [],
+  passedConditions: [],
+  failedConditions: [],
+  operatorActionRequired: true,
+  setupId: "trend-arm:SHORT:DOWNTREND:63142-63453",
+  expiryAt: null,
+  paperActivationAllowed: false,
+  liveActivationAllowed: false,
+  notes: [],
+};
+
+const PREFLIGHT_READY: TrendPaperExecutionPreflight = {
+  phase: "T-3_PREFLIGHT",
+  status: "READY_FOR_PAPER_SIMULATION_REVIEW",
+  requiredInputs: [],
+  passedInputs: [],
+  failedInputs: [],
+  setupId: "trend-arm:SHORT:DOWNTREND:63142-63453",
+  direction: "SHORT",
+  entry: 63297.5,
+  stopLoss: 64552,
+  takeProfit1: 61825,
+  takeProfit2: 61050,
+  rewardRisk: 1.25,
+  paperArmAllowed: false,
+  paperActivationAllowed: false,
+  liveActivationAllowed: false,
+  journalWriteAllowed: false,
+  simulatedFillAllowed: false,
+  oldExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE",
+  notes: [],
+};
+
+const ZONE_READY: TrendZoneShadow = {
+  buildStatus: "READY",
+  dir: "DOWN",
+  pullbackZone: [63142, 63453],
+  invalidation: 64552,
+  triggerRule: "wait_5m_confirm",
+  targets: { t1: 61825, t2: 61050 },
+  entry: { type: "CONFIRM", hint: "wait" },
+  smc: { swingHigh1h: 64500, swingLow1h: 61825, eq1h: 63162.5, liquidityNote: null },
+  warnings: [],
+  shadowOnly: true,
+  paperActivationAllowed: false,
+  liveActivationAllowed: false,
+};
+
+const DOWN_REGIME: CanonicalMarketRegime = {
+  regime: "DOWNTREND",
+  direction: "BEARISH",
+  confidence: 80,
+  confidenceLabel: "high",
+  reasons: ["trend_down_confirmed"],
+  warnings: [],
+  allowedModes: ["NO_TRADE", "TREND_CHECK"],
+  blockedModes: ["NEUTRAL_GRID", "DYNAMIC_NEUTRAL_GRID", "PHASE_2B_ACTIVATION"],
+  sourcePriority: ["market_snapshot.klines"],
+  ignoredLegacyFields: [],
+  sourceFreshness: { status: "fresh", generatedAt: null, latestCandleAtByTimeframe: {}, warnings: [] },
+  evidenceCompleteness: { status: "partial", scorePct: 80, availableGroups: ["multi_timeframe_indicators"], missingGroups: [] },
+  shadowOnly: true,
+  paperActivationAllowed: false,
+  liveActivationAllowed: false,
+};
+
+const TF5M: TimeframeIndicatorEvidence = {
+  adx: 30,
+  plusDI: 12,
+  minusDI: 26,
+  rsi: 41,
+  atr: 110,
+  atrPct: 0.18,
+  bbw: 0.02,
+  macd: -20,
+  macdSignal: -15,
+  macdHistogram: -5,
+  emaSlope: -12,
+  ema50: null,
+  ema200: null,
+  source: "market_snapshot",
+  calculatedAt: "2026-06-08T00:00:00.000Z",
+  candleCount: 100,
+  timeframe: "5M",
+  freshness: { latestCandleAt: "2026-06-08T00:00:00.000Z", ageMs: 60_000 },
+  missingFields: [],
+  notes: [],
+};
+
+function candles(values: Array<[number, number, number, number, number]>): TrendPaperExecutionCandle[] {
+  return values.map(([t, open, high, low, close]) => ({ t, open, high, low, close }));
+}
+
+function openPosition(overrides: Partial<TrendPaperPosition> = {}): TrendPaperPosition {
+  return {
+    positionId: "pos-1",
+    setupId: "trend-arm:SHORT:DOWNTREND:63142-63453",
+    epochId: "trend-epoch-1",
+    symbol: "BTC-USDT",
+    direction: "SHORT",
+    entryPrice: 63300,
+    stopLoss: 64552,
+    takeProfit1: 61825,
+    takeProfit2: 61050,
+    quantityPaper: 0.01,
+    remainingQuantityPaper: 0.01,
+    riskAmountPaper: 12.5,
+    entryFeeEstimate: 0.4,
+    entrySlippageEstimate: 0.2,
+    openedAt: "2026-06-08T00:00:00.000Z",
+    status: "OPEN",
+    ...overrides,
+  };
+}
+
+function run(overrides: Partial<Parameters<typeof evaluateTrendPaperExecutionEngine>[0]> = {}) {
+  return evaluateTrendPaperExecutionEngine({
+    trendStrategy: SHORT_STRATEGY,
+    trendManualPaperArmGate: ARM_READY,
+    trendPaperExecutionPreflight: PREFLIGHT_READY,
+    trendZoneCandidate: ZONE_READY,
+    canonicalMarketRegime: DOWN_REGIME,
+    multiTimeframeIndicatorEvidence: { "5M": TF5M },
+    currentPrice: 63280,
+    latest5mCandles: candles([
+      [1, 63320, 63340, 63290, 63310],
+      [2, 63310, 63300, 63220, 63240],
+    ]),
+    openTrendPaperPosition: null,
+    config: CONFIG,
+    now: "2026-06-08T00:05:00.000Z",
+    symbol: "BTC-USDT",
+    ...overrides,
+  });
+}
+
+test("no action when config disabled", () => {
+  const result = run({ config: { ...CONFIG, enabled: false } });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "CONFIG_DISABLED");
+});
+
+test("no action when preflight not ready", () => {
+  const result = run({
+    trendPaperExecutionPreflight: { ...PREFLIGHT_READY, status: "NOT_READY" },
+  });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "PREFLIGHT_NOT_READY");
+});
+
+test("entry created when all gates pass", () => {
+  const result = run();
+  assert.equal(result.action, "CREATE_PAPER_ENTRY");
+  assert.equal(result.reason, "ENTRY_CONDITIONS_MET");
+  assert.equal(result.paperOnly, true);
+  assert.equal(result.exchangeOrderAllowed, false);
+  assert.ok(result.journalEventDraft);
+  assert.equal(result.journalEventDraft?.eventType, "TREND_PAPER_ENTRY");
+  assert.equal(result.validation?.valid, true);
+});
+
+test("entry event validates before write", () => {
+  const result = run();
+  assert.ok(result.validation);
+  assert.equal(result.validation?.valid, true);
+  assert.equal(result.journalEventDraft?.countTowardGridClosedCycles, false);
+  assert.equal(result.journalEventDraft?.liveActivationAllowed, false);
+});
+
+test("sl before tp when both hit same candle", () => {
+  const result = run({
+    openTrendPaperPosition: openPosition(),
+    latest5mCandles: candles([
+      [1, 63300, 63310, 63290, 63305],
+      [2, 63305, 64600, 61700, 62000],
+    ]),
+  });
+  assert.equal(result.action, "CREATE_PAPER_EXIT");
+  assert.equal(result.reason, "stop_loss_hit_before_take_profit_same_candle");
+  assert.equal(result.journalEventDraft?.eventType, "TREND_PAPER_INVALIDATED");
+});
+
+test("tp exit calculates r correctly", () => {
+  const result = run({
+    openTrendPaperPosition: openPosition({ takeProfit2: null }),
+    latest5mCandles: candles([
+      [1, 63300, 63310, 63290, 63305],
+      [2, 63305, 63308, 61780, 61810],
+    ]),
+  });
+  assert.equal(result.action, "CREATE_PAPER_EXIT");
+  assert.equal(result.reason, "take_profit_1_hit");
+  assert.equal(result.journalEventDraft?.eventType, "TREND_PAPER_EXIT");
+  assert.ok((result.journalEventDraft?.rMultiple ?? 0) > 0);
+});
+
+test("fee and slippage reduce net pnl", () => {
+  const result = run({
+    openTrendPaperPosition: openPosition({ takeProfit2: null }),
+    latest5mCandles: candles([
+      [1, 63300, 63310, 63290, 63305],
+      [2, 63305, 63308, 61780, 61810],
+    ]),
+  });
+  assert.ok((result.journalEventDraft?.grossPnlPaper ?? 0) > (result.journalEventDraft?.netPnlPaper ?? 0));
+  assert.ok((result.journalEventDraft?.feeEstimate ?? 0) > 0);
+  assert.ok((result.journalEventDraft?.slippageEstimate ?? 0) > 0);
+});
+
+test("old grid exposure never converted", () => {
+  const result = run();
+  assert.equal(result.journalEventDraft?.oldExposurePolicy, "QUARANTINE_OLD_GRID_EXPOSURE");
+  assert.equal(result.journalEventDraft?.countTowardGridClosedCycles, false);
+});
+
+test("live activation always false", () => {
+  const entry = run();
+  const exit = run({
+    openTrendPaperPosition: openPosition({ takeProfit2: null }),
+    latest5mCandles: candles([
+      [1, 63300, 63310, 63290, 63305],
+      [2, 63305, 63308, 61780, 61810],
+    ]),
+  });
+  assert.equal(entry.liveActivationAllowed, false);
+  assert.equal(entry.journalEventDraft?.liveActivationAllowed, false);
+  assert.equal(exit.liveActivationAllowed, false);
+  assert.equal(exit.journalEventDraft?.liveActivationAllowed, false);
+});
+
+test("no exchange order intent generated", () => {
+  const result = run();
+  assert.equal(result.exchangeOrderAllowed, false);
+  assert.equal(result.paperOrderIntent?.exchangeOrderAllowed, false);
+});
+
+test("summary snapshot carries edge review values without enabling live", () => {
+  const result = run();
+  const snapshot = summarizeTrendPaperExecutionSnapshot({
+    result,
+    config: CONFIG,
+    openTrendPaperPosition: null,
+    lastEntryAt: null,
+    lastExitAt: null,
+    closedTrades: [],
+    edgeReview: { winRate: null, netExpectancyAfterCosts: null },
+  });
+  assert.equal(snapshot.enabled, true);
+  assert.equal(snapshot.lastAction, "CREATE_PAPER_ENTRY");
+  assert.equal(snapshot.liveActivationAllowed, false);
+});

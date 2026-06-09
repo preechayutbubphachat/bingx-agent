@@ -318,3 +318,53 @@ test("route logic: returns warning if consume fails after append", async () => {
   assert.equal(result.sessionConsumeReason, "WRITE_FAILED");
   assert.equal(result.operatorAction, "inspect session manually");
 });
+
+// ---- T-3H-2 consume-rule: session consumed ONLY on entry; exit/invalidation append but never consume ----
+test("T-3H-2: EXIT event appends journal but does NOT consume session (no false warning)", async () => {
+  let consumeCalled = false;
+  const result = await appendTrendPaperEntryAndConsumeSession({
+    action: "CREATE_PAPER_EXIT",
+    journalEventDraft: entryEvent({ eventType: "TREND_PAPER_EXIT" }),
+    validation: validation(true),
+    trendPaperArmSession: session({ usedEntries: 1, status: "LIMIT_REACHED" }),
+    appendJournalEvent: async () => ({ ok: true, path: "/tmp/trend-paper/trend_paper_journal.jsonl", validation: validation(true) }),
+    consumeSession: async () => { consumeCalled = true; throw new Error("consume must not run on exit"); },
+  });
+  assert.equal(result.journalAppended, true);
+  assert.equal(consumeCalled, false, "consume must NOT be attempted on exit");
+  assert.equal(result.sessionConsumed, false);
+  assert.equal(result.sessionConsumeReason, "NOT_AN_ENTRY_EVENT");
+  assert.equal(result.operatorAction, null, "no false inspect-session warning on normal exit");
+});
+
+test("T-3H-2: INVALIDATION event appends journal but does NOT consume session", async () => {
+  let consumeCalled = false;
+  const result = await appendTrendPaperEntryAndConsumeSession({
+    action: "CREATE_PAPER_EXIT",
+    journalEventDraft: entryEvent({ eventType: "TREND_PAPER_INVALIDATED" }),
+    validation: validation(true),
+    trendPaperArmSession: session({ usedEntries: 1, status: "LIMIT_REACHED" }),
+    appendJournalEvent: async () => ({ ok: true, path: "/tmp/trend-paper/trend_paper_journal.jsonl", validation: validation(true) }),
+    consumeSession: async () => { consumeCalled = true; throw new Error("consume must not run on invalidation"); },
+  });
+  assert.equal(result.journalAppended, true);
+  assert.equal(consumeCalled, false);
+  assert.equal(result.sessionConsumed, false);
+  assert.equal(result.sessionConsumeReason, "NOT_AN_ENTRY_EVENT");
+  assert.equal(result.operatorAction, null);
+});
+
+test("T-3H-2: ENTRY event still appends then consumes (append-first-consume-after intact)", async () => {
+  const order: string[] = [];
+  const result = await appendTrendPaperEntryAndConsumeSession({
+    action: "CREATE_PAPER_ENTRY",
+    journalEventDraft: entryEvent({ eventType: "TREND_PAPER_ENTRY" }),
+    validation: validation(true),
+    trendPaperArmSession: session(),
+    appendJournalEvent: async () => { order.push("append"); return { ok: true, path: "/tmp/trend-paper/trend_paper_journal.jsonl", validation: validation(true) }; },
+    consumeSession: async () => { order.push("consume"); return { ok: true, consumed: true, reason: "CONSUMED", before: session(), after: session({ usedEntries: 1, status: "LIMIT_REACHED" }), path: "/tmp/trend-paper/trend_paper_arm_session.json", liveActivationAllowed: false, exchangeOrderAllowed: false }; },
+  });
+  assert.deepEqual(order, ["append", "consume"]);
+  assert.equal(result.sessionConsumed, true);
+  assert.equal(result.sessionConsumeReason, "CONSUMED");
+});

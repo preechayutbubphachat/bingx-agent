@@ -41,6 +41,39 @@ export interface TrendPaperJournalEvent {
   countTowardGridClosedCycles: false;
   countTowardTrendEvidence: boolean;
   liveActivationAllowed: false;
+
+  // ---- T-3H-2 enrichment (OPTIONAL — analysis context only, never affects safety invariants) ----
+  positionId?: string;
+  statusAfter?: string;
+  entryId?: string | null;
+  sessionId?: string | null;
+  paperOnly?: true;
+  exchangeOrderAllowed?: false;
+  createdAt?: string | null;
+  openedAt?: string | null;
+  closedAt?: string | null;
+  holdTimeMs?: number | null;
+  holdTimeMinutes?: number | null;
+  realizedR?: number | null;
+  realizedPnlPaper?: number | null;
+  /** max favorable / adverse excursion (R). null until the runner tracks running extremes — gap, do not fake. */
+  mfeR?: number | null;
+  maeR?: number | null;
+  initialRiskR?: number | null;
+  initialRiskDistance?: number | null;
+  rawGateStatus?: string | null;
+  effectiveGateStatus?: string | null;
+  gateReason?: string | null;
+  regimeAtEvent?: string | null;
+  regimeDirection?: string | null;
+  sessionAtEvent?: string | null;
+  adx?: number | null;
+  atr?: number | null;
+  rsi?: number | null;
+  bollingerBbw?: number | null;
+  trendZoneContext?: unknown;
+  sourceRoute?: string | null;
+  runnerId?: string | null;
 }
 
 export interface ValidationResult {
@@ -106,6 +139,9 @@ export function validateTrendPaperJournalEvent(event: unknown): ValidationResult
   if (e.oldExposurePolicy !== "QUARANTINE_OLD_GRID_EXPOSURE") {
     errors.push("old_exposure_policy_must_be_quarantine_old_grid_exposure");
   }
+  // T-3H-2: optional enrichment flags, when present, must remain paper-safe
+  if (e.exchangeOrderAllowed === true) errors.push("exchange_order_allowed_must_be_false");
+  if (e.paperOnly === false) errors.push("paper_only_must_be_true");
 
   // countTowardTrendEvidence may be true ONLY on closing events
   if (e.countTowardTrendEvidence === true && !CLOSING_EVENTS.includes(eventType)) {

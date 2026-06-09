@@ -85,6 +85,10 @@ function toTrendClosedTrade(event: TrendPaperJournalEvent): TrendClosedTradeInpu
     slippageCost: numberOrNull(event.slippageEstimate),
     fundingCost: 0,
     failureLabel: strOrNull(event.exitReason),
+    // T-3H-2 evidence enrichment (real, from enriched exit event)
+    holdTimeMinutes: numberOrNull((event as { holdTimeMinutes?: unknown }).holdTimeMinutes),
+    direction: event.direction === "LONG" || event.direction === "SHORT" ? event.direction : null,
+    exitReason: strOrNull(event.exitReason),
   };
 }
 

@@ -38,6 +38,10 @@ export interface TrendClosedTradeInput {
   indicatorState?: string | null;
   zoneQuality?: string | null;
   confirmationType?: string | null;
+  // T-3H-2 evidence enrichment (optional)
+  holdTimeMinutes?: number | null;
+  direction?: "LONG" | "SHORT" | null;
+  exitReason?: string | null;
 }
 
 export interface TrendEdgeReviewInput {

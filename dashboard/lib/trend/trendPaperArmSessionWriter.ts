@@ -14,6 +14,7 @@ import {
 
 export type TrendPaperArmSessionConsumeReason =
   | "CONSUMED"
+  | "NOT_AN_ENTRY_EVENT"
   | "SESSION_MISSING"
   | "SESSION_ID_MISMATCH"
   | "SESSION_NOT_ACTIVE"
@@ -192,6 +193,24 @@ export async function appendTrendPaperEntryAndConsumeSession(input: {
       sessionBefore: input.trendPaperArmSession ?? null,
       sessionAfter: null,
       operatorAction: null,
+    };
+  }
+
+  // T-3H-2 fix: a one-entry paper-arm session is consumed ONLY by an ENTRY event.
+  // Exit / invalidation / partial / cancel events append their journal but must NOT attempt
+  // to consume the session (it was already consumed/LIMIT_REACHED at entry) — otherwise the
+  // normal exit would emit a false operatorAction="inspect session manually".
+  const isEntryEvent =
+    input.action === "CREATE_PAPER_ENTRY" || input.journalEventDraft.eventType === "TREND_PAPER_ENTRY";
+  if (!isEntryEvent) {
+    return {
+      journalAppended: true,
+      journalPath: appendResult.path,
+      sessionConsumed: false,
+      sessionConsumeReason: "NOT_AN_ENTRY_EVENT",
+      sessionBefore: input.trendPaperArmSession ?? null,
+      sessionAfter: null,
+      operatorAction: null, // exit/closed-trade is normal — never a manual-inspect warning
     };
   }
 

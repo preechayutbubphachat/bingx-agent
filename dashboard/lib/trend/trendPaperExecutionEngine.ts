@@ -276,6 +276,23 @@ function buildPositionId(setupId: string, epochId: string, openedAt: string): st
   return `${setupId}:${epochId}:${stamp}`;
 }
 
+interface TrendEntryEvidence {
+  sessionId?: string | null;
+  effectiveGateStatus?: string | null;
+  rawGateStatus?: string | null;
+  gateReason?: string | null;
+  regimeAtEvent?: string | null;
+  regimeDirection?: string | null;
+  sessionAtEvent?: string | null;
+  adx?: number | null;
+  atr?: number | null;
+  rsi?: number | null;
+  bollingerBbw?: number | null;
+  trendZoneContext?: unknown;
+  sourceRoute?: string | null;
+  runnerId?: string | null;
+}
+
 function buildEntryEvent(input: {
   nowIso: string;
   symbol: string;
@@ -283,6 +300,7 @@ function buildEntryEvent(input: {
   preflight: TrendPaperExecutionPreflight;
   currentPrice: number;
   config: TrendPaperExecutionConfig;
+  evidence?: TrendEntryEvidence;
 }): { result: TrendPaperExecutionResult; position: TrendPaperPosition } {
   const zone = input.strategy.entryZone as [number, number];
   const direction = input.strategy.direction as "LONG" | "SHORT";
@@ -343,6 +361,28 @@ function buildEntryEvent(input: {
     liveActivationAllowed: false,
     positionId,
     statusAfter: "OPEN",
+    // ---- T-3H-2 enrichment (REAL where available, null otherwise — never faked) ----
+    paperOnly: true,
+    exchangeOrderAllowed: false,
+    entryId: positionId,
+    sessionId: input.evidence?.sessionId ?? null,
+    createdAt: input.nowIso,
+    openedAt: input.nowIso,
+    initialRiskDistance: riskAbs,
+    initialRiskR: riskAbs > 0 ? 1 : null, // planned risk = 1R by sizing definition
+    rawGateStatus: input.evidence?.rawGateStatus ?? null,
+    effectiveGateStatus: input.evidence?.effectiveGateStatus ?? null,
+    gateReason: input.evidence?.gateReason ?? input.strategy.setupReason ?? null,
+    regimeAtEvent: input.evidence?.regimeAtEvent ?? null,
+    regimeDirection: input.evidence?.regimeDirection ?? null,
+    sessionAtEvent: input.evidence?.sessionAtEvent ?? null,
+    adx: input.evidence?.adx ?? null,
+    atr: input.evidence?.atr ?? null,
+    rsi: input.evidence?.rsi ?? null,
+    bollingerBbw: input.evidence?.bollingerBbw ?? null,
+    trendZoneContext: input.evidence?.trendZoneContext ?? null,
+    sourceRoute: input.evidence?.sourceRoute ?? null,
+    runnerId: input.evidence?.runnerId ?? null,
   } as TrendPaperJournalEvent;
   const validation = validateTrendPaperJournalEvent(event);
   return {
@@ -397,6 +437,12 @@ function buildExitEvent(input: {
   const slippageEstimate = input.position.entrySlippageEstimate + exitSlippageEstimate;
   const netPnlPaper = grossPnlPaper - feeEstimate - slippageEstimate;
   const rMultiple = input.position.riskAmountPaper > 0 ? netPnlPaper / input.position.riskAmountPaper : 0;
+  // T-3H-2: hold time is computable from openedAt → nowIso (REAL). MAE/MFE require running-extreme
+  // tracking the stateless engine does not have → emitted as null with a documented gap.
+  const openedMs = Date.parse(input.position.openedAt);
+  const closedMs = Date.parse(input.nowIso);
+  const holdTimeMs = Number.isFinite(openedMs) && Number.isFinite(closedMs) && closedMs >= openedMs ? closedMs - openedMs : null;
+  const holdTimeMinutes = holdTimeMs != null ? holdTimeMs / 60_000 : null;
 
   const event: TrendPaperJournalEvent = {
     schemaVersion: "trend-paper-journal/1",
@@ -423,6 +469,18 @@ function buildExitEvent(input: {
     countTowardGridClosedCycles: false,
     countTowardTrendEvidence: input.eventType === "TREND_PAPER_EXIT" || input.eventType === "TREND_PAPER_INVALIDATED",
     liveActivationAllowed: false,
+    // ---- T-3H-2 enrichment ----
+    paperOnly: true,
+    exchangeOrderAllowed: false,
+    entryId: input.position.positionId,
+    openedAt: input.position.openedAt,
+    closedAt: input.nowIso,
+    holdTimeMs,
+    holdTimeMinutes,
+    realizedR: rMultiple,
+    realizedPnlPaper: netPnlPaper,
+    mfeR: null, // gap: needs running-extreme tracking (T-3H-3 runner)
+    maeR: null, // gap: needs running-extreme tracking (T-3H-3 runner)
     positionId: input.position.positionId,
     statusAfter:
       input.eventType === "TREND_PAPER_PARTIAL"
@@ -654,6 +712,10 @@ export function evaluateTrendPaperExecutionEngine(
   });
   if (!confirmation.pass) return noAction(confirmation.reason);
 
+  // T-3H-2: snapshot REAL market context for later edge analysis (15M primary, 1H fallback; null if absent — never faked)
+  const tfEvidence = input.multiTimeframeIndicatorEvidence ?? {};
+  const tfSnap = tfEvidence["15M"] ?? tfEvidence["1H"] ?? null;
+  const regimeObj = input.canonicalMarketRegime ?? null;
   const built = buildEntryEvent({
     nowIso,
     symbol,
@@ -661,6 +723,22 @@ export function evaluateTrendPaperExecutionEngine(
     preflight,
     currentPrice,
     config,
+    evidence: {
+      sessionId: session?.sessionId ?? null,
+      effectiveGateStatus: armGate.status ?? null,
+      rawGateStatus: null, // engine receives only the effective gate (raw available at route/diagnostics layer)
+      gateReason: strategy.setupReason ?? null,
+      regimeAtEvent: regimeObj?.regime ?? null,
+      regimeDirection: regimeObj?.direction ?? null,
+      sessionAtEvent: null, // market session string available at route layer, not engine — gap
+      adx: finite(tfSnap?.adx) ? tfSnap!.adx : null,
+      atr: finite(tfSnap?.atr) ? tfSnap!.atr : null,
+      rsi: finite(tfSnap?.rsi) ? tfSnap!.rsi : null,
+      bollingerBbw: finite(tfSnap?.bbw) ? tfSnap!.bbw : null,
+      trendZoneContext: zone ? { buildStatus: zone.buildStatus, pullbackZone: zone.pullbackZone, invalidation: zone.invalidation } : null,
+      sourceRoute: null,
+      runnerId: null,
+    },
   });
   return built.result;
 }

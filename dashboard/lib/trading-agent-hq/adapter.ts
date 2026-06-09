@@ -246,6 +246,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendPaperExecutionEngine: mapTrendPaperExecutionEngine(obj(loop.trendPaperExecutionEngine)),
     trendPaperArmSession: mapTrendPaperArmSession(obj(loop.trendPaperArmSession)),
     trendPaperArmIntentBridge: mapTrendPaperArmIntentBridge(obj(loop.trendPaperArmIntentBridge)),
+    trendPaperEvidenceRunner: mapTrendPaperEvidenceRunner(obj(loop.trendPaperEvidenceRunner)),
     trendEdgeReview: mapTrendEdgeReview(obj(loop.trendEdgeReview)),
     regimeEvidence: {
       evidenceCompleteness: {
@@ -414,6 +415,38 @@ function mapTrendPaperExecutionPreflight(raw: AnyObj): PaperVM["trendPaperExecut
     journalWriteAllowed: bool(raw.journalWriteAllowed),
     simulatedFillAllowed: bool(raw.simulatedFillAllowed),
     notes: strArray(raw.notes),
+  };
+}
+
+function mapTrendPaperEvidenceRunner(raw: AnyObj): PaperVM["trendPaperEvidenceRunner"] {
+  const op = obj(raw.openTrendPosition);
+  const hasOpen = raw.openTrendPosition != null && typeof raw.openTrendPosition === "object";
+  return {
+    evidencePhase: str(raw.evidencePhase, "DISABLED"),
+    enabled: bool(raw.enabled),
+    simulationEnabled: bool(raw.simulationEnabled),
+    evidenceRunnerEnabled: bool(raw.evidenceRunnerEnabled),
+    lastRunAt: strOrNull(raw.lastRunAt),
+    lastDecision: strOrNull(raw.lastDecision),
+    lastGateStatus: strOrNull(raw.lastGateStatus),
+    lastRejectReasons: strArray(raw.lastRejectReasons),
+    dailyEntryCount: typeof raw.dailyEntryCount === "number" ? raw.dailyEntryCount : 0,
+    maxEntriesPerDay: typeof raw.maxEntriesPerDay === "number" ? raw.maxEntriesPerDay : 3,
+    dailyLossR: typeof raw.dailyLossR === "number" ? raw.dailyLossR : 0,
+    cooldownUntil: strOrNull(raw.cooldownUntil),
+    openTrendPosition: hasOpen ? { positionId: strOrNull(op.positionId), direction: strOrNull(op.direction) } : null,
+    trendClosedTrades: typeof raw.trendClosedTrades === "number" ? raw.trendClosedTrades : 0,
+    targetClosedTrades: typeof raw.targetClosedTrades === "number" ? raw.targetClosedTrades : 30,
+    sampleStatus: str(raw.sampleStatus, "INSUFFICIENT_SAMPLE_BOOTSTRAP"),
+    winRate: numOrNull(raw.winRate),
+    expectancyR: numOrNull(raw.expectancyR),
+    profitFactor: numOrNull(raw.profitFactor),
+    maxDrawdownR: numOrNull(raw.maxDrawdownR),
+    maxConsecutiveLossesObserved: numOrNull(raw.maxConsecutiveLossesObserved),
+    readyForNextPhase: bool(raw.readyForNextPhase),
+    stopReason: strOrNull(raw.stopReason),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    exchangeOrderAllowed: bool(raw.exchangeOrderAllowed),
   };
 }
 

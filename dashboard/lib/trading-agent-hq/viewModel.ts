@@ -79,6 +79,35 @@ export interface PaperVM {
   trendEdgeReview: TrendEdgeReviewVM;
   trendPaperArmSession: TrendPaperArmSessionVM;
   trendPaperArmIntentBridge: TrendPaperArmIntentBridgeVM;
+  trendPaperEvidenceRunner: TrendPaperEvidenceRunnerVM;
+}
+
+export interface TrendPaperEvidenceRunnerVM {
+  evidencePhase: string;
+  enabled: boolean;
+  simulationEnabled: boolean;
+  evidenceRunnerEnabled: boolean;
+  lastRunAt: string | null;
+  lastDecision: string | null;
+  lastGateStatus: string | null;
+  lastRejectReasons: string[];
+  dailyEntryCount: number;
+  maxEntriesPerDay: number;
+  dailyLossR: number;
+  cooldownUntil: string | null;
+  openTrendPosition: { positionId: string | null; direction: string | null } | null;
+  trendClosedTrades: number;
+  targetClosedTrades: number;
+  sampleStatus: string;
+  winRate: number | null;
+  expectancyR: number | null;
+  profitFactor: number | null;
+  maxDrawdownR: number | null;
+  maxConsecutiveLossesObserved: number | null;
+  readyForNextPhase: boolean;
+  stopReason: string | null;
+  liveActivationAllowed: boolean;
+  exchangeOrderAllowed: boolean;
 }
 
 export interface TrendPaperArmIntentBridgeVM {

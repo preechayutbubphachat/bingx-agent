@@ -43,6 +43,8 @@ import {
 } from "@/lib/market-regime/canonicalMarketRegime";
 import { buildTrendZoneShadow } from "@/lib/market-regime/trendZoneBuilder";
 import { readTrendPaperJournalSnapshot } from "@/lib/trend/trendPaperJournalWriter";
+import { readTrendPaperEvidenceState } from "@/lib/trend/trendPaperEvidenceState";
+import { buildTrendEvidenceMetrics } from "@/lib/trend/trendEvidenceMetrics";
 import { readTrendPaperArmSession } from "@/lib/trend/trendPaperArmSession";
 
 export const dynamic = "force-dynamic";
@@ -143,6 +145,38 @@ export async function GET() {
         trendPaperExecutionConfig,
         trendPaperArmSession: trendPaperArmSessionSnapshot?.session ?? null,
       });
+      // T-3H-4-b: attach read-only evidence-runner state (read-only display; no runner is invoked here)
+      const evidenceSnap = await readTrendPaperEvidenceState().catch(() => null);
+      const evidenceMetrics = buildTrendEvidenceMetrics(trendPaperJournalSnapshot?.closedTrades ?? []);
+      const es = evidenceSnap?.state ?? null;
+      (paperLoopDiagnostics as unknown as Record<string, unknown>).trendPaperEvidenceRunner = {
+        evidencePhase: es?.evidencePhase ?? "DISABLED",
+        enabled: es?.enabled ?? false,
+        simulationEnabled: envBool(process.env.TREND_PAPER_SIMULATION_ENABLED, false),
+        evidenceRunnerEnabled: envBool(process.env.TREND_PAPER_EVIDENCE_RUNNER_ENABLED, false),
+        lastRunAt: es?.lastRunAt ?? null,
+        lastDecision: es?.lastDecision ?? null,
+        lastGateStatus: es?.lastGateStatus ?? null,
+        lastRejectReasons: es?.lastRejectReasons ?? [],
+        dailyEntryCount: es?.dailyEntryCount ?? 0,
+        maxEntriesPerDay: es?.maxEntriesPerDay ?? 3,
+        dailyLossR: es?.dailyLossR ?? 0,
+        cooldownUntil: es?.cooldownUntil ?? null,
+        openTrendPosition: es?.openTrendPosition ?? null,
+        trendClosedTrades: evidenceMetrics.trendClosedTrades,
+        targetClosedTrades: es?.targetClosedTrades ?? 30,
+        sampleStatus: evidenceMetrics.sampleStatus,
+        winRate: evidenceMetrics.winRate,
+        expectancyR: evidenceMetrics.expectancyR,
+        profitFactor: evidenceMetrics.profitFactor,
+        maxDrawdownR: evidenceMetrics.maxDrawdownR,
+        maxConsecutiveLossesObserved: evidenceMetrics.maxConsecutiveLosses,
+        readyForNextPhase: evidenceMetrics.trendClosedTrades >= 30,
+        stopReason: es?.stopReason ?? null,
+        paperOnly: true,
+        liveActivationAllowed: false,
+        exchangeOrderAllowed: false,
+      };
     } catch {
       paperLoopDiagnostics = null;
     }

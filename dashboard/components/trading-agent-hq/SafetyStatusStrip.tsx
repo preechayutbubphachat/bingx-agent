@@ -40,8 +40,9 @@ export default function SafetyStatusStrip({
     <section className="rounded-lg border border-[#4a3525]/20 bg-[#2b2118] px-3 py-3 text-[#f8ead3] shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <div className="w-full min-w-0 sm:mr-auto sm:w-auto sm:min-w-[220px]">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-[#d8b66f]">ศูนย์ควบคุม Trading Caffe</div>
-          <h1 className="text-xl font-black leading-tight sm:text-2xl">ศูนย์ควบคุม Agent</h1>
+          {/* UI-2.1: demoted to h2 (page h1 lives in TradingCafeTopBar) + fixed "Caffe" typo. */}
+          <div className="text-[11px] font-bold uppercase tracking-wide text-[#d8b66f]">ศูนย์ควบคุม Trading Cafe</div>
+          <h2 className="text-xl font-black leading-tight sm:text-2xl">ศูนย์ควบคุม Agent</h2>
         </div>
         <Pill label="เฟส" value={phaseTh} tone="block" />
         <Pill label="เงินจริง" value={safety.liveTradingEnabled ? "เปิด" : "ปิด"} tone={safety.liveTradingEnabled ? "block" : "safe"} />

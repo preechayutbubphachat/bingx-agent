@@ -63,6 +63,7 @@ import TradingCafeSidebar from "./TradingCafeSidebar";
 import TradingCafeTopBar from "./TradingCafeTopBar";
 import TradingCafeKpiCard, { type KpiItem } from "./TradingCafeKpiCard";
 import RiskManagerPanel from "./RiskManagerPanel";
+import EvidencePilotHealthCard from "./EvidencePilotHealthCard";
 import TradingCafeBottomPanels from "./TradingCafeBottomPanels";
 
 const STATUS_FILTERS: ("all" | TileStatusCategory)[] = ["all", "working", "waiting", "notready"];
@@ -476,7 +477,9 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         </div>
 
         {/* Right Risk Manager rail (sticky on xl, stacks below on smaller screens) */}
-        <div className="xl:sticky xl:top-[84px] xl:self-start">
+        <div className="flex flex-col gap-3 xl:sticky xl:top-[84px] xl:self-start">
+          {/* UI-2.1 Task C: read-only runner heartbeat (existing VM fields only) */}
+          <EvidencePilotHealthCard paper={vm.paper} />
           <RiskManagerPanel paper={vm.paper} safety={vm.safety} log={vm.bottomLog} />
         </div>
       </div>

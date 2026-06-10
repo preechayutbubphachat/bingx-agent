@@ -49,10 +49,10 @@ export default function TradingCafeTopBar({ live, lastUpdate, safety, onRefresh 
       <div className="flex flex-wrap items-center gap-1.5">
         <Chip tone="neutral" label={`Cafe Time ${now}`} />
         <Chip tone={live ? "green" : "amber"} label={live ? "ระบบทำงาน (UI heartbeat)" : "UI: ข้อมูลจำลอง"} />
-        <Chip tone="green" label="ระบบ: ปกติ" />
-        <Chip tone="green" label="DB: ปกติ" />
-        <Chip tone="green" label="API: ปกติ" />
+        {/* UI-2.1: removed hardcoded "ระบบ/DB/API: ปกติ" chips (no data source behind them — misleading). */}
+        <Chip tone="green" label="Paper-only" />
         <Chip tone={liveDisabled ? "red" : "amber"} label="Live Trading: ปิด" />
+        <Chip tone={!safety.orderPlacementEnabled ? "red" : "amber"} label="Exchange: ปิด" />
         <button
           type="button"
           onClick={onRefresh}

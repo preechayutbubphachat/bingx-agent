@@ -17,6 +17,7 @@ import {
 import {
   buildCardSnapshot,
   computeUpdateSeverity,
+  tileStatusCategory,
   type CardSnapshot,
 } from "./cardUpdateSignatures.ts";
 import type { PaperVM, SafetyVM } from "./viewModel.ts";
@@ -107,6 +108,29 @@ test("stored layout shape only carries lightweight UI keys (no secret fields)", 
   const s = defaultStoredLayout();
   assert.deepEqual(Object.keys(s).sort(), ["collapsed", "filter", "lastSeenSignatures", "version"]);
   assert.equal(AGENT_HQ_LAYOUT_STORAGE_KEY, "agent-hq-card-layout:v1");
+});
+
+// --- UI-2 status category (filter chips) -----------------------------------
+test("tileStatusCategory: critical → notready regardless of status text", () => {
+  assert.equal(tileStatusCategory(snap({ critical: true, status: "EVIDENCE_COLLECTION" })), "notready");
+});
+
+test("tileStatusCategory: blocked/disabled/safety words → notready", () => {
+  for (const status of ["NOT_READY", "BLOCKED", "DISABLED", "SAFETY_BLOCK", "REJECTED_BY_OPERATOR", "ERROR_LOCKDOWN"]) {
+    assert.equal(tileStatusCategory(snap({ status })), "notready", status);
+  }
+});
+
+test("tileStatusCategory: waiting words → waiting", () => {
+  for (const status of ["WAITING_SETUP", "INSUFFICIENT_DATA", "DATA_GAP", "UNKNOWN", "IDLE_NO_TRADE", "NONE"]) {
+    assert.equal(tileStatusCategory(snap({ status })), "waiting", status);
+  }
+});
+
+test("tileStatusCategory: active/ready/read-only → working", () => {
+  for (const status of ["EVIDENCE_COLLECTION", "READY_FOR_OPERATOR_REVIEW", "READ_ONLY", "RANGE", "ACTIVE"]) {
+    assert.equal(tileStatusCategory(snap({ status })), "working", status);
+  }
 });
 
 // --- severity transitions --------------------------------------------------

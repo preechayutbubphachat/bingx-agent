@@ -464,3 +464,29 @@ export const SEVERITY_BADGE_TH: Record<CardUpdateSeverity, string> = {
   success: "พร้อมดู",
   critical: "สำคัญ",
 };
+
+// UI-2: coarse status category for the "Agent & System Status" filter chips.
+//   working  = กำลังทำงาน (active / ready / collecting)
+//   waiting  = รอข้อมูล (waiting setup / insufficient data / unknown / idle)
+//   notready = ไม่พร้อม (blocked / disabled / safety / rejected / critical)
+// Pure derivation from the read-only snapshot; never implies live readiness.
+export type TileStatusCategory = "working" | "waiting" | "notready";
+
+export function tileStatusCategory(snapshot: CardSnapshot): TileStatusCategory {
+  if (snapshot.critical) return "notready";
+  const s = (snapshot.status ?? "").toUpperCase();
+  const has = (...keys: string[]): boolean => keys.some((k) => s.includes(k));
+  if (has("NOT_READY", "BLOCK", "DISABLED", "SAFETY", "REJECT", "EXPIRED", "INVALID", "ERROR", "FAIL", "STOP", "LOCKDOWN")) {
+    return "notready";
+  }
+  if (has("WAIT", "INSUFFICIENT", "DATA_GAP", "UNKNOWN", "NO_DATA", "IDLE", "NONE", "BOOTSTRAP", "PENDING", "WATCH")) {
+    return "waiting";
+  }
+  return "working";
+}
+
+export const STATUS_CATEGORY_LABEL_TH: Record<TileStatusCategory, string> = {
+  working: "กำลังทำงาน",
+  waiting: "รอข้อมูล",
+  notready: "ไม่พร้อม",
+};

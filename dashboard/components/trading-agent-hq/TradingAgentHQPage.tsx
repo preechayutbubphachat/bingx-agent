@@ -21,11 +21,13 @@ import {
 import {
   buildCardSnapshot,
   computeUpdateSeverity,
+  tileStatusCategory,
+  STATUS_CATEGORY_LABEL_TH,
   type CardSnapshot,
   type CardUpdateSeverity,
+  type TileStatusCategory,
 } from "@/lib/trading-agent-hq/cardUpdateSignatures";
 import SceneCanvas from "./SceneCanvas";
-import TopHud from "./TopHud";
 import BottomLogBar from "./BottomLogBar";
 import RightInspector from "./RightInspector";
 import ModeSwitch from "./ModeSwitch";
@@ -56,6 +58,14 @@ import CollapsibleCard from "./CollapsibleCard";
 import AgentHqCardControls from "./AgentHqCardControls";
 import CollapsedCardGrid from "./CollapsedCardGrid";
 import type { CollapsedTile } from "./CollapsedCardTile";
+import TradingCafeShell from "./TradingCafeShell";
+import TradingCafeSidebar from "./TradingCafeSidebar";
+import TradingCafeTopBar from "./TradingCafeTopBar";
+import TradingCafeKpiCard, { type KpiItem } from "./TradingCafeKpiCard";
+import RiskManagerPanel from "./RiskManagerPanel";
+import TradingCafeBottomPanels from "./TradingCafeBottomPanels";
+
+const STATUS_FILTERS: ("all" | TileStatusCategory)[] = ["all", "working", "waiting", "notready"];
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
 const edgeStatusLabel = (status: string) =>
@@ -88,6 +98,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => defaultCollapsedMap());
   const [lastSeen, setLastSeen] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<AgentHqViewFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | TileStatusCategory>("all");
   const hydratedRef = useRef(false);
   const prevSnapshots = useRef<Record<string, CardSnapshot>>({});
 
@@ -213,11 +224,12 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
     [snapshots, cardHasUpdates, filter, displayedSeverity, collapsed, toggleCard],
   );
 
-  // Compact tiles for every collapsed, non-pinned card (filter-aware).
+  // Compact tiles for every collapsed, non-pinned card (filter-aware: "updated" + status chip).
   const collapsedTiles = useMemo<CollapsedTile[]>(
     () =>
       AGENT_HQ_CARD_LAYOUT.filter((c) => !c.pinned && collapsed[c.id] && snapshots[c.id])
         .filter((c) => filter !== "updated" || cardHasUpdates(c.id) || snapshots[c.id]!.critical)
+        .filter((c) => statusFilter === "all" || tileStatusCategory(snapshots[c.id]!) === statusFilter)
         .map((c) => ({
           id: c.id,
           title: c.title,
@@ -225,8 +237,25 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           severity: displayedSeverity(c.id),
           hasUpdates: cardHasUpdates(c.id),
         })),
-    [collapsed, snapshots, filter, cardHasUpdates, displayedSeverity],
+    [collapsed, snapshots, filter, statusFilter, cardHasUpdates, displayedSeverity],
   );
+
+  // KPI row — derived from existing read-only VM; null-safe, never invents market values.
+  const kpiItems = useMemo<KpiItem[]>(() => {
+    const cmr = vm.paper.canonicalMarketRegime;
+    const sess = vm.paper.trendPaperArmSession;
+    const er = vm.paper.trendPaperEvidenceRunner;
+    const alertCount = (er.lastRejectReasons?.length ?? 0) + (er.stopReason ? 1 : 0);
+    const agentTotal = Object.keys(vm.agents).length;
+    return [
+      { id: "regime", label: "Market Regime", icon: "🌤️", tone: "teal", value: cmr.regime ?? "UNKNOWN", sub: `ทิศทาง ${cmr.direction ?? "—"}` },
+      { id: "agents", label: "Agents Online", icon: "🤖", tone: "green", value: `${vm.topHud.agentsActive}/${agentTotal}`, sub: "กำลังทำงาน" },
+      { id: "paper", label: "Paper Readiness", icon: "📝", tone: "info", value: `${vm.paper.closedCycles} รอบ`, sub: er.sampleStatus ?? "รอข้อมูล" },
+      { id: "sessions", label: "Active Sessions", icon: "🕒", tone: sess.active ? "amber" : "neutral", value: sess.active ? "1 ใช้งาน" : "0", sub: sess.status ?? "INACTIVE" },
+      { id: "alerts", label: "Alerts", icon: "🔔", tone: alertCount > 0 ? "red" : "green", value: String(alertCount), sub: er.stopReason ? "มี STOP" : "ปกติ" },
+      { id: "health", label: "System Health", icon: "❤️", tone: "green", value: "Paper-only", sub: vm.safety.phase },
+    ];
+  }, [vm.paper, vm.agents, vm.topHud.agentsActive, vm.safety.phase]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -292,19 +321,22 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
   );
 
   return (
-    <div className="min-h-screen bg-[#21170f] px-2 py-3 text-[#2f241b] sm:px-4">
-      <div className="mx-auto flex max-w-[1680px] flex-col gap-3">
-        <SafetyStatusStrip vm={vm} state={state} error={error} live={live} onRefresh={refresh} />
+    <TradingCafeShell
+      sidebar={<TradingCafeSidebar activeId="dashboard" />}
+      topbar={<TradingCafeTopBar live={live} lastUpdate={vm.meta.lastUpdate} safety={vm.safety} onRefresh={refresh} />}
+    >
+      {/* Strong, always-visible safety banner */}
+      <SafetyStatusStrip vm={vm} state={state} error={error} live={live} onRefresh={refresh} />
 
-        <ModeSwitch
-          lowPower={lowPower}
-          debug={debug}
-          onToggleLowPower={() => setLowPower((value) => !value)}
-          onToggleDebug={() => setDebug((value) => !value)}
-        />
+      {/* KPI summary row */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {kpiItems.map((item) => (
+          <TradingCafeKpiCard key={item.id} item={item} />
+        ))}
+      </div>
 
-        <TopHud vm={vm} />
-
+      {/* View controls (collapse/expand/updated/reset) + render mode toggles */}
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <AgentHqCardControls
           filter={filter}
           updatedCount={updatedCount}
@@ -314,92 +346,145 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           onResetLayout={() => {
             setCollapsed(applyResetLayout());
             setFilter("all");
+            setStatusFilter("all");
           }}
         />
+        <ModeSwitch
+          lowPower={lowPower}
+          debug={debug}
+          onToggleLowPower={() => setLowPower((value) => !value)}
+          onToggleDebug={() => setDebug((value) => !value)}
+        />
+      </div>
 
-        {/* UI-1.1: collapsed cards as a compact tile grid (click a tile to expand that card) */}
-        <CollapsedCardGrid tiles={collapsedTiles} onExpand={toggleCard} />
-
-        {/* การ์ดอธิบายสถานะ (ไทย) — ช่วยให้ operator เข้าใจทันทีว่าไม่ใช่ Fail */}
-        {wrap("systemStatus", systemStatusNode)}
-
-        <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
-          {wrap("dynamicRegridStatus", <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />)}
-          {wrap(
-            "runtimeMonitor",
-            <RuntimeMonitorCard paper={vm.paper} safety={vm.safety} pollMessages={runtimePollMessages} />,
-          )}
-        </div>
-        {wrap("regridPhase2AReadiness", <RegridPhase2AReadinessCard paper={vm.paper} />)}
-        {wrap("canonicalMarketRegime", <CanonicalMarketRegimeCard paper={vm.paper} />)}
-        {wrap("canonicalRegimeGate", <CanonicalRegimeGateCard paper={vm.paper} />)}
-        {wrap("regimeEvidence", <RegimeEvidenceCard paper={vm.paper} />)}
-        {wrap("indicatorGate", <IndicatorGateShadowCard paper={vm.paper} />)}
-        {wrap("trendRegimeConfirmation", <TrendRegimeConfirmationCard paper={vm.paper} />)}
-        {wrap("trendZoneCandidate", <TrendZoneCandidateCard paper={vm.paper} />)}
-        {wrap("trendStrategyShadow", <TrendStrategyShadowCard paper={vm.paper} />)}
-        {wrap("trendTransitionMonitor", <TrendTransitionMonitorCard paper={vm.paper} />)}
-        {wrap("trendManualPaperArmGate", <TrendManualPaperArmGateCard paper={vm.paper} />)}
-        {wrap("trendPaperArmSession", <TrendPaperArmSessionCard paper={vm.paper} />)}
-        {wrap("trendPaperArmIntentBridge", <TrendPaperArmIntentBridgeCard paper={vm.paper} />)}
-        {wrap("trendPaperDryRunConsole", <TrendPaperDryRunConsoleCard paper={vm.paper} />)}
-        {wrap("trendPaperEvidenceRunner", <TrendPaperEvidenceRunnerCard paper={vm.paper} />)}
-        {wrap("trendPaperExecutionPreflight", <TrendPaperExecutionPreflightCard paper={vm.paper} />)}
-        {wrap("trendPaperExecutionEngine", <TrendPaperExecutionEngineCard paper={vm.paper} />)}
-        {wrap("trendEdgeReview", <TrendEdgeReviewCard paper={vm.paper} />)}
-
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
-          <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />
-
-          {/* Cafe Floor — pinned/always visible per UI-1 (never collapsed, never behind a mini-panel). */}
-          <section className="relative min-w-0 rounded-lg border border-[#3a2c21]/10 bg-[#fff4df] p-2 shadow-sm">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
-              <div>
-                <h2 className="text-sm font-black text-[#2f241b]">ห้องคาเฟ่ (Cafe Floor)</h2>
-                <p className="text-[11px] text-[#7a6550]">คลิกที่ Agent เพื่อดูรายละเอียด · ดับเบิลคลิกเพื่อเปิดแดชบอร์ดคลาสสิก</p>
+      {/* Two-column command center: main workspace + sticky Risk Manager rail */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* Agent & System Status */}
+          <section className="rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-[14px] font-black text-[#2b2118]">Agent &amp; System Status</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {STATUS_FILTERS.map((sf) => {
+                  const active = statusFilter === sf;
+                  const label = sf === "all" ? "ทั้งหมด" : STATUS_CATEGORY_LABEL_TH[sf];
+                  return (
+                    <button
+                      key={sf}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setStatusFilter(sf)}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-black transition ${
+                        active
+                          ? "border-[#1f9d92] bg-[#1f9d92] text-white"
+                          : "border-[#e5d5bf] bg-[#fffaf1] text-[#7a6a59] hover:bg-[#f3e8d6]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-800">ปักหมุด · แสดงตลอด</span>
-                <div className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">
+            </div>
+            {collapsedTiles.length ? (
+              <CollapsedCardGrid tiles={collapsedTiles} onExpand={toggleCard} />
+            ) : (
+              <p className="rounded-lg border border-[#e5d5bf] bg-white/60 px-3 py-4 text-center text-[11px] font-bold text-[#9a8a72]">
+                ไม่มีการ์ดที่ย่อในมุมมองนี้ — การ์ดที่ขยายแสดงอยู่ด้านล่าง
+              </p>
+            )}
+          </section>
+
+          {/* Expanded cards (UI-1 behavior preserved) */}
+          {wrap("systemStatus", systemStatusNode)}
+          <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
+            {wrap("dynamicRegridStatus", <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />)}
+            {wrap(
+              "runtimeMonitor",
+              <RuntimeMonitorCard paper={vm.paper} safety={vm.safety} pollMessages={runtimePollMessages} />,
+            )}
+          </div>
+          {wrap("regridPhase2AReadiness", <RegridPhase2AReadinessCard paper={vm.paper} />)}
+          {wrap("canonicalMarketRegime", <CanonicalMarketRegimeCard paper={vm.paper} />)}
+          {wrap("canonicalRegimeGate", <CanonicalRegimeGateCard paper={vm.paper} />)}
+          {wrap("regimeEvidence", <RegimeEvidenceCard paper={vm.paper} />)}
+          {wrap("indicatorGate", <IndicatorGateShadowCard paper={vm.paper} />)}
+          {wrap("trendRegimeConfirmation", <TrendRegimeConfirmationCard paper={vm.paper} />)}
+          {wrap("trendZoneCandidate", <TrendZoneCandidateCard paper={vm.paper} />)}
+          {wrap("trendStrategyShadow", <TrendStrategyShadowCard paper={vm.paper} />)}
+          {wrap("trendTransitionMonitor", <TrendTransitionMonitorCard paper={vm.paper} />)}
+          {wrap("trendManualPaperArmGate", <TrendManualPaperArmGateCard paper={vm.paper} />)}
+          {wrap("trendPaperArmSession", <TrendPaperArmSessionCard paper={vm.paper} />)}
+          {wrap("trendPaperArmIntentBridge", <TrendPaperArmIntentBridgeCard paper={vm.paper} />)}
+          {wrap("trendPaperDryRunConsole", <TrendPaperDryRunConsoleCard paper={vm.paper} />)}
+          {wrap("trendPaperEvidenceRunner", <TrendPaperEvidenceRunnerCard paper={vm.paper} />)}
+          {wrap("trendPaperExecutionPreflight", <TrendPaperExecutionPreflightCard paper={vm.paper} />)}
+          {wrap("trendPaperExecutionEngine", <TrendPaperExecutionEngineCard paper={vm.paper} />)}
+          {wrap("trendEdgeReview", <TrendEdgeReviewCard paper={vm.paper} />)}
+
+          {/* Command Floor — Cafe Floor remains the pinned, always-visible anchor */}
+          <section className="relative min-w-0 rounded-xl border border-[#e5d5bf] bg-[#fff7ea] p-3 shadow-sm">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-[15px] font-black text-[#2b2118]">Trading Cafe HQ – Command Floor</h2>
+                <p className="text-[11px] text-[#7a6a59]">คลิกที่ Agent เพื่อดูรายละเอียด · ดับเบิลคลิกเพื่อเปิดแดชบอร์ดคลาสสิก</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-[#e5d5bf] bg-[#fffaf1] px-2 py-1 text-[10px] font-black text-[#7a6a59]">โหมดจำลอง</span>
+                <span className="rounded-full border border-[#e5d5bf] bg-[#fffaf1] px-2 py-1 text-[10px] font-black text-[#7a6a59]">Command View</span>
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-800">📌 ปักหมุด · แสดงตลอด</span>
+                <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">
                   closedCycles={vm.paper.closedCycles} | {edgeStatusLabel(vm.paper.edgeStatus)}
-                </div>
+                </span>
               </div>
             </div>
 
-            <SceneCanvas
-              vm={vm}
-              animKeys={animKeys}
-              selected={effectiveSelected}
-              hovered={hovered}
-              lowPower={lowPower}
-              debug={debug}
-              onHover={setHovered}
-              onSelect={(id) => setSelected(id)}
-              onDouble={goDebug}
-            />
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_340px]">
+              <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />
+              <div className="min-w-0 rounded-lg border border-[#e5d5bf] bg-[#fff4df] p-2">
+                <SceneCanvas
+                  vm={vm}
+                  animKeys={animKeys}
+                  selected={effectiveSelected}
+                  hovered={hovered}
+                  lowPower={lowPower}
+                  debug={debug}
+                  onHover={setHovered}
+                  onSelect={(id) => setSelected(id)}
+                  onDouble={goDebug}
+                />
+              </div>
+              <div className="hidden min-h-[260px] space-y-3 xl:block">
+                <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(DEFAULT_AGENT_ID)} onDebug={goDebug} />
+                <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 xl:hidden">
+              <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(DEFAULT_AGENT_ID)} onDebug={goDebug} />
+              <div className="hidden md:block">
+                <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
+              </div>
+            </div>
           </section>
 
-          <div className="hidden min-h-[260px] space-y-3 xl:block">
-            <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(DEFAULT_AGENT_ID)} onDebug={goDebug} />
-            <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
-          </div>
+          {/* Bottom dashboard panels */}
+          <TradingCafeBottomPanels vm={vm} />
+
+          <BottomWidgetDock vm={vm} progressions={progressions} onPick={(id) => setSelected(id)} />
+          <BottomLogBar log={vm.bottomLog} onPick={(id) => setSelected(id)} selected={effectiveSelected} />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 xl:hidden">
-          <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(DEFAULT_AGENT_ID)} onDebug={goDebug} />
-          <div className="hidden md:block">
-            <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
-          </div>
+        {/* Right Risk Manager rail (sticky on xl, stacks below on smaller screens) */}
+        <div className="xl:sticky xl:top-[84px] xl:self-start">
+          <RiskManagerPanel paper={vm.paper} safety={vm.safety} log={vm.bottomLog} />
         </div>
-
-        <BottomWidgetDock vm={vm} progressions={progressions} onPick={(id) => setSelected(id)} />
-        <BottomLogBar log={vm.bottomLog} onPick={(id) => setSelected(id)} selected={effectiveSelected} />
-
-        <p className="px-1 text-[11px] text-[#cbb799]">
-          TradingAgentHQ เป็นเลเยอร์แสดงผลแบบอ่านอย่างเดียว — ไม่ส่งคำสั่งเทรด ไม่อนุมัติความเสี่ยง ไม่เปิดเงินจริง และไม่เขียนไฟล์ runtime
-          ข้อมูล{live ? "ดึงจาก endpoint ปลอดภัย (public-safe)" : "เป็นข้อมูลจำลอง (mock/fallback)"} · ไฟล์ source of truth จริงอยู่นอก UI นี้
-        </p>
       </div>
-    </div>
+
+      <p className="px-1 text-[11px] text-[#9a8a72]">
+        TradingAgentHQ เป็นเลเยอร์แสดงผลแบบอ่านอย่างเดียว — ไม่ส่งคำสั่งเทรด ไม่อนุมัติความเสี่ยง ไม่เปิดเงินจริง และไม่เขียนไฟล์ runtime
+        ข้อมูล{live ? "ดึงจาก endpoint ปลอดภัย (public-safe)" : "เป็นข้อมูลจำลอง (mock/fallback)"} · ไฟล์ source of truth จริงอยู่นอก UI นี้
+      </p>
+    </TradingCafeShell>
   );
 }

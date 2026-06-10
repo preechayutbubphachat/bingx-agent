@@ -54,6 +54,8 @@ import TrendPaperDryRunConsoleCard from "./TrendPaperDryRunConsoleCard";
 import TrendPaperEvidenceRunnerCard from "./TrendPaperEvidenceRunnerCard";
 import CollapsibleCard from "./CollapsibleCard";
 import AgentHqCardControls from "./AgentHqCardControls";
+import CollapsedCardGrid from "./CollapsedCardGrid";
+import type { CollapsedTile } from "./CollapsedCardTile";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
 const edgeStatusLabel = (status: string) =>
@@ -194,28 +196,36 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
     [cardHasUpdates, snapshots],
   );
 
-  // Wrap an existing card with CollapsibleCard, honoring the "updated only" filter.
+  // UI-1.1: collapsed cards are rendered as compact tiles (CollapsedCardGrid), not inline.
+  // wrap() now only renders EXPANDED cards inline; collapsed ones return null here.
   const wrap = useCallback(
     (id: AgentHqCardId, node: ReactNode) => {
       const snap = snapshots[id];
       if (!snap) return null;
-      const hasUpd = cardHasUpdates(id);
-      if (filter === "updated" && !(hasUpd || snap.critical)) return null;
+      if (collapsed[id]) return null; // shown as a tile above
+      if (filter === "updated" && !(cardHasUpdates(id) || snap.critical)) return null;
       return (
-        <CollapsibleCard
-          cardId={id}
-          title={CARD_TITLES[id] ?? id}
-          snapshot={snap}
-          severity={displayedSeverity(id)}
-          hasUpdates={hasUpd}
-          collapsed={!!collapsed[id]}
-          onToggle={toggleCard}
-        >
+        <CollapsibleCard cardId={id} title={CARD_TITLES[id] ?? id} severity={displayedSeverity(id)} onToggle={toggleCard}>
           {node}
         </CollapsibleCard>
       );
     },
     [snapshots, cardHasUpdates, filter, displayedSeverity, collapsed, toggleCard],
+  );
+
+  // Compact tiles for every collapsed, non-pinned card (filter-aware).
+  const collapsedTiles = useMemo<CollapsedTile[]>(
+    () =>
+      AGENT_HQ_CARD_LAYOUT.filter((c) => !c.pinned && collapsed[c.id] && snapshots[c.id])
+        .filter((c) => filter !== "updated" || cardHasUpdates(c.id) || snapshots[c.id]!.critical)
+        .map((c) => ({
+          id: c.id,
+          title: c.title,
+          snapshot: snapshots[c.id]!,
+          severity: displayedSeverity(c.id),
+          hasUpdates: cardHasUpdates(c.id),
+        })),
+    [collapsed, snapshots, filter, cardHasUpdates, displayedSeverity],
   );
 
   useEffect(() => {
@@ -306,6 +316,9 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             setFilter("all");
           }}
         />
+
+        {/* UI-1.1: collapsed cards as a compact tile grid (click a tile to expand that card) */}
+        <CollapsedCardGrid tiles={collapsedTiles} onExpand={toggleCard} />
 
         {/* การ์ดอธิบายสถานะ (ไทย) — ช่วยให้ operator เข้าใจทันทีว่าไม่ใช่ Fail */}
         {wrap("systemStatus", systemStatusNode)}

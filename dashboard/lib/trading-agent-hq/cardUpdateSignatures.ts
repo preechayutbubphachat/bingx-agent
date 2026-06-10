@@ -455,3 +455,12 @@ export const SEVERITY_LABEL_TH: Record<CardUpdateSeverity, string> = {
   success: "คืบหน้า",
   critical: "สำคัญ",
 };
+
+// Compact-tile badge wording (UI-1.1). Shown only when a collapsed tile has updates.
+export const SEVERITY_BADGE_TH: Record<CardUpdateSeverity, string> = {
+  none: "ปกติ",
+  info: "มีอัปเดต",
+  warning: "เฝ้าระวัง",
+  success: "พร้อมดู",
+  critical: "สำคัญ",
+};

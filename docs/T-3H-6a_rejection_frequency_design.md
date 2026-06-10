@@ -1,7 +1,10 @@
-# T-3H-6-a — Rejection Frequency Collection (Design Proposal, NOT implemented)
+# T-3H-6-a — Rejection Frequency Collection
 
-> Status: DESIGN ONLY · เขียนจากผล audit Phase UI-2.1 (2026-06-11)
-> ห้าม implement จนกว่าจะ review — เฟสนี้ต้องไม่เปลี่ยนผลการเข้า/ไม่เข้า trade
+> Status: **IMPLEMENTED 2026-06-11** ตาม design นี้ (เปลี่ยนชื่อไฟล์ log เป็น
+> `trend_paper_evidence_decisions.jsonl` ตาม task spec)
+> Helper: `dashboard/lib/trend/trendEvidenceDecisionLog.ts` · Hook: POST run_once ใน
+> `trend-paper-evidence-cycle` route หลัง state write สำเร็จ · UI: `RejectionAnalysisCard`
+> เฟสนี้ต้องไม่เปลี่ยนผลการเข้า/ไม่เข้า trade — log เป็น one-way observability เท่านั้น
 
 ## 1) ผล audit แหล่งข้อมูลปัจจุบัน (ทำไมต้อง design ก่อน)
 

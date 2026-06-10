@@ -37,6 +37,11 @@ import {
   runTrendPaperEvidenceCycle,
   type EvidenceRunnerConfig,
 } from "@/lib/trend/trendPaperEvidenceRunner";
+// T-3H-6-a: observability-only decision log (one-way; decision logic never reads it)
+import {
+  appendTrendEvidenceDecisionLog,
+  buildTrendEvidenceDecisionRecord,
+} from "@/lib/trend/trendEvidenceDecisionLog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -291,8 +296,22 @@ export async function POST(req: NextRequest) {
     });
 
     await writeTrendPaperEvidenceState(result.nextState);
+
+    // T-3H-6-a hook: append observability record AFTER state write succeeds.
+    // Best-effort only — append failure must never fail the cycle (helper never throws).
+    // ONE-WAY: nothing in the decision path reads this log.
+    const decisionLogResult = await appendTrendEvidenceDecisionLog(
+      buildTrendEvidenceDecisionRecord({
+        now: new Date().toISOString(),
+        source: "trend-paper-evidence-cycle",
+        action: "run_once",
+        state: result.nextState as unknown as Record<string, unknown>,
+      }),
+    ).catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : "append_failed" }));
+
     return json(200, statusBody("run_once", result.nextState as unknown as Record<string, unknown>, cfg, {
       runnerResult: { decision: result.decision, blocked: result.blocked, reasons: result.reasons },
+      decisionLog: decisionLogResult.ok ? { appended: true } : { appended: false, warning: decisionLogResult.error },
     }));
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "unknown evidence-cycle error";

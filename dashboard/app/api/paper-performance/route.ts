@@ -43,6 +43,8 @@ import {
 } from "@/lib/market-regime/canonicalMarketRegime";
 import { buildTrendZoneShadow } from "@/lib/market-regime/trendZoneBuilder";
 import { readTrendPaperJournalSnapshot } from "@/lib/trend/trendPaperJournalWriter";
+// T-3H-6-a: read-only summary of the observability decision log (never read by decision logic)
+import { readTrendEvidenceDecisionLogSummary } from "@/lib/trend/trendEvidenceDecisionLog";
 import { readTrendPaperEvidenceState } from "@/lib/trend/trendPaperEvidenceState";
 import { buildTrendEvidenceMetrics } from "@/lib/trend/trendEvidenceMetrics";
 import { readTrendPaperArmSession } from "@/lib/trend/trendPaperArmSession";
@@ -176,6 +178,13 @@ export async function GET() {
         paperOnly: true,
         liveActivationAllowed: false,
         exchangeOrderAllowed: false,
+      };
+      // T-3H-6-a: attach read-only rejection/decision summary (48h window; safe fallback)
+      const decisionSummary = await readTrendEvidenceDecisionLogSummary({ windowHours: 48 }).catch(() => null);
+      (paperLoopDiagnostics as unknown as Record<string, unknown>).trendEvidenceDecisionSummary = decisionSummary ?? {
+        available: false,
+        totalRecords: 0,
+        sampleWarning: true,
       };
     } catch {
       paperLoopDiagnostics = null;

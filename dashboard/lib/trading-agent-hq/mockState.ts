@@ -326,6 +326,21 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       liveActivationAllowed: false,
       exchangeOrderAllowed: false,
     },
+    // T-3H-6-a: empty decision-log summary (mock has no log data)
+    trendEvidenceDecisionSummary: {
+      available: false,
+      totalRecords: 0,
+      windowStart: null,
+      windowEnd: null,
+      latestRecordedAt: null,
+      decisionCounts: {},
+      gateStatusCounts: {},
+      rejectReasonCounts: {},
+      topRejectReasons: [],
+      staleCycleEstimate: null,
+      lastRejectReasons: [],
+      sampleWarning: true,
+    },
     trendEdgeReview: {
       phase: "T-4_EDGE_REVIEW",
       status: "INSUFFICIENT_DATA",

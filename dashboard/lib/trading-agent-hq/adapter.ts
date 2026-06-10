@@ -247,6 +247,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendPaperArmSession: mapTrendPaperArmSession(obj(loop.trendPaperArmSession)),
     trendPaperArmIntentBridge: mapTrendPaperArmIntentBridge(obj(loop.trendPaperArmIntentBridge)),
     trendPaperEvidenceRunner: mapTrendPaperEvidenceRunner(obj(loop.trendPaperEvidenceRunner)),
+    trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),
     trendEdgeReview: mapTrendEdgeReview(obj(loop.trendEdgeReview)),
     regimeEvidence: {
       evidenceCompleteness: {
@@ -447,6 +448,49 @@ function mapTrendPaperEvidenceRunner(raw: AnyObj): PaperVM["trendPaperEvidenceRu
     stopReason: strOrNull(raw.stopReason),
     liveActivationAllowed: bool(raw.liveActivationAllowed),
     exchangeOrderAllowed: bool(raw.exchangeOrderAllowed),
+  };
+}
+
+// T-3H-6-a: read-only rejection/decision summary (observability only; whitelist mapping)
+function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDecisionSummary"] {
+  const countMap = (v: unknown): Record<string, number> => {
+    const out: Record<string, number> = {};
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [k, n] of Object.entries(v as Record<string, unknown>)) {
+        if (typeof n === "number" && Number.isFinite(n)) out[k] = n;
+      }
+    }
+    return out;
+  };
+  const top = Array.isArray(raw.topRejectReasons)
+    ? (raw.topRejectReasons as unknown[])
+        .map((e) => {
+          const o = obj(e);
+          return { reason: str(o.reason, ""), count: typeof o.count === "number" ? o.count : 0 };
+        })
+        .filter((e) => e.reason.length > 0)
+    : [];
+  const sce = obj(raw.staleCycleEstimate);
+  const hasSce =
+    raw.staleCycleEstimate != null &&
+    typeof sce.expectedCycles === "number" &&
+    typeof sce.observedCycles === "number" &&
+    typeof sce.missedCycles === "number";
+  return {
+    available: bool(raw.available),
+    totalRecords: typeof raw.totalRecords === "number" ? raw.totalRecords : 0,
+    windowStart: strOrNull(raw.windowStart),
+    windowEnd: strOrNull(raw.windowEnd),
+    latestRecordedAt: strOrNull(raw.latestRecordedAt),
+    decisionCounts: countMap(raw.decisionCounts),
+    gateStatusCounts: countMap(raw.gateStatusCounts),
+    rejectReasonCounts: countMap(raw.rejectReasonCounts),
+    topRejectReasons: top,
+    staleCycleEstimate: hasSce
+      ? { expectedCycles: sce.expectedCycles as number, observedCycles: sce.observedCycles as number, missedCycles: sce.missedCycles as number }
+      : null,
+    lastRejectReasons: strArray(raw.lastRejectReasons),
+    sampleWarning: raw.sampleWarning !== false,
   };
 }
 

@@ -80,6 +80,24 @@ export interface PaperVM {
   trendPaperArmSession: TrendPaperArmSessionVM;
   trendPaperArmIntentBridge: TrendPaperArmIntentBridgeVM;
   trendPaperEvidenceRunner: TrendPaperEvidenceRunnerVM;
+  // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
+  trendEvidenceDecisionSummary: TrendEvidenceDecisionSummaryVM;
+}
+
+// T-3H-6-a — aggregated view of the append-only decision log. Pure display data.
+export interface TrendEvidenceDecisionSummaryVM {
+  available: boolean;
+  totalRecords: number;
+  windowStart: string | null;
+  windowEnd: string | null;
+  latestRecordedAt: string | null;
+  decisionCounts: Record<string, number>;
+  gateStatusCounts: Record<string, number>;
+  rejectReasonCounts: Record<string, number>;
+  topRejectReasons: { reason: string; count: number }[];
+  staleCycleEstimate: { expectedCycles: number; observedCycles: number; missedCycles: number } | null;
+  lastRejectReasons: string[];
+  sampleWarning: boolean;
 }
 
 export interface TrendPaperEvidenceRunnerVM {

@@ -1,11 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/viewModel";
 import { buildAgentProgressions } from "@/lib/trading-agent-hq/progression";
 import { useTradingAgentHQ } from "@/lib/trading-agent-hq/useTradingAgentHQ";
 import { useAgentAnimations } from "@/lib/trading-agent-hq/useAgentAnimations";
+import {
+  AGENT_HQ_CARD_LAYOUT,
+  type AgentHqCardId,
+  type AgentHqViewFilter,
+  applyCollapseAll,
+  applyExpandAll,
+  applyResetLayout,
+  defaultCollapsedMap,
+  loadStoredLayout,
+  saveStoredLayout,
+} from "@/lib/trading-agent-hq/cardLayout";
+import {
+  buildCardSnapshot,
+  computeUpdateSeverity,
+  type CardSnapshot,
+  type CardUpdateSeverity,
+} from "@/lib/trading-agent-hq/cardUpdateSignatures";
 import SceneCanvas from "./SceneCanvas";
 import TopHud from "./TopHud";
 import BottomLogBar from "./BottomLogBar";
@@ -34,6 +52,8 @@ import TrendPaperArmSessionCard from "./TrendPaperArmSessionCard";
 import TrendPaperArmIntentBridgeCard from "./TrendPaperArmIntentBridgeCard";
 import TrendPaperDryRunConsoleCard from "./TrendPaperDryRunConsoleCard";
 import TrendPaperEvidenceRunnerCard from "./TrendPaperEvidenceRunnerCard";
+import CollapsibleCard from "./CollapsibleCard";
+import AgentHqCardControls from "./AgentHqCardControls";
 
 const DEFAULT_AGENT_ID: AgentId = "risk_manager";
 const edgeStatusLabel = (status: string) =>
@@ -42,6 +62,10 @@ const edgeStatusLabel = (status: string) =>
     : status === "REAL_FILLS_ACCUMULATING"
       ? "กำลังสะสม fills จริง แต่ตัวอย่างยังไม่พอ"
       : status;
+
+const CARD_TITLES: Record<string, string> = Object.fromEntries(
+  AGENT_HQ_CARD_LAYOUT.map((c) => [c.id, c.title]),
+);
 
 // THQ-5: starts from server-provided initial (mock), then hydrates from public-safe endpoints.
 export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAgentHQViewModel }) {
@@ -58,12 +82,141 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
     regridCandidateCount: number;
   } | null>(null);
 
+  // ---- UI-1: collapsible card layout state (SSR-safe; defaults identical on server) ----
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => defaultCollapsedMap());
+  const [lastSeen, setLastSeen] = useState<Record<string, string>>({});
+  const [filter, setFilter] = useState<AgentHqViewFilter>("all");
+  const hydratedRef = useRef(false);
+  const prevSnapshots = useRef<Record<string, CardSnapshot>>({});
+
+  // Build read-only snapshots once per VM change.
+  const snapshots = useMemo(() => {
+    const out: Record<string, CardSnapshot> = {};
+    for (const c of AGENT_HQ_CARD_LAYOUT) {
+      out[c.id] = buildCardSnapshot(c.id as AgentHqCardId, vm.paper, vm.safety);
+    }
+    return out;
+  }, [vm.paper, vm.safety]);
+
+  // Hydrate layout from localStorage after mount (avoids hydration mismatch).
+  useEffect(() => {
+    const stored = loadStoredLayout();
+    if (stored) {
+      setCollapsed(stored.collapsed);
+      setLastSeen(stored.lastSeenSignatures);
+      setFilter(stored.filter);
+    }
+    hydratedRef.current = true;
+  }, []);
+
+  // Seed baselines for missing cards and keep EXPANDED cards marked as "seen".
+  useEffect(() => {
+    setLastSeen((ls) => {
+      let changed = false;
+      const next = { ...ls };
+      for (const c of AGENT_HQ_CARD_LAYOUT) {
+        if (c.pinned) continue;
+        const sig = snapshots[c.id]?.signature;
+        if (sig == null) continue;
+        const missing = next[c.id] == null;
+        const expanded = !collapsed[c.id];
+        if ((missing || expanded) && next[c.id] !== sig) {
+          next[c.id] = sig;
+          changed = true;
+        }
+      }
+      return changed ? next : ls;
+    });
+  }, [snapshots, collapsed]);
+
+  // Persist layout (only after hydration so we never clobber stored state with defaults).
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    saveStoredLayout({ version: 1, collapsed, lastSeenSignatures: lastSeen, filter });
+  }, [collapsed, lastSeen, filter]);
+
+  // Track previous snapshots for transition-based severity.
+  useEffect(() => {
+    prevSnapshots.current = snapshots;
+  }, [snapshots]);
+
   const animKeys = useAgentAnimations(vm.agents);
   const progressions = buildAgentProgressions(vm);
   const effectiveSelected = vm.agents[selected] ? selected : DEFAULT_AGENT_ID;
   const selectedAgent = vm.agents[effectiveSelected] ?? initialVm.agents[effectiveSelected] ?? null;
   const selectedProgression = progressions[effectiveSelected] ?? progressions[DEFAULT_AGENT_ID] ?? null;
   const live = vm.meta.source === "public-safe-api" && state === "ready";
+
+  const toggleCard = useCallback(
+    (id: string) => {
+      const currentlyCollapsed = collapsed[id];
+      if (currentlyCollapsed) {
+        const sig = snapshots[id]?.signature;
+        if (sig != null) setLastSeen((ls) => ({ ...ls, [id]: sig }));
+      }
+      setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
+    },
+    [collapsed, snapshots],
+  );
+
+  const liveSeverity = useCallback(
+    (id: string): CardUpdateSeverity => computeUpdateSeverity(snapshots[id], prevSnapshots.current[id]),
+    [snapshots],
+  );
+
+  const cardHasUpdates = useCallback(
+    (id: string): boolean => {
+      const snap = snapshots[id];
+      if (!snap) return false;
+      return !!collapsed[id] && lastSeen[id] != null && lastSeen[id] !== snap.signature;
+    },
+    [collapsed, lastSeen, snapshots],
+  );
+
+  const displayedSeverity = useCallback(
+    (id: string): CardUpdateSeverity => {
+      const snap = snapshots[id];
+      if (!snap) return "none";
+      if (snap.critical) return "critical";
+      if (cardHasUpdates(id)) {
+        const sev = liveSeverity(id);
+        return sev === "none" ? "info" : sev;
+      }
+      return "none";
+    },
+    [snapshots, cardHasUpdates, liveSeverity],
+  );
+
+  const updatedCount = useMemo(
+    () =>
+      AGENT_HQ_CARD_LAYOUT.filter((c) => !c.pinned).filter((c) => cardHasUpdates(c.id) || snapshots[c.id]?.critical)
+        .length,
+    [cardHasUpdates, snapshots],
+  );
+
+  // Wrap an existing card with CollapsibleCard, honoring the "updated only" filter.
+  const wrap = useCallback(
+    (id: AgentHqCardId, node: ReactNode) => {
+      const snap = snapshots[id];
+      if (!snap) return null;
+      const hasUpd = cardHasUpdates(id);
+      if (filter === "updated" && !(hasUpd || snap.critical)) return null;
+      return (
+        <CollapsibleCard
+          cardId={id}
+          title={CARD_TITLES[id] ?? id}
+          snapshot={snap}
+          severity={displayedSeverity(id)}
+          hasUpdates={hasUpd}
+          collapsed={!!collapsed[id]}
+          onToggle={toggleCard}
+        >
+          {node}
+        </CollapsibleCard>
+      );
+    },
+    [snapshots, cardHasUpdates, filter, displayedSeverity, collapsed, toggleCard],
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -107,6 +260,27 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
   const goDebug = () => router.push("/public");
 
+  const systemStatusNode = (
+    <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[#5b4432] shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-black text-amber-900">สถานะระบบ (อ่านง่าย)</span>
+        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">ไม่ใช่ Fail</span>
+        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-800">M-0B: ถูกบล็อก</span>
+      </div>
+      <p className="mt-2 text-[13px] font-bold leading-relaxed text-[#3f2f22]">
+        {vm.paper.closedCycles === 0
+          ? `ระบบ Paper ทำงานแล้วและมี fills แล้ว (${vm.paper.totalOrderFilled} ครั้ง) แต่ยังไม่มีรอบ BUY→SELL ที่ปิดครบ ดังนั้น M-0B ยังถูกบล็อกตามปกติ — ยังไม่ใช่ Fail และยังไม่พร้อมเปิดเงินจริง`
+          : `ระบบ Paper ทำงานและเริ่มมีรอบปิดครบ (${vm.paper.closedCycles} รอบ) — ยังต้องสะสมตัวอย่างให้พอและผ่าน operator review ก่อน M-0B จะปลดบล็อก`}
+      </p>
+      <p className="mt-1 text-[12px] leading-relaxed text-[#6d5745]">
+        <span className="font-black text-[#2f241b]">ขั้นตอนถัดไป: </span>
+        ปล่อย paper loop รันต่อ และตรวจ raw fills ว่ามี BUY/SELL ครบหรือยัง เป้าหมายถัดไปคือ <span className="font-black">closedCycles &gt; 0</span> ·
+        เกตต้นทุน: {vm.paper.costGateStatus === "PASS" ? "ผ่าน (ต้นทุน ไม่ใช่ edge)" : vm.paper.costGateStatus} ·
+        เงินจริง/คำสั่งจริงต้องปิดไว้เสมอจนกว่าจะอนุมัติ
+      </p>
+    </section>
+  );
+
   return (
     <div className="min-h-screen bg-[#21170f] px-2 py-3 text-[#2f241b] sm:px-4">
       <div className="mx-auto flex max-w-[1680px] flex-col gap-3">
@@ -121,59 +295,61 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
         <TopHud vm={vm} />
 
+        <AgentHqCardControls
+          filter={filter}
+          updatedCount={updatedCount}
+          onCollapseAll={() => setCollapsed((c) => applyCollapseAll(c))}
+          onExpandAll={() => setCollapsed((c) => applyExpandAll(c))}
+          onToggleUpdatedFilter={() => setFilter((f) => (f === "updated" ? "all" : "updated"))}
+          onResetLayout={() => {
+            setCollapsed(applyResetLayout());
+            setFilter("all");
+          }}
+        />
+
         {/* การ์ดอธิบายสถานะ (ไทย) — ช่วยให้ operator เข้าใจทันทีว่าไม่ใช่ Fail */}
-        <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[#5b4432] shadow-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-black text-amber-900">สถานะระบบ (อ่านง่าย)</span>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">ไม่ใช่ Fail</span>
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-800">M-0B: ถูกบล็อก</span>
-          </div>
-          <p className="mt-2 text-[13px] font-bold leading-relaxed text-[#3f2f22]">
-            {vm.paper.closedCycles === 0
-              ? `ระบบ Paper ทำงานแล้วและมี fills แล้ว (${vm.paper.totalOrderFilled} ครั้ง) แต่ยังไม่มีรอบ BUY→SELL ที่ปิดครบ ดังนั้น M-0B ยังถูกบล็อกตามปกติ — ยังไม่ใช่ Fail และยังไม่พร้อมเปิดเงินจริง`
-              : `ระบบ Paper ทำงานและเริ่มมีรอบปิดครบ (${vm.paper.closedCycles} รอบ) — ยังต้องสะสมตัวอย่างให้พอและผ่าน operator review ก่อน M-0B จะปลดบล็อก`}
-          </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-[#6d5745]">
-            <span className="font-black text-[#2f241b]">ขั้นตอนถัดไป: </span>
-            ปล่อย paper loop รันต่อ และตรวจ raw fills ว่ามี BUY/SELL ครบหรือยัง เป้าหมายถัดไปคือ <span className="font-black">closedCycles &gt; 0</span> ·
-            เกตต้นทุน: {vm.paper.costGateStatus === "PASS" ? "ผ่าน (ต้นทุน ไม่ใช่ edge)" : vm.paper.costGateStatus} ·
-            เงินจริง/คำสั่งจริงต้องปิดไว้เสมอจนกว่าจะอนุมัติ
-          </p>
-        </section>
+        {wrap("systemStatus", systemStatusNode)}
 
         <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
-          <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />
-          <RuntimeMonitorCard paper={vm.paper} safety={vm.safety} pollMessages={runtimePollMessages} />
+          {wrap("dynamicRegridStatus", <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />)}
+          {wrap(
+            "runtimeMonitor",
+            <RuntimeMonitorCard paper={vm.paper} safety={vm.safety} pollMessages={runtimePollMessages} />,
+          )}
         </div>
-        <RegridPhase2AReadinessCard paper={vm.paper} />
-        <CanonicalMarketRegimeCard paper={vm.paper} />
-        <CanonicalRegimeGateCard paper={vm.paper} />
-        <RegimeEvidenceCard paper={vm.paper} />
-        <IndicatorGateShadowCard paper={vm.paper} />
-        <TrendRegimeConfirmationCard paper={vm.paper} />
-        <TrendZoneCandidateCard paper={vm.paper} />
-        <TrendStrategyShadowCard paper={vm.paper} />
-        <TrendTransitionMonitorCard paper={vm.paper} />
-        <TrendManualPaperArmGateCard paper={vm.paper} />
-        <TrendPaperArmSessionCard paper={vm.paper} />
-        <TrendPaperArmIntentBridgeCard paper={vm.paper} />
-        <TrendPaperDryRunConsoleCard paper={vm.paper} />
-        <TrendPaperEvidenceRunnerCard paper={vm.paper} />
-        <TrendPaperExecutionPreflightCard paper={vm.paper} />
-        <TrendPaperExecutionEngineCard paper={vm.paper} />
-        <TrendEdgeReviewCard paper={vm.paper} />
+        {wrap("regridPhase2AReadiness", <RegridPhase2AReadinessCard paper={vm.paper} />)}
+        {wrap("canonicalMarketRegime", <CanonicalMarketRegimeCard paper={vm.paper} />)}
+        {wrap("canonicalRegimeGate", <CanonicalRegimeGateCard paper={vm.paper} />)}
+        {wrap("regimeEvidence", <RegimeEvidenceCard paper={vm.paper} />)}
+        {wrap("indicatorGate", <IndicatorGateShadowCard paper={vm.paper} />)}
+        {wrap("trendRegimeConfirmation", <TrendRegimeConfirmationCard paper={vm.paper} />)}
+        {wrap("trendZoneCandidate", <TrendZoneCandidateCard paper={vm.paper} />)}
+        {wrap("trendStrategyShadow", <TrendStrategyShadowCard paper={vm.paper} />)}
+        {wrap("trendTransitionMonitor", <TrendTransitionMonitorCard paper={vm.paper} />)}
+        {wrap("trendManualPaperArmGate", <TrendManualPaperArmGateCard paper={vm.paper} />)}
+        {wrap("trendPaperArmSession", <TrendPaperArmSessionCard paper={vm.paper} />)}
+        {wrap("trendPaperArmIntentBridge", <TrendPaperArmIntentBridgeCard paper={vm.paper} />)}
+        {wrap("trendPaperDryRunConsole", <TrendPaperDryRunConsoleCard paper={vm.paper} />)}
+        {wrap("trendPaperEvidenceRunner", <TrendPaperEvidenceRunnerCard paper={vm.paper} />)}
+        {wrap("trendPaperExecutionPreflight", <TrendPaperExecutionPreflightCard paper={vm.paper} />)}
+        {wrap("trendPaperExecutionEngine", <TrendPaperExecutionEngineCard paper={vm.paper} />)}
+        {wrap("trendEdgeReview", <TrendEdgeReviewCard paper={vm.paper} />)}
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_360px]">
           <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />
 
-          <section className="min-w-0 rounded-lg border border-[#3a2c21]/10 bg-[#fff4df] p-2 shadow-sm">
+          {/* Cafe Floor — pinned/always visible per UI-1 (never collapsed, never behind a mini-panel). */}
+          <section className="relative min-w-0 rounded-lg border border-[#3a2c21]/10 bg-[#fff4df] p-2 shadow-sm">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
               <div>
                 <h2 className="text-sm font-black text-[#2f241b]">ห้องคาเฟ่ (Cafe Floor)</h2>
                 <p className="text-[11px] text-[#7a6550]">คลิกที่ Agent เพื่อดูรายละเอียด · ดับเบิลคลิกเพื่อเปิดแดชบอร์ดคลาสสิก</p>
               </div>
-              <div className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">
-                closedCycles={vm.paper.closedCycles} | {edgeStatusLabel(vm.paper.edgeStatus)}
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-800">ปักหมุด · แสดงตลอด</span>
+                <div className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">
+                  closedCycles={vm.paper.closedCycles} | {edgeStatusLabel(vm.paper.edgeStatus)}
+                </div>
               </div>
             </div>
 

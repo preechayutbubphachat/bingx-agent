@@ -66,6 +66,7 @@ import RiskManagerPanel from "./RiskManagerPanel";
 import EvidencePilotHealthCard from "./EvidencePilotHealthCard";
 import RejectionAnalysisCard from "./RejectionAnalysisCard";
 import RrDrilldownCard from "./RrDrilldownCard";
+import MtfObFvgShadowCard from "./MtfObFvgShadowCard";
 import TradingCafeBottomPanels from "./TradingCafeBottomPanels";
 
 const STATUS_FILTERS: ("all" | TileStatusCategory)[] = ["all", "working", "waiting", "notready"];
@@ -497,6 +498,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           <RejectionAnalysisCard paper={vm.paper} />
           {/* T-3H-6-b: read-only RR drilldown for the latest setup (observe only) */}
           <RrDrilldownCard paper={vm.paper} />
+          {/* T-3H-6-c: read-only MTF OB/FVG refinement shadow (observe only) */}
+          <MtfObFvgShadowCard paper={vm.paper} />
           <RiskManagerPanel paper={vm.paper} safety={vm.safety} log={vm.bottomLog} />
         </div>
       </div>

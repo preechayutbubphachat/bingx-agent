@@ -99,6 +99,7 @@ Dynamic Regrid Phase 2-A: ACTIVE (read-only readiness/diagnostics — no grid op
 Trend Strategy Phase T-0: DESIGN ONLY (docs/TREND_STRATEGY_PAPER_DESIGN.md — แยกจาก Grid, no execution)
 Trend Strategy T-1/T-1M: ACTIVE shadow+monitor (read-only) · T-2 manual paper arm = DESIGN ONLY (no arm button, no order)
 Trend Evidence T-3H-6-a: ACTIVE observability-only rejection decision log (append-only JSONL after state write; never read by decision logic)
+Trend Evidence T-3H-6-c: ACTIVE shadow-only MTF OB/FVG entry refinement diagnostics (heuristic unless exact zones exist; no threshold/entry/runner change)
 activationAllowed / paperActivationAllowed / liveActivationAllowed: false
 ```
 

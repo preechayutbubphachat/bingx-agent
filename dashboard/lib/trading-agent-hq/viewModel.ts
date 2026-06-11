@@ -107,6 +107,40 @@ export interface TrendEvidenceDecisionSummaryVM {
   staleCycleEstimate: { expectedCycles: number; observedCycles: number; missedCycles: number } | null;
   lastRejectReasons: string[];
   sampleWarning: boolean;
+  mtfObFvgShadowSummary: {
+    available: boolean;
+    totalShadowSamples: number;
+    samplesWithRefinement: number;
+    samplesWithNoData: number;
+    averageCurrentRawRR: number | null;
+    averageCurrentNetRR: number | null;
+    averageRefinedRawRR: number | null;
+    averageRefinedNetRR: number | null;
+    averageRrImprovement: number | null;
+    averageNetRrImprovement: number | null;
+    passStaticCount: number;
+    passNetCount: number;
+    qualityScoreAverage: number | null;
+    classificationCounts: Record<string, number>;
+    dataStatusCounts: Record<string, number>;
+    latestSnapshot: {
+      capturedAt: string | null;
+      dataStatus: string | null;
+      classification: string | null;
+      qualityScore: number | null;
+      currentRawRR: number | null;
+      currentNetRR: number | null;
+      refinedRawRR: number | null;
+      refinedNetRR: number | null;
+      rrImprovement: number | null;
+      netRrImprovement: number | null;
+      wouldPassStaticRR: boolean | null;
+      wouldPassNetRR: boolean | null;
+      requiredRR: number | null;
+      usesExactObFvgZones: boolean;
+    } | null;
+    sampleWarning: boolean;
+  };
 }
 
 export interface TrendPaperEvidenceRunnerVM {

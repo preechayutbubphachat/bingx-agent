@@ -13,6 +13,13 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
+import {
+  emptyMtfObFvgShadowSnapshotSummary,
+  summarizeMtfObFvgShadowSnapshots,
+  type MtfObFvgShadowSnapshotSummary,
+  type RrSnapshot,
+  type SmcMtfShadowSnapshot,
+} from "./mtfObFvgShadowSnapshot.ts";
 
 export const TREND_EVIDENCE_DECISION_LOG_SCHEMA_VERSION = 1;
 export const TREND_EVIDENCE_DECISION_LOG_FILE_NAME = "trend_paper_evidence_decisions.jsonl";
@@ -48,6 +55,10 @@ export interface TrendEvidenceDecisionRecord {
   sampleStatus: string;
   readyForNextPhase: boolean;
   stopReason: string | null;
+  /** T-3H-6-c1 optional RR geometry snapshot; observability only. */
+  rrSnapshot?: RrSnapshot;
+  /** T-3H-6-c1 optional MTF OB/FVG refinement shadow snapshot; observability only. */
+  smcMtfShadowSnapshot?: SmcMtfShadowSnapshot;
 }
 
 export interface RejectReasonCount {
@@ -71,6 +82,8 @@ export interface TrendEvidenceDecisionSummary {
   sampleWarning: boolean;
   /** lines skipped because they were malformed (observability of the log itself) */
   malformedLines: number;
+  /** T-3H-6-c1 read-only shadow history summary. Never read by runner/decision logic. */
+  mtfObFvgShadowSummary: MtfObFvgShadowSnapshotSummary;
 }
 
 export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummary {
@@ -88,6 +101,7 @@ export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummar
     lastRejectReasons: [],
     sampleWarning: true,
     malformedLines: 0,
+    mtfObFvgShadowSummary: emptyMtfObFvgShadowSnapshotSummary(),
   };
 }
 
@@ -132,6 +146,8 @@ export function buildTrendEvidenceDecisionRecord(input: {
     readyForNextPhase?: unknown;
     stopReason?: unknown;
   };
+  rrSnapshot?: RrSnapshot | null;
+  smcMtfShadowSnapshot?: SmcMtfShadowSnapshot | null;
 }): TrendEvidenceDecisionRecord {
   const s = input.state;
   const strOrNull = (v: unknown): string | null => (typeof v === "string" && v.length ? v : null);
@@ -139,7 +155,7 @@ export function buildTrendEvidenceDecisionRecord(input: {
   const reasons = Array.isArray(s.lastRejectReasons)
     ? s.lastRejectReasons.filter((r): r is string => typeof r === "string").slice(0, 16)
     : [];
-  return {
+  const record: TrendEvidenceDecisionRecord = {
     schemaVersion: TREND_EVIDENCE_DECISION_LOG_SCHEMA_VERSION,
     recordedAt: input.now,
     source: input.source,
@@ -162,6 +178,9 @@ export function buildTrendEvidenceDecisionRecord(input: {
     readyForNextPhase: s.readyForNextPhase === true,
     stopReason: strOrNull(s.stopReason),
   };
+  if (input.rrSnapshot) record.rrSnapshot = input.rrSnapshot;
+  if (input.smcMtfShadowSnapshot) record.smcMtfShadowSnapshot = input.smcMtfShadowSnapshot;
+  return record;
 }
 
 // ---- append (best-effort, never throws) ----
@@ -305,6 +324,7 @@ export async function readTrendEvidenceDecisionLogSummary(
     lastRejectReasons: Array.isArray(latestRecord.lastRejectReasons) ? latestRecord.lastRejectReasons : [],
     sampleWarning: records.length < DECISION_LOG_MIN_SAMPLE,
     malformedLines: malformed,
+    mtfObFvgShadowSummary: summarizeMtfObFvgShadowSnapshots(records),
   };
 }
 

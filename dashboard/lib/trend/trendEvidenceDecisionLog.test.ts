@@ -16,6 +16,7 @@ import {
   TREND_EVIDENCE_DECISION_LOG_FILE_NAME,
   type TrendEvidenceDecisionRecord,
 } from "./trendEvidenceDecisionLog.ts";
+import { buildSmcMtfShadowSnapshot } from "./mtfObFvgShadowSnapshot.ts";
 
 const NOW = Date.parse("2026-06-11T12:00:00.000Z");
 const iso = (offsetMin: number) => new Date(NOW + offsetMin * 60_000).toISOString();
@@ -111,6 +112,83 @@ test("summary counts reject reasons / decisions / gate statuses correctly", asyn
     assert.equal(s.latestRecordedAt, iso(0));
     assert.deepEqual(s.lastRejectReasons, ["a", "c"]);
     assert.equal(s.sampleWarning, true); // 3 < 100
+  });
+});
+
+test("old log records without snapshots still parse and return empty shadow summary", async () => {
+  await withTempLog(async (logPath) => {
+    await appendTrendEvidenceDecisionLog(mkRecord({ recordedAt: iso(0) }), { filePath: logPath, skipTrim: true });
+    const s = await readTrendEvidenceDecisionLogSummary({ filePath: logPath, now: NOW });
+    assert.equal(s.available, true);
+    assert.equal(s.mtfObFvgShadowSummary.available, false);
+    assert.equal(s.mtfObFvgShadowSummary.totalShadowSamples, 0);
+  });
+});
+
+test("snapshot record is appended and summarized", async () => {
+  await withTempLog(async (logPath) => {
+    const snap = buildSmcMtfShadowSnapshot(
+      {
+        available: true,
+        dataStatus: "HEURISTIC_ESTIMATE_ONLY",
+        classification: "REFINEMENT_IMPROVES_RR",
+        reason: "shadow",
+        direction: "SHORT",
+        currentRawRR: 1.15,
+        currentNetRR: 1.06,
+        requiredRR: 1.2,
+        refinedEntryEstimate: 63_250,
+        refinedStopEstimate: 63_500,
+        refinedTargetEstimate: 62_636,
+        refinedRawRR: 1.45,
+        refinedNetRR: 1.34,
+        rrImprovement: 0.3,
+        netRrImprovement: 0.28,
+        currentRiskDistance: 400,
+        currentRewardDistance: 460,
+        refinedRiskDistance: 250,
+        refinedRewardDistance: 364,
+        currentCostR: 0.09,
+        refinedCostR: 0.11,
+        wouldPassStaticRR: true,
+        wouldPassNetRR: true,
+        confidence: "medium",
+        qualityScore: 65,
+        missingFields: [],
+        notes: ["geometry-refinement-estimate-only"],
+        shadowOnly: true,
+        paperActivationAllowed: false,
+        liveActivationAllowed: false,
+        exchangeOrderAllowed: false,
+      },
+      iso(0),
+    );
+    await appendTrendEvidenceDecisionLog(mkRecord({ recordedAt: iso(0), smcMtfShadowSnapshot: snap }), { filePath: logPath, skipTrim: true });
+    const s = await readTrendEvidenceDecisionLogSummary({ filePath: logPath, now: NOW });
+    assert.equal(s.mtfObFvgShadowSummary.available, true);
+    assert.equal(s.mtfObFvgShadowSummary.totalShadowSamples, 1);
+    assert.equal(s.mtfObFvgShadowSummary.samplesWithRefinement, 1);
+    assert.equal(s.mtfObFvgShadowSummary.averageRefinedNetRR, 1.34);
+    assert.equal(s.mtfObFvgShadowSummary.passNetCount, 1);
+    assert.equal(s.mtfObFvgShadowSummary.classificationCounts.REFINEMENT_IMPROVES_RR, 1);
+    assert.equal(s.mtfObFvgShadowSummary.dataStatusCounts.HEURISTIC_ESTIMATE_ONLY, 1);
+    assert.equal(s.mtfObFvgShadowSummary.sampleWarning, true);
+  });
+});
+
+test("malformed shadow snapshot is skipped in summary", async () => {
+  await withTempLog(async (logPath) => {
+    await appendTrendEvidenceDecisionLog(
+      mkRecord({
+        recordedAt: iso(0),
+        smcMtfShadowSnapshot: { source: "wrong", currentRawRR: Number.NaN } as never,
+      }),
+      { filePath: logPath, skipTrim: true },
+    );
+    const s = await readTrendEvidenceDecisionLogSummary({ filePath: logPath, now: NOW });
+    assert.equal(s.totalRecords, 1);
+    assert.equal(s.mtfObFvgShadowSummary.available, false);
+    assert.equal(s.mtfObFvgShadowSummary.totalShadowSamples, 0);
   });
 });
 

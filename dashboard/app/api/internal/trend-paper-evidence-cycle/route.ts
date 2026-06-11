@@ -42,6 +42,9 @@ import {
   appendTrendEvidenceDecisionLog,
   buildTrendEvidenceDecisionRecord,
 } from "@/lib/trend/trendEvidenceDecisionLog";
+import { computeRrBlockerDrilldown } from "@/lib/trend/rrBlockerDrilldown";
+import { computeMtfObFvgRefinementShadow, type MtfDirection } from "@/lib/trend/mtfObFvgRefinementShadow";
+import { buildRrSnapshot, buildSmcMtfShadowSnapshot } from "@/lib/trend/mtfObFvgShadowSnapshot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +81,14 @@ function envBool(value: string | undefined, fallback: boolean): boolean {
 function envNumber(value: string | undefined, fallback: number): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function num(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function mid(zone: unknown): number | null {
+  return Array.isArray(zone) && typeof zone[0] === "number" && typeof zone[1] === "number" ? (zone[0] + zone[1]) / 2 : null;
 }
 
 function buildTrendPaperExecutionConfig(): TrendPaperExecutionConfig {
@@ -170,6 +181,65 @@ function statusBody(action: string, state: Record<string, unknown>, cfg: Evidenc
     maxConsecutiveLossesObserved: state.maxConsecutiveLossesObserved,
     readyForNextPhase: state.readyForNextPhase, stopReason: state.stopReason,
     ...extra,
+  };
+}
+
+function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildDiagnostics>>, capturedAt: string) {
+  const d = diagnostics.diagnostics as unknown as Record<string, unknown>;
+  const trendStrategy = (d.trendStrategy ?? {}) as Record<string, unknown>;
+  const preflight = (d.trendPaperExecutionPreflight ?? {}) as Record<string, unknown>;
+  const trendZone = (d.trendZoneCandidate ?? {}) as Record<string, unknown>;
+  const trendZoneTargets = (trendZone.targets ?? {}) as Record<string, unknown>;
+  const regimeEvidence = (d.regimeEvidence ?? {}) as Record<string, unknown>;
+  const regimeDecision = (regimeEvidence.decision ?? {}) as Record<string, unknown>;
+  const indicators = (regimeEvidence.indicators ?? {}) as Record<string, unknown>;
+  const indicatorValue = (name: string) => num(((indicators[name] as Record<string, unknown> | undefined) ?? {}).value);
+  const canonicalMarketRegime = (d.canonicalMarketRegime ?? {}) as Record<string, unknown>;
+  const entryZone = (trendStrategy.entryZone ?? trendZone.pullbackZone ?? null) as [number, number] | null;
+  const direction = (preflight.direction ?? trendStrategy.direction ?? null) as MtfDirection | null;
+  const entry = num(preflight.entry) ?? mid(entryZone);
+  const stop = num(preflight.stopLoss) ?? num(trendStrategy.invalidation) ?? num(trendZone.invalidation);
+  const target = num(preflight.takeProfit1) ?? num(trendStrategy.target1) ?? num(trendZoneTargets.t1);
+  const rawRR = num(trendStrategy.rewardRisk) ?? num(preflight.rewardRisk);
+
+  const rr = computeRrBlockerDrilldown({
+    rawRR,
+    requiredRR: diagnostics.config.minRewardRisk,
+    entry,
+    stopLoss: stop,
+    target1: target,
+    currentPrice: num(trendStrategy.currentPrice) ?? num(d.currentPrice),
+    distanceToEntryZonePct: num(trendStrategy.distanceToEntryZonePct),
+    riskStatus: typeof trendStrategy.riskStatus === "string" ? trendStrategy.riskStatus : null,
+    feePct: diagnostics.config.feePct,
+    slippagePct: diagnostics.config.slippagePct,
+  });
+  const mtf = computeMtfObFvgRefinementShadow({
+    direction,
+    currentEntry: entry,
+    currentStop: stop,
+    currentTarget: target,
+    currentRawRR: rawRR,
+    requiredRR: diagnostics.config.minRewardRisk,
+    feePct: diagnostics.config.feePct,
+    slippagePct: diagnostics.config.slippagePct,
+    regime: typeof canonicalMarketRegime.regime === "string" ? canonicalMarketRegime.regime : typeof regimeDecision.regime === "string" ? regimeDecision.regime : null,
+    adx: indicatorValue("adx"),
+    atr: indicatorValue("atr"),
+    atrPct: indicatorValue("atrPct"),
+    bbw: indicatorValue("bbw"),
+    currentPrice: num(trendStrategy.currentPrice) ?? num(d.currentPrice),
+    distanceToEntryZonePct: num(trendStrategy.distanceToEntryZonePct),
+    entryZone,
+    optionalObZone: null,
+    optionalFvgZone: null,
+    optionalLiquidityTarget: num(trendZoneTargets.t1) ?? num(trendStrategy.target1),
+    optionalInvalidation: num(trendZone.invalidation) ?? num(trendStrategy.invalidation),
+  });
+
+  return {
+    rrSnapshot: buildRrSnapshot(rr, capturedAt),
+    smcMtfShadowSnapshot: buildSmcMtfShadowSnapshot(mtf, capturedAt),
   };
 }
 
@@ -300,12 +370,16 @@ export async function POST(req: NextRequest) {
     // T-3H-6-a hook: append observability record AFTER state write succeeds.
     // Best-effort only — append failure must never fail the cycle (helper never throws).
     // ONE-WAY: nothing in the decision path reads this log.
+    const snapshotCapturedAt = new Date().toISOString();
+    const snapshots = buildDecisionLogSnapshots(init, snapshotCapturedAt);
     const decisionLogResult = await appendTrendEvidenceDecisionLog(
       buildTrendEvidenceDecisionRecord({
-        now: new Date().toISOString(),
+        now: snapshotCapturedAt,
         source: "trend-paper-evidence-cycle",
         action: "run_once",
         state: result.nextState as unknown as Record<string, unknown>,
+        rrSnapshot: snapshots.rrSnapshot,
+        smcMtfShadowSnapshot: snapshots.smcMtfShadowSnapshot,
       }),
     ).catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : "append_failed" }));
 

@@ -482,6 +482,45 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
     typeof sce.expectedCycles === "number" &&
     typeof sce.observedCycles === "number" &&
     typeof sce.missedCycles === "number";
+  const mtfRaw = obj(raw.mtfObFvgShadowSummary);
+  const latestRaw = obj(mtfRaw.latestSnapshot);
+  const hasLatest = mtfRaw.latestSnapshot != null && Object.keys(latestRaw).length > 0;
+  const mtfSummary: PaperVM["trendEvidenceDecisionSummary"]["mtfObFvgShadowSummary"] = {
+    available: bool(mtfRaw.available),
+    totalShadowSamples: typeof mtfRaw.totalShadowSamples === "number" ? mtfRaw.totalShadowSamples : 0,
+    samplesWithRefinement: typeof mtfRaw.samplesWithRefinement === "number" ? mtfRaw.samplesWithRefinement : 0,
+    samplesWithNoData: typeof mtfRaw.samplesWithNoData === "number" ? mtfRaw.samplesWithNoData : 0,
+    averageCurrentRawRR: numOrNull(mtfRaw.averageCurrentRawRR),
+    averageCurrentNetRR: numOrNull(mtfRaw.averageCurrentNetRR),
+    averageRefinedRawRR: numOrNull(mtfRaw.averageRefinedRawRR),
+    averageRefinedNetRR: numOrNull(mtfRaw.averageRefinedNetRR),
+    averageRrImprovement: numOrNull(mtfRaw.averageRrImprovement),
+    averageNetRrImprovement: numOrNull(mtfRaw.averageNetRrImprovement),
+    passStaticCount: typeof mtfRaw.passStaticCount === "number" ? mtfRaw.passStaticCount : 0,
+    passNetCount: typeof mtfRaw.passNetCount === "number" ? mtfRaw.passNetCount : 0,
+    qualityScoreAverage: numOrNull(mtfRaw.qualityScoreAverage),
+    classificationCounts: countMap(mtfRaw.classificationCounts),
+    dataStatusCounts: countMap(mtfRaw.dataStatusCounts),
+    latestSnapshot: hasLatest
+      ? {
+          capturedAt: strOrNull(latestRaw.capturedAt),
+          dataStatus: strOrNull(latestRaw.dataStatus),
+          classification: strOrNull(latestRaw.classification),
+          qualityScore: numOrNull(latestRaw.qualityScore),
+          currentRawRR: numOrNull(latestRaw.currentRawRR),
+          currentNetRR: numOrNull(latestRaw.currentNetRR),
+          refinedRawRR: numOrNull(latestRaw.refinedRawRR),
+          refinedNetRR: numOrNull(latestRaw.refinedNetRR),
+          rrImprovement: numOrNull(latestRaw.rrImprovement),
+          netRrImprovement: numOrNull(latestRaw.netRrImprovement),
+          wouldPassStaticRR: typeof latestRaw.wouldPassStaticRR === "boolean" ? latestRaw.wouldPassStaticRR : null,
+          wouldPassNetRR: typeof latestRaw.wouldPassNetRR === "boolean" ? latestRaw.wouldPassNetRR : null,
+          requiredRR: numOrNull(latestRaw.requiredRR),
+          usesExactObFvgZones: bool(latestRaw.usesExactObFvgZones),
+        }
+      : null,
+    sampleWarning: mtfRaw.sampleWarning !== false,
+  };
   return {
     available: bool(raw.available),
     totalRecords: typeof raw.totalRecords === "number" ? raw.totalRecords : 0,
@@ -497,6 +536,7 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
       : null,
     lastRejectReasons: strArray(raw.lastRejectReasons),
     sampleWarning: raw.sampleWarning !== false,
+    mtfObFvgShadowSummary: mtfSummary,
   };
 }
 

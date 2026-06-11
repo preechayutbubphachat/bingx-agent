@@ -161,3 +161,79 @@ It has no action buttons, no browser token, no fetch to an internal write route,
 - T-3H-6-c3: paper-only controlled experiment after operator review.
 
 All future activation requires separate approval.
+
+## T-3H-6-c1 Snapshot Logging
+
+Status: IMPLEMENTED as shadow-only observability.
+
+T-3H-6-c1 adds optional snapshot fields to the existing trend evidence decision log. The write hook remains in the internal evidence-cycle route after the evidence state write succeeds. The runner, gate, strategy, preflight, execution engine, broker layer, and thresholds do not read these snapshots.
+
+Optional fields:
+
+```json
+{
+  "rrSnapshot": {
+    "schemaVersion": 1,
+    "source": "rr-blocker-drilldown",
+    "capturedAt": "2026-06-11T12:00:00.000Z",
+    "currentRawRR": 1.15,
+    "currentNetRR": 1.06,
+    "requiredRR": 1.2,
+    "rrGap": 0.05,
+    "riskDistance": 921.5,
+    "rewardDistance": 1062.9,
+    "costR": 0.09,
+    "failSeverity": "NEAR_MISS",
+    "reason": "TARGET_TOO_CLOSE"
+  },
+  "smcMtfShadowSnapshot": {
+    "schemaVersion": 1,
+    "source": "mtf-ob-fvg-refinement-shadow",
+    "capturedAt": "2026-06-11T12:00:00.000Z",
+    "dataStatus": "HEURISTIC_ESTIMATE_ONLY",
+    "classification": "REFINEMENT_IMPROVES_RR",
+    "qualityScore": 65,
+    "currentRawRR": 1.15,
+    "currentNetRR": 1.06,
+    "refinedRawRR": 1.45,
+    "refinedNetRR": 1.34,
+    "rrImprovement": 0.3,
+    "netRrImprovement": 0.28,
+    "wouldPassStaticRR": true,
+    "wouldPassNetRR": true,
+    "requiredRR": 1.2,
+    "shadowOnly": true,
+    "usesExactObFvgZones": false,
+    "notes": ["heuristic geometry estimate only"]
+  }
+}
+```
+
+Summary metrics are exposed read-only through the existing decision summary:
+
+- total shadow samples
+- samples with refinement
+- samples with no data
+- average current rawRR / netRR
+- average refined rawRR / netRR
+- average RR and netRR improvement
+- static and net pass counts
+- average quality score
+- classification counts
+- data status counts
+- latest snapshot
+- sample warning
+
+Sample interpretation:
+
+- `<50` samples: informational only.
+- `50-100` samples: early pattern only.
+- `>=100` samples: eligible for operator review, not activation.
+
+Safety:
+
+- Snapshot logging failure is best-effort and must not fail the route.
+- Older log records without snapshots remain valid.
+- Malformed snapshots are skipped in summaries.
+- No secrets, headers, tokens, request payloads, account data, order objects, or exchange data are stored.
+- No threshold, entry, runner decision, adaptive RR, OB/FVG execution, live trading, or exchange workflow is activated.

@@ -81,6 +81,7 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
   const cfg = paper.trendPaperConfigPublic;
   const zone = ts.entryZone ?? paper.trendZoneCandidate?.pullbackZone ?? null;
   const direction = (pf.direction ?? ts.direction) as MtfDirection | null;
+  const history = paper.trendEvidenceDecisionSummary.mtfObFvgShadowSummary;
 
   const r = computeMtfObFvgRefinementShadow({
     direction,
@@ -147,6 +148,31 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
         />
         <Row label="requiredRR" value={fmt(r.requiredRR)} />
         <Row label="refined entry estimate" value={fmt(r.refinedEntryEstimate, 1)} />
+      </div>
+
+      <div className="rounded-lg border border-[#e5d5bf] bg-white/70 p-2">
+        <div className="mb-1 text-[10px] font-black uppercase tracking-wide text-[#7a6a59]">shadow history</div>
+        <div className="grid grid-cols-1 gap-1.5">
+          <Row label="samples" value={String(history.totalShadowSamples)} tone={history.totalShadowSamples >= 50 ? "green" : "amber"} />
+          <Row label="avg current netRR" value={fmt(history.averageCurrentNetRR)} />
+          <Row
+            label="avg refined netRR"
+            value={fmt(history.averageRefinedNetRR)}
+            tone={history.averageRefinedNetRR != null && history.averageCurrentNetRR != null && history.averageRefinedNetRR > history.averageCurrentNetRR ? "green" : "neutral"}
+          />
+          <Row
+            label="avg netRR improvement"
+            value={fmt(history.averageNetRrImprovement)}
+            tone={history.averageNetRrImprovement != null && history.averageNetRrImprovement > 0 ? "green" : "neutral"}
+          />
+          <Row label="pass net / samples" value={`${history.passNetCount}/${history.totalShadowSamples}`} />
+          <Row label="quality avg" value={fmt(history.qualityScoreAverage, 0)} />
+        </div>
+        {history.sampleWarning ? (
+          <p className="mt-1.5 text-[10px] font-bold text-amber-900">
+            Need 50-100 samples before using this for decisions.
+          </p>
+        ) : null}
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-900">

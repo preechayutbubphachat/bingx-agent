@@ -9,6 +9,7 @@ import {
   computeMtfObFvgRefinementShadow,
   type MtfDirection,
 } from "@/lib/trend/mtfObFvgRefinementShadow";
+import { reviewMtfObFvgShadowSummary } from "@/lib/trend/mtfObFvgShadowReview";
 
 const NA = "ไม่มีข้อมูล";
 
@@ -50,6 +51,47 @@ function mapClassification(s: string): string {
   return m[s] ?? s;
 }
 
+function mapSampleTier(s: string): string {
+  if (s === "REVIEW_READY_100_PLUS") return "review-ready shadow sample";
+  if (s === "EARLY_PATTERN_50_TO_99") return "early pattern";
+  return "insufficient sample";
+}
+
+function mapEvidenceGrade(s: string): string {
+  const m: Record<string, string> = {
+    NO_DATA: "no data",
+    WEAK: "weak",
+    PROMISING: "promising shadow",
+    STRONG_SHADOW: "strong shadow",
+    NEEDS_EXACT_ZONE_DATA: "needs exact zone data",
+  };
+  return m[s] ?? s;
+}
+
+function mapReadiness(s: string): string {
+  const m: Record<string, string> = {
+    OBSERVE_ONLY: "observe only",
+    CONTINUE_LOGGING: "continue logging",
+    EXACT_ZONE_DETECTOR_RECOMMENDED: "exact-zone detector recommended",
+    ELIGIBLE_FOR_REVIEW_AFTER_100: "eligible for review after 100+",
+  };
+  return m[s] ?? s;
+}
+
+function mapExactZoneReadiness(s: string): string {
+  const m: Record<string, string> = {
+    EXACT_ZONE_READY: "exact zones ready",
+    PARTIAL_DATA_ONLY: "partial structured data",
+    HEURISTIC_ONLY: "heuristic only",
+    MISSING_REQUIRED_DATA: "missing required data",
+  };
+  return m[s] ?? s;
+}
+
+function pct(v: number | null | undefined): string {
+  return typeof v === "number" && Number.isFinite(v) ? `${(v * 100).toFixed(0)}%` : NA;
+}
+
 function Row({
   label,
   value,
@@ -82,6 +124,7 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
   const zone = ts.entryZone ?? paper.trendZoneCandidate?.pullbackZone ?? null;
   const direction = (pf.direction ?? ts.direction) as MtfDirection | null;
   const history = paper.trendEvidenceDecisionSummary.mtfObFvgShadowSummary;
+  const review = reviewMtfObFvgShadowSummary(history);
 
   const r = computeMtfObFvgRefinementShadow({
     direction,
@@ -173,6 +216,42 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
             Need 50-100 samples before using this for decisions.
           </p>
         ) : null}
+      </div>
+
+      <div className="rounded-lg border border-violet-200 bg-violet-50/70 p-2">
+        <div className="mb-1 text-[10px] font-black uppercase tracking-wide text-violet-900">shadow review</div>
+        <div className="grid grid-cols-1 gap-1.5">
+          <Row
+            label="sample tier"
+            value={mapSampleTier(review.sampleTier)}
+            tone={review.sampleCount >= 100 ? "green" : review.sampleCount >= 50 ? "amber" : "neutral"}
+          />
+          <Row
+            label="evidence grade"
+            value={mapEvidenceGrade(review.evidenceGrade)}
+            tone={review.evidenceGrade === "STRONG_SHADOW" || review.evidenceGrade === "PROMISING" ? "green" : review.evidenceGrade === "WEAK" ? "amber" : "neutral"}
+          />
+          <Row label="readiness" value={mapReadiness(review.readiness)} />
+          <Row
+            label="exact zone readiness"
+            value={mapExactZoneReadiness(review.exactZoneReadiness)}
+            tone={review.exactZoneReadiness === "EXACT_ZONE_READY" ? "green" : review.exactZoneReadiness === "HEURISTIC_ONLY" ? "amber" : "neutral"}
+          />
+          <Row label="pass net rate" value={pct(review.passNetRate)} />
+          <Row label="dominant status" value={review.dataStatusDominant ?? NA} />
+        </div>
+        <p className="mt-1.5 text-[10px] font-black text-violet-950">
+          Shadow review only — ไม่ใช่สัญญาณเข้าไม้
+        </p>
+        <p className="mt-1 text-[10px] font-bold text-violet-900">
+          Exact OB/FVG zones required before activation · No entry logic changed
+        </p>
+        <p className="mt-1 text-[10px] font-bold text-[#6e5b49]">{review.recommendedNextStep}</p>
+        {review.warnings.slice(0, 2).map((warning) => (
+          <p key={warning} className="mt-1 text-[10px] font-bold text-amber-900">
+            {warning}
+          </p>
+        ))}
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-900">

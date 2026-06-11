@@ -237,3 +237,53 @@ Safety:
 - Malformed snapshots are skipped in summaries.
 - No secrets, headers, tokens, request payloads, account data, order objects, or exchange data are stored.
 - No threshold, entry, runner decision, adaptive RR, OB/FVG execution, live trading, or exchange workflow is activated.
+
+## T-3H-6-c2 Shadow Review and Exact Zone Readiness
+
+Status: IMPLEMENTED as Agent HQ review-only observability.
+
+T-3H-6-c2 adds a pure review helper over the existing `mtfObFvgShadowSummary`. It does not read runtime files directly and does not feed any strategy, runner, arm gate, preflight, threshold, or execution path.
+
+Review output:
+
+- `sampleCount`
+- `sampleTier`: `INSUFFICIENT_LT_50`, `EARLY_PATTERN_50_TO_99`, `REVIEW_READY_100_PLUS`
+- average current/refined netRR and average netRR improvement
+- `passNetRate`
+- `qualityAverage`
+- dominant `dataStatus` and `classification`
+- `evidenceGrade`: `NO_DATA`, `WEAK`, `PROMISING`, `STRONG_SHADOW`, `NEEDS_EXACT_ZONE_DATA`
+- `readiness`: `OBSERVE_ONLY`, `CONTINUE_LOGGING`, `EXACT_ZONE_DETECTOR_RECOMMENDED`, `ELIGIBLE_FOR_REVIEW_AFTER_100`
+- `exactZoneReadiness`: `EXACT_ZONE_READY`, `PARTIAL_DATA_ONLY`, `HEURISTIC_ONLY`, `MISSING_REQUIRED_DATA`
+- warnings and recommended next step
+- hard safety flags: `paperActivationAllowed=false`, `liveActivationAllowed=false`, `exchangeOrderAllowed=false`
+
+Readiness rules:
+
+- No data: `NO_DATA` / `OBSERVE_ONLY`.
+- `<50` samples: `WEAK` / `CONTINUE_LOGGING`.
+- `50-99` samples with average netRR improvement `>=0.20`, pass net rate `>=70%`, and quality average `>=65`: `PROMISING` / `EXACT_ZONE_DETECTOR_RECOMMENDED`.
+- `>=100` samples with the same strong metrics: `STRONG_SHADOW` / `ELIGIBLE_FOR_REVIEW_AFTER_100`.
+- Heuristic-only data always keeps a warning that exact OB/FVG coordinates are required before controlled activation.
+
+Exact zone audit:
+
+- Current c/c1 data can summarize heuristic OB/FVG-style refinement evidence.
+- Current review does not have structured exact OB/FVG coordinates, mitigation state, displacement candle geometry, or premium/discount range data in the shadow summary.
+- Therefore the current expected exact-zone readiness is usually `HEURISTIC_ONLY`; any future `EXACT_ZONE_READY` state requires explicit structured exact-zone data, not inferred labels or UI text.
+
+Agent HQ UI:
+
+- `MTF OB/FVG Shadow` now includes a `shadow review` block.
+- The block displays sample tier, evidence grade, readiness, exact-zone readiness, pass net rate, and dominant data status.
+- The card states: `Shadow review only - not an entry signal`, `Exact OB/FVG zones required before activation`, and `No entry logic changed`.
+
+Safety:
+
+- No `reward_risk_min` or `TREND_PAPER_MIN_REWARD_RISK` change.
+- No runner decision change.
+- No strategy threshold change.
+- No arm gate or preflight change.
+- No adaptive RR activation.
+- No OB/FVG execution activation.
+- No paper/live/exchange order path.

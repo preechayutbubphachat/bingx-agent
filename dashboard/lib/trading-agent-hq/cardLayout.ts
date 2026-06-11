@@ -33,32 +33,34 @@ export interface AgentHqCardLayoutEntry {
   defaultCollapsed: boolean;
   /** pinned cards are ALWAYS visible and can never be collapsed (Cafe Floor) */
   pinned: boolean;
+  /** UI-2.2: display icon (existing project icon set; presentation only) */
+  icon?: string;
 }
 
 // Order here is documentation only; the page controls actual render order.
 // Expanded-by-default = key/decision cards. Collapsed-by-default = context/debug/audit cards.
 export const AGENT_HQ_CARD_LAYOUT: AgentHqCardLayoutEntry[] = [
-  { id: "systemStatus", title: "สถานะระบบ (อ่านง่าย)", defaultCollapsed: false, pinned: false },
-  { id: "dynamicRegridStatus", title: "Dynamic Regrid Status", defaultCollapsed: false, pinned: false },
-  { id: "runtimeMonitor", title: "Runtime Monitor", defaultCollapsed: false, pinned: false },
-  { id: "regridPhase2AReadiness", title: "Regrid Phase 2-A Readiness", defaultCollapsed: true, pinned: false },
-  { id: "canonicalMarketRegime", title: "Market Regime (Canonical)", defaultCollapsed: true, pinned: false },
-  { id: "canonicalRegimeGate", title: "Canonical Regime Gate", defaultCollapsed: true, pinned: false },
-  { id: "regimeEvidence", title: "Regime Evidence", defaultCollapsed: true, pinned: false },
-  { id: "indicatorGate", title: "Indicator Gate", defaultCollapsed: true, pinned: false },
-  { id: "trendRegimeConfirmation", title: "Trend Regime Confirmation", defaultCollapsed: true, pinned: false },
-  { id: "trendZoneCandidate", title: "Trend Zone Candidate", defaultCollapsed: true, pinned: false },
-  { id: "trendStrategyShadow", title: "Trend Strategy (Shadow)", defaultCollapsed: true, pinned: false },
-  { id: "trendTransitionMonitor", title: "Trend Transition Monitor", defaultCollapsed: false, pinned: false },
-  { id: "trendManualPaperArmGate", title: "Trend Manual Paper Arm Gate", defaultCollapsed: true, pinned: false },
-  { id: "trendPaperArmSession", title: "Trend Paper Arm Session", defaultCollapsed: true, pinned: false },
-  { id: "trendPaperArmIntentBridge", title: "Trend Paper Arm Intent Bridge", defaultCollapsed: true, pinned: false },
-  { id: "trendPaperDryRunConsole", title: "Trend Paper Dry Run Console", defaultCollapsed: true, pinned: false },
-  { id: "trendPaperEvidenceRunner", title: "Trend Paper Evidence Runner", defaultCollapsed: false, pinned: false },
-  { id: "trendPaperExecutionPreflight", title: "Trend Paper Execution Preflight", defaultCollapsed: false, pinned: false },
-  { id: "trendPaperExecutionEngine", title: "Trend Paper Execution Engine", defaultCollapsed: true, pinned: false },
-  { id: "trendEdgeReview", title: "Trend Edge Review", defaultCollapsed: true, pinned: false },
-  { id: "cafeFloor", title: "ห้องคาเฟ่ (Cafe Floor)", defaultCollapsed: false, pinned: true },
+  { id: "systemStatus", title: "สถานะระบบ (อ่านง่าย)", defaultCollapsed: false, pinned: false, icon: "🖥️" },
+  { id: "dynamicRegridStatus", title: "Dynamic Regrid Status", defaultCollapsed: false, pinned: false, icon: "▦" },
+  { id: "runtimeMonitor", title: "Runtime Monitor", defaultCollapsed: false, pinned: false, icon: "📡" },
+  { id: "regridPhase2AReadiness", title: "Regrid Phase 2-A Readiness", defaultCollapsed: true, pinned: false, icon: "🎚️" },
+  { id: "canonicalMarketRegime", title: "Market Regime (Canonical)", defaultCollapsed: true, pinned: false, icon: "🌤️" },
+  { id: "canonicalRegimeGate", title: "Canonical Regime Gate", defaultCollapsed: true, pinned: false, icon: "🚦" },
+  { id: "regimeEvidence", title: "Regime Evidence", defaultCollapsed: true, pinned: false, icon: "🔍" },
+  { id: "indicatorGate", title: "Indicator Gate", defaultCollapsed: true, pinned: false, icon: "📐" },
+  { id: "trendRegimeConfirmation", title: "Trend Regime Confirmation", defaultCollapsed: true, pinned: false, icon: "🧭" },
+  { id: "trendZoneCandidate", title: "Trend Zone Candidate", defaultCollapsed: true, pinned: false, icon: "📍" },
+  { id: "trendStrategyShadow", title: "Trend Strategy (Shadow)", defaultCollapsed: true, pinned: false, icon: "📈" },
+  { id: "trendTransitionMonitor", title: "Trend Transition Monitor", defaultCollapsed: false, pinned: false, icon: "🔄" },
+  { id: "trendManualPaperArmGate", title: "Trend Manual Paper Arm Gate", defaultCollapsed: true, pinned: false, icon: "🔐" },
+  { id: "trendPaperArmSession", title: "Trend Paper Arm Session", defaultCollapsed: true, pinned: false, icon: "🕒" },
+  { id: "trendPaperArmIntentBridge", title: "Trend Paper Arm Intent Bridge", defaultCollapsed: true, pinned: false, icon: "🌉" },
+  { id: "trendPaperDryRunConsole", title: "Trend Paper Dry Run Console", defaultCollapsed: true, pinned: false, icon: "🧪" },
+  { id: "trendPaperEvidenceRunner", title: "Trend Paper Evidence Runner", defaultCollapsed: false, pinned: false, icon: "🏃" },
+  { id: "trendPaperExecutionPreflight", title: "Trend Paper Execution Preflight", defaultCollapsed: false, pinned: false, icon: "🛫" },
+  { id: "trendPaperExecutionEngine", title: "Trend Paper Execution Engine", defaultCollapsed: true, pinned: false, icon: "⚙️" },
+  { id: "trendEdgeReview", title: "Trend Edge Review", defaultCollapsed: true, pinned: false, icon: "🧾" },
+  { id: "cafeFloor", title: "ห้องคาเฟ่ (Cafe Floor)", defaultCollapsed: false, pinned: true, icon: "☕" },
 ];
 
 export const AGENT_HQ_LAYOUT_STORAGE_KEY = "agent-hq-card-layout:v1";

@@ -13,6 +13,8 @@ export type CollapsedTile = {
   snapshot: CardSnapshot;
   severity: CardUpdateSeverity;
   hasUpdates: boolean;
+  /** UI-2.2: per-card display icon from the layout registry (presentation only) */
+  icon?: string;
 };
 
 type Props = {
@@ -68,7 +70,7 @@ function badgeClass(sev: CardUpdateSeverity): string {
 }
 
 export default function CollapsedCardTile({ tile, onExpand }: Props) {
-  const { id, title, snapshot, severity, hasUpdates } = tile;
+  const { id, title, snapshot, severity, hasUpdates, icon } = tile;
   const emphasized = severity !== "none" || hasUpdates;
   return (
     <button
@@ -77,18 +79,29 @@ export default function CollapsedCardTile({ tile, onExpand }: Props) {
       aria-expanded="false"
       aria-label={`ขยายการ์ด ${title}`}
       title={`${title} — กดเพื่อขยาย`}
-      className={`flex h-full min-h-[78px] w-full flex-col gap-1 rounded-lg border px-2.5 py-2 text-left shadow-sm transition ${tileSurface(severity, emphasized)}`}
+      className={`flex h-full min-h-[78px] w-full flex-col gap-1 rounded-xl border px-2.5 py-2 text-left shadow-sm transition ${tileSurface(severity, emphasized)}`}
     >
+      {/* UI-2.2 mockup-style header: icon chip + title, severity dot/badge on the right */}
       <div className="flex items-start justify-between gap-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className={`mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full ${dotClass(severity)}`} aria-hidden="true" />
+          {icon ? (
+            <span
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-md border border-[#e5d5bf] bg-white/80 text-[12px]"
+              aria-hidden="true"
+            >
+              {icon}
+            </span>
+          ) : null}
           <span className="truncate text-[12px] font-black leading-tight text-[#2f241b]">{title}</span>
         </div>
-        {emphasized ? (
-          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black ${badgeClass(severity)}`}>
-            {SEVERITY_BADGE_TH[severity]}
-          </span>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-1">
+          {emphasized ? (
+            <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${badgeClass(severity)}`}>
+              {SEVERITY_BADGE_TH[severity]}
+            </span>
+          ) : null}
+          <span className={`inline-block h-2 w-2 rounded-full ${dotClass(severity)}`} aria-hidden="true" />
+        </div>
       </div>
       <div className="truncate text-[11px] font-bold text-[#5b4432]">{snapshot.status}</div>
       {snapshot.summary ? (

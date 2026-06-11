@@ -9,13 +9,18 @@ import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/vi
 
 const NA = "ไม่มีข้อมูล";
 
+// UI-2.2: mockup-style panel header — icon chip + title, divider below, read-only hint.
 function Panel({ title, icon, children }: { title: string; icon: string; children: ReactNode }) {
   return (
     <section className="rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
-      <h3 className="mb-2 flex items-center gap-1.5 text-[12px] font-black text-[#2b2118]">
-        <span>{icon}</span>
-        {title}
+      <h3 className="flex items-center gap-2 text-[12px] font-black text-[#2b2118]">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#f3e8d6] text-[13px]" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="min-w-0 truncate">{title}</span>
+        <span className="ml-auto shrink-0 text-[9px] font-bold text-[#b3a285]">อ่านอย่างเดียว</span>
       </h3>
+      <div className="mb-2 mt-2 border-t border-[#efe2cd]" aria-hidden="true" />
       {children}
     </section>
   );

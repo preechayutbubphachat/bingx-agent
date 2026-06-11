@@ -14,36 +14,42 @@ export type KpiItem = {
   icon?: string;
 };
 
-function toneAccent(tone: KpiTone): { bar: string; value: string } {
+// UI-2.2: tone drives the icon chip tint + value color (mockup-style KPI card).
+function toneAccent(tone: KpiTone): { chip: string; value: string; dot: string } {
   switch (tone) {
     case "green":
-      return { bar: "bg-[#4caf74]", value: "text-[#2f7a51]" };
+      return { chip: "bg-emerald-100 text-emerald-800", value: "text-[#2f7a51]", dot: "bg-[#4caf74]" };
     case "amber":
-      return { bar: "bg-[#f0a737]", value: "text-[#a9701a]" };
+      return { chip: "bg-amber-100 text-amber-900", value: "text-[#a9701a]", dot: "bg-[#f0a737]" };
     case "red":
-      return { bar: "bg-[#e75b52]", value: "text-[#b23a33]" };
+      return { chip: "bg-red-100 text-red-800", value: "text-[#b23a33]", dot: "bg-[#e75b52]" };
     case "teal":
-      return { bar: "bg-[#1f9d92]", value: "text-[#1a766d]" };
+      return { chip: "bg-teal-100 text-teal-800", value: "text-[#1a766d]", dot: "bg-[#1f9d92]" };
     case "info":
-      return { bar: "bg-[#3aa7d8]", value: "text-[#2980a7]" };
+      return { chip: "bg-sky-100 text-sky-800", value: "text-[#2980a7]", dot: "bg-[#3aa7d8]" };
     default:
-      return { bar: "bg-[#c9b48f]", value: "text-[#2b2118]" };
+      return { chip: "bg-[#f3e8d6] text-[#7a6a59]", value: "text-[#2b2118]", dot: "bg-[#c9b48f]" };
   }
 }
 
 export default function TradingCafeKpiCard({ item }: { item: KpiItem }) {
   const accent = toneAccent(item.tone ?? "neutral");
   return (
-    <div className="relative overflow-hidden rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
-      <span className={`absolute inset-y-0 left-0 w-1 ${accent.bar}`} aria-hidden="true" />
-      <div className="flex items-center justify-between gap-2 pl-1.5">
-        <span className="text-[10px] font-black uppercase tracking-wide text-[#7a6a59]">{item.label}</span>
-        {item.icon ? <span className="text-[14px]">{item.icon}</span> : null}
+    <div className="rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm transition hover:shadow">
+      {/* UI-2.2 mockup-style header: icon chip + label, status dot on the right */}
+      <div className="flex items-center gap-2">
+        {item.icon ? (
+          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[15px] ${accent.chip}`} aria-hidden="true">
+            {item.icon}
+          </span>
+        ) : null}
+        <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-wide text-[#7a6a59]">{item.label}</span>
+        <span className={`ml-auto h-2 w-2 shrink-0 rounded-full ${accent.dot}`} aria-hidden="true" />
       </div>
-      <div className={`mt-1 truncate pl-1.5 text-[18px] font-black leading-tight ${accent.value}`} title={item.value}>
+      <div className={`mt-2 truncate text-[19px] font-black leading-tight ${accent.value}`} title={item.value}>
         {item.value}
       </div>
-      {item.sub ? <div className="truncate pl-1.5 text-[10px] font-bold text-[#9a8a72]">{item.sub}</div> : null}
+      {item.sub ? <div className="mt-0.5 truncate text-[10px] font-bold text-[#9a8a72]">{item.sub}</div> : null}
     </div>
   );
 }

@@ -43,12 +43,28 @@ export default function EvidencePilotHealthCard({ paper }: { paper: PaperVM }) {
           ? "border-amber-300 bg-amber-50 text-amber-900"
           : "border-red-300 bg-red-50 text-red-800";
 
+  // UI-2.2: status dot tone mirrors the badge tone for fast scanning
+  const dot =
+    health == null || health.status === "unknown"
+      ? "bg-[#c9b48f]"
+      : health.status === "healthy"
+        ? "bg-[#4caf74]"
+        : health.status === "warning"
+          ? "bg-[#f0a737]"
+          : "bg-[#e75b52]";
+
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 text-[13px] font-black text-[#2b2118]">🩺 Evidence Pilot Health</h2>
-        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${badge}`}>
-          {health ? health.labelTh : "กำลังคำนวณ…"}
+        <h2 className="flex min-w-0 items-center gap-2 text-[13px] font-black text-[#2b2118]">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-teal-100 text-[14px]" aria-hidden="true">🩺</span>
+          <span className="truncate">Evidence Pilot Health</span>
+        </h2>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden="true" />
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${badge}`}>
+            {health ? health.labelTh : "กำลังคำนวณ…"}
+          </span>
         </span>
       </div>
 

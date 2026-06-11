@@ -80,6 +80,10 @@ const edgeStatusLabel = (status: string) =>
 const CARD_TITLES: Record<string, string> = Object.fromEntries(
   AGENT_HQ_CARD_LAYOUT.map((c) => [c.id, c.title]),
 );
+// UI-2.2: per-card display icons from the layout registry (presentation only)
+const CARD_ICONS: Record<string, string | undefined> = Object.fromEntries(
+  AGENT_HQ_CARD_LAYOUT.map((c) => [c.id, c.icon]),
+);
 
 // THQ-5: starts from server-provided initial (mock), then hydrates from public-safe endpoints.
 export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAgentHQViewModel }) {
@@ -218,7 +222,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       if (collapsed[id]) return null; // shown as a tile above
       if (filter === "updated" && !(cardHasUpdates(id) || snap.critical)) return null;
       return (
-        <CollapsibleCard cardId={id} title={CARD_TITLES[id] ?? id} severity={displayedSeverity(id)} onToggle={toggleCard}>
+        <CollapsibleCard cardId={id} title={CARD_TITLES[id] ?? id} icon={CARD_ICONS[id]} severity={displayedSeverity(id)} onToggle={toggleCard}>
           {node}
         </CollapsibleCard>
       );
@@ -235,6 +239,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         .map((c) => ({
           id: c.id,
           title: c.title,
+          icon: c.icon,
           snapshot: snapshots[c.id]!,
           severity: displayedSeverity(c.id),
           hasUpdates: cardHasUpdates(c.id),
@@ -365,7 +370,10 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           {/* Agent & System Status */}
           <section className="rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-[14px] font-black text-[#2b2118]">Agent &amp; System Status</h2>
+              <h2 className="flex items-center gap-2 text-[14px] font-black text-[#2b2118]">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#f3e8d6] text-[14px]" aria-hidden="true">🗂️</span>
+                Agent &amp; System Status
+              </h2>
               <div className="flex flex-wrap gap-1.5">
                 {STATUS_FILTERS.map((sf) => {
                   const active = statusFilter === sf;
@@ -427,9 +435,12 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           {/* Command Floor — Cafe Floor remains the pinned, always-visible anchor */}
           <section className="relative min-w-0 rounded-xl border border-[#e5d5bf] bg-[#fff7ea] p-3 shadow-sm">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-[15px] font-black text-[#2b2118]">Trading Cafe HQ – Command Floor</h2>
-                <p className="text-[11px] text-[#7a6a59]">คลิกที่ Agent เพื่อดูรายละเอียด · ดับเบิลคลิกเพื่อเปิดแดชบอร์ดคลาสสิก</p>
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#3a2c1c] text-[17px] text-[#f4e9d4]" aria-hidden="true">☕</span>
+                <div>
+                  <h2 className="text-[15px] font-black text-[#2b2118]">Trading Cafe HQ – Command Floor</h2>
+                  <p className="text-[11px] text-[#7a6a59]">คลิกที่ Agent เพื่อดูรายละเอียด · ดับเบิลคลิกเพื่อเปิดแดชบอร์ดคลาสสิก</p>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-[#e5d5bf] bg-[#fffaf1] px-2 py-1 text-[10px] font-black text-[#7a6a59]">โหมดจำลอง</span>

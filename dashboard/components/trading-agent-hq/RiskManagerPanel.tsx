@@ -69,9 +69,16 @@ export default function RiskManagerPanel({ paper, safety, log }: Props) {
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
+      {/* UI-2.2: icon chip + status dot header (mockup-style) */}
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 text-[14px] font-black text-[#2b2118]">🛡️ Risk Manager</h2>
-        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${levelBadge}`}>{riskLevel}</span>
+        <h2 className="flex min-w-0 items-center gap-2 text-[14px] font-black text-[#2b2118]">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#3a2c1c] text-[14px]" aria-hidden="true">🛡️</span>
+          <span className="truncate">Risk Manager</span>
+        </h2>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className={`h-2 w-2 rounded-full ${barColor}`} aria-hidden="true" />
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${levelBadge}`}>{riskLevel}</span>
+        </span>
       </div>
 
       <div>

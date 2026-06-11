@@ -15,6 +15,8 @@ type Props = {
   /** severity used for the expanded header accent dot */
   severity: CardUpdateSeverity;
   pinned?: boolean;
+  /** UI-2.2: optional display icon from the layout registry (presentation only) */
+  icon?: string;
   onToggle: (cardId: string) => void;
   children: ReactNode;
 };
@@ -34,7 +36,7 @@ function dotClass(sev: CardUpdateSeverity): string {
   }
 }
 
-export default function CollapsibleCard({ cardId, title, severity, pinned = false, onToggle, children }: Props) {
+export default function CollapsibleCard({ cardId, title, severity, pinned = false, icon, onToggle, children }: Props) {
   // Pinned cards (Cafe Floor) always render fully and can never be collapsed.
   if (pinned) {
     return (
@@ -53,6 +55,7 @@ export default function CollapsibleCard({ cardId, title, severity, pinned = fals
       <div className="mb-1 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <span className={`inline-block h-2 w-2 rounded-full ${dotClass(severity)}`} aria-hidden="true" />
+          {icon ? <span className="text-[12px]" aria-hidden="true">{icon}</span> : null}
           <span className="text-[11px] font-black text-[#cbb799]">{title}</span>
         </div>
         <button

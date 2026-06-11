@@ -7,6 +7,8 @@
 // แสดงข้อมูลเพื่อสังเกตเท่านั้น — ไม่ใช่คำแนะนำให้ปรับ gate
 
 import type { PaperVM } from "@/lib/trading-agent-hq/viewModel";
+// T-3H-6-a1: pure display-only taxonomy (never imported by decision logic)
+import { groupRejectReasonCounts } from "@/lib/trend/rejectReasonTaxonomy";
 
 const NA = "ไม่มีข้อมูล";
 
@@ -17,7 +19,7 @@ function fmtTime(iso: string | null): string {
   return new Date(t).toLocaleString("th-TH", { hour12: false });
 }
 
-function CountBar({ label, count, max }: { label: string; count: number; max: number }) {
+function CountBar({ label, count, max, barClass = "bg-[#f0a737]" }: { label: string; count: number; max: number; barClass?: string }) {
   const pct = max > 0 ? Math.max(6, Math.round((count / max) * 100)) : 0;
   return (
     <li className="rounded-lg border border-[#e5d5bf] bg-[#fffaf1] px-2.5 py-1.5">
@@ -26,7 +28,7 @@ function CountBar({ label, count, max }: { label: string; count: number; max: nu
         <span className="shrink-0 text-[12px] font-black text-[#2b2118]">{count}</span>
       </div>
       <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[#efe2cd]">
-        <div className="h-full rounded-full bg-[#f0a737]" style={{ width: `${pct}%` }} />
+        <div className={`h-full rounded-full ${barClass}`} style={{ width: `${pct}%` }} />
       </div>
     </li>
   );
@@ -51,8 +53,11 @@ function DistChips({ title, counts }: { title: string; counts: Record<string, nu
 
 export default function RejectionAnalysisCard({ paper }: { paper: PaperVM }) {
   const s = paper.trendEvidenceDecisionSummary;
-  const maxCount = s.topRejectReasons.length ? s.topRejectReasons[0]!.count : 0;
   const missed = s.staleCycleEstimate?.missedCycles ?? 0;
+  // T-3H-6-a1: group raw counts by taxonomy — display-only, raw counts preserved in the VM.
+  const g = groupRejectReasonCounts(s.rejectReasonCounts);
+  const maxHard = g.hardBlockers.length ? g.hardBlockers[0]!.count : 0;
+  const maxSoft = g.softWaits.length ? g.softWaits[0]!.count : 0;
 
   return (
     <section className="flex flex-col gap-2.5 rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
@@ -88,20 +93,64 @@ export default function RejectionAnalysisCard({ paper }: { paper: PaperVM }) {
             )}
           </div>
 
+          {/* T-3H-6-a1: taxonomy grouping — hard blockers first, pass/context clearly separated */}
           <div>
-            <div className="mb-1 text-[11px] font-black text-[#2b2118]">Top reject reasons</div>
-            {s.topRejectReasons.length ? (
+            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-black text-[#2b2118]">
+              <span aria-hidden="true">🚫</span> Top hard blockers
+              <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-black text-red-800">{g.hardBlockerCount}</span>
+            </div>
+            {g.hardBlockers.length ? (
               <ul className="flex flex-col gap-1">
-                {s.topRejectReasons.slice(0, 6).map((r) => (
-                  <CountBar key={r.reason} label={r.reason} count={r.count} max={maxCount} />
+                {g.hardBlockers.slice(0, 5).map((r) => (
+                  <CountBar key={r.reason} label={r.reason} count={r.count} max={maxHard} barClass="bg-[#e75b52]" />
                 ))}
               </ul>
             ) : (
               <p className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800">
-                ไม่มี reject reasons ใน window นี้
+                ไม่มี hard blocker ใน window นี้
               </p>
             )}
           </div>
+
+          {g.softWaits.length ? (
+            <div>
+              <div className="mb-1 flex items-center gap-1.5 text-[11px] font-black text-[#2b2118]">
+                <span aria-hidden="true">⏳</span> Soft waits
+              </div>
+              <ul className="flex flex-col gap-1">
+                {g.softWaits.slice(0, 4).map((r) => (
+                  <CountBar key={r.reason} label={r.reason} count={r.count} max={maxSoft} barClass="bg-[#f0a737]" />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {g.passContext.length || g.info.length ? (
+            <div>
+              <div className="mb-1 flex items-center gap-1.5 text-[11px] font-black text-[#2b2118]">
+                <span aria-hidden="true">✅</span> Pass/context signals
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {g.passContext.slice(0, 6).map((r) => (
+                  <span key={r.reason} className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                    {r.reason} · {r.count}
+                  </span>
+                ))}
+                {g.info.slice(0, 4).map((r) => (
+                  <span key={r.reason} className="rounded-full border border-[#e5d5bf] bg-[#fffaf1] px-2 py-0.5 text-[10px] font-bold text-[#7a6a59]">
+                    {r.reason} · {r.count}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-1 text-[9px] font-bold text-[#9a8a72]">
+                Pass/context signals are not blockers — เป็นเงื่อนไขที่ “ผ่านแล้ว” ที่ runner log ไว้เป็นบริบทเท่านั้น
+              </p>
+            </div>
+          ) : null}
+
+          <p className="text-[9px] font-bold text-[#b3a285]">
+            raw reasons ทั้งหมดใน window: {g.totalReasonCount} ครั้ง (จาก {s.totalRecords} cycles)
+          </p>
 
           <DistChips title="Decision distribution" counts={s.decisionCounts} />
           <DistChips title="Gate status distribution" counts={s.gateStatusCounts} />

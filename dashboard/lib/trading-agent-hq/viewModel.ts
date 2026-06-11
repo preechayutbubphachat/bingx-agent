@@ -82,6 +82,15 @@ export interface PaperVM {
   trendPaperEvidenceRunner: TrendPaperEvidenceRunnerVM;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
   trendEvidenceDecisionSummary: TrendEvidenceDecisionSummaryVM;
+  // T-3H-6-b: non-secret display config for RR drilldown (read-only exposure; env is still the source)
+  trendPaperConfigPublic: TrendPaperConfigPublicVM;
+}
+
+// T-3H-6-b — display-only copy of non-secret strategy params (never editable from UI).
+export interface TrendPaperConfigPublicVM {
+  minRewardRisk: number | null;
+  feePct: number | null;
+  slippagePct: number | null;
 }
 
 // T-3H-6-a — aggregated view of the append-only decision log. Pure display data.

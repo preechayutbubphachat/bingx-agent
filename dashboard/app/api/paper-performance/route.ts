@@ -186,6 +186,13 @@ export async function GET() {
         totalRecords: 0,
         sampleWarning: true,
       };
+      // T-3H-6-b: expose non-secret display config (RR threshold + cost params) for the RR drilldown.
+      // READ-ONLY exposure of existing values — changing the threshold still happens only via env, not UI.
+      (paperLoopDiagnostics as unknown as Record<string, unknown>).trendPaperConfigPublic = {
+        minRewardRisk: envNumber(process.env.TREND_PAPER_MIN_REWARD_RISK, 1.2),
+        feePct: envNumber(process.env.TREND_PAPER_FEE_PCT, 0.05),
+        slippagePct: envNumber(process.env.TREND_PAPER_SLIPPAGE_PCT, 0.02),
+      };
     } catch {
       paperLoopDiagnostics = null;
     }

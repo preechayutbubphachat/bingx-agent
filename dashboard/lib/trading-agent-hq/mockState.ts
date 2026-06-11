@@ -341,6 +341,12 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       lastRejectReasons: [],
       sampleWarning: true,
     },
+    // T-3H-6-b: display config unknown in mock (UI shows defaults as "config")
+    trendPaperConfigPublic: {
+      minRewardRisk: null,
+      feePct: null,
+      slippagePct: null,
+    },
     trendEdgeReview: {
       phase: "T-4_EDGE_REVIEW",
       status: "INSUFFICIENT_DATA",

@@ -248,6 +248,12 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendPaperArmIntentBridge: mapTrendPaperArmIntentBridge(obj(loop.trendPaperArmIntentBridge)),
     trendPaperEvidenceRunner: mapTrendPaperEvidenceRunner(obj(loop.trendPaperEvidenceRunner)),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),
+    // T-3H-6-b: non-secret display config (read-only)
+    trendPaperConfigPublic: {
+      minRewardRisk: numOrNull(obj(loop.trendPaperConfigPublic).minRewardRisk),
+      feePct: numOrNull(obj(loop.trendPaperConfigPublic).feePct),
+      slippagePct: numOrNull(obj(loop.trendPaperConfigPublic).slippagePct),
+    },
     trendEdgeReview: mapTrendEdgeReview(obj(loop.trendEdgeReview)),
     regimeEvidence: {
       evidenceCompleteness: {

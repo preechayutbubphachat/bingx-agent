@@ -107,6 +107,34 @@ export interface TrendEvidenceDecisionSummaryVM {
   staleCycleEstimate: { expectedCycles: number; observedCycles: number; missedCycles: number } | null;
   lastRejectReasons: string[];
   sampleWarning: boolean;
+  exactZoneComparisonSummary: {
+    schemaVersion: 1;
+    sampleTier: string;
+    exactSamples: number;
+    heuristicSamples: number;
+    exactAvgNetRR: number | null;
+    heuristicAvgNetRR: number | null;
+    avgExactVsHeuristicDelta: number | null;
+    exactPassCount: number;
+    exactPassRate: number | null;
+    exactDataStatusCounts: Record<string, number>;
+    exactReadinessCounts: Record<string, number>;
+    usesExactObFvgZonesCount: number;
+    dominantExactStatus: string | null;
+    dominantExactReadiness: string | null;
+    fillResolution: {
+      status: string;
+      totalResolvable: number;
+      filled: number;
+      missed: number;
+      pending: number;
+      invalidationFirst: number;
+      missedFillRate: number | null;
+    };
+    warningFlags: string[];
+    readiness: string;
+    source: string;
+  };
   mtfObFvgShadowSummary: {
     available: boolean;
     totalShadowSamples: number;

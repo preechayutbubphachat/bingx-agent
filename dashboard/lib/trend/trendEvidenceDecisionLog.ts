@@ -14,6 +14,11 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import {
+  emptyExactZoneComparisonSummary,
+  summarizeExactZoneComparison,
+  type ExactZoneComparisonSummary,
+} from "./exactZoneComparisonSummary.ts";
+import {
   emptyMtfObFvgShadowSnapshotSummary,
   summarizeMtfObFvgShadowSnapshots,
   type MtfObFvgShadowSnapshotSummary,
@@ -84,6 +89,8 @@ export interface TrendEvidenceDecisionSummary {
   malformedLines: number;
   /** T-3H-6-c1 read-only shadow history summary. Never read by runner/decision logic. */
   mtfObFvgShadowSummary: MtfObFvgShadowSnapshotSummary;
+  /** T-3H-6-d5 read-only exact-zone vs heuristic comparison. Never read by runner/decision logic. */
+  exactZoneComparisonSummary: ExactZoneComparisonSummary;
 }
 
 export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummary {
@@ -102,6 +109,7 @@ export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummar
     sampleWarning: true,
     malformedLines: 0,
     mtfObFvgShadowSummary: emptyMtfObFvgShadowSnapshotSummary(),
+    exactZoneComparisonSummary: emptyExactZoneComparisonSummary(),
   };
 }
 
@@ -325,6 +333,7 @@ export async function readTrendEvidenceDecisionLogSummary(
     sampleWarning: records.length < DECISION_LOG_MIN_SAMPLE,
     malformedLines: malformed,
     mtfObFvgShadowSummary: summarizeMtfObFvgShadowSnapshots(records),
+    exactZoneComparisonSummary: summarizeExactZoneComparison(records),
   };
 }
 

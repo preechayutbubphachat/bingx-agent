@@ -483,6 +483,8 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
     typeof sce.observedCycles === "number" &&
     typeof sce.missedCycles === "number";
   const mtfRaw = obj(raw.mtfObFvgShadowSummary);
+  const exactComparisonRaw = obj(raw.exactZoneComparisonSummary);
+  const fillResolutionRaw = obj(exactComparisonRaw.fillResolution);
   const latestRaw = obj(mtfRaw.latestSnapshot);
   const hasLatest = mtfRaw.latestSnapshot != null && Object.keys(latestRaw).length > 0;
   const mtfSummary: PaperVM["trendEvidenceDecisionSummary"]["mtfObFvgShadowSummary"] = {
@@ -542,6 +544,34 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
       : null,
     lastRejectReasons: strArray(raw.lastRejectReasons),
     sampleWarning: raw.sampleWarning !== false,
+    exactZoneComparisonSummary: {
+      schemaVersion: 1,
+      sampleTier: str(exactComparisonRaw.sampleTier, "NO_DATA"),
+      exactSamples: num(exactComparisonRaw.exactSamples, 0),
+      heuristicSamples: num(exactComparisonRaw.heuristicSamples, 0),
+      exactAvgNetRR: numOrNull(exactComparisonRaw.exactAvgNetRR),
+      heuristicAvgNetRR: numOrNull(exactComparisonRaw.heuristicAvgNetRR),
+      avgExactVsHeuristicDelta: numOrNull(exactComparisonRaw.avgExactVsHeuristicDelta),
+      exactPassCount: num(exactComparisonRaw.exactPassCount, 0),
+      exactPassRate: numOrNull(exactComparisonRaw.exactPassRate),
+      exactDataStatusCounts: countMap(exactComparisonRaw.exactDataStatusCounts),
+      exactReadinessCounts: countMap(exactComparisonRaw.exactReadinessCounts),
+      usesExactObFvgZonesCount: num(exactComparisonRaw.usesExactObFvgZonesCount, 0),
+      dominantExactStatus: strOrNull(exactComparisonRaw.dominantExactStatus),
+      dominantExactReadiness: strOrNull(exactComparisonRaw.dominantExactReadiness),
+      fillResolution: {
+        status: str(fillResolutionRaw.status, "NOT_CONFIGURED"),
+        totalResolvable: num(fillResolutionRaw.totalResolvable, 0),
+        filled: num(fillResolutionRaw.filled, 0),
+        missed: num(fillResolutionRaw.missed, 0),
+        pending: num(fillResolutionRaw.pending, 0),
+        invalidationFirst: num(fillResolutionRaw.invalidationFirst, 0),
+        missedFillRate: numOrNull(fillResolutionRaw.missedFillRate),
+      },
+      warningFlags: strArray(exactComparisonRaw.warningFlags),
+      readiness: str(exactComparisonRaw.readiness, "NO_DATA"),
+      source: str(exactComparisonRaw.source, "EXACT_ZONE_COMPARISON_SUMMARY_V1"),
+    },
     mtfObFvgShadowSummary: mtfSummary,
   };
 }

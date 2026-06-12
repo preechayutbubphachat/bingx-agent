@@ -88,6 +88,21 @@ function mapExactZoneReadiness(s: string): string {
   return m[s] ?? s;
 }
 
+function mapD5SampleTier(s: string): string {
+  const m: Record<string, string> = {
+    NO_DATA: "no data",
+    INFORMATIONAL_LT_50: "informational (<50)",
+    EARLY_PATTERN_50_TO_99: "early pattern (50-99)",
+    REVIEW_ELIGIBLE_100_PLUS: "review eligible (100+)",
+  };
+  return m[s] ?? s;
+}
+
+function warningFlagsLabel(flags: string[]): string {
+  if (!flags.length) return NA;
+  return flags.slice(0, 3).join(", ");
+}
+
 function pct(v: number | null | undefined): string {
   return typeof v === "number" && Number.isFinite(v) ? `${(v * 100).toFixed(0)}%` : NA;
 }
@@ -141,6 +156,7 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
   const zone = ts.entryZone ?? paper.trendZoneCandidate?.pullbackZone ?? null;
   const direction = (pf.direction ?? ts.direction) as MtfDirection | null;
   const history = paper.trendEvidenceDecisionSummary.mtfObFvgShadowSummary;
+  const d5 = paper.trendEvidenceDecisionSummary.exactZoneComparisonSummary;
   const review = reviewMtfObFvgShadowSummary(history);
   const exactState = exactRuntimeState(history);
 
@@ -293,6 +309,37 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
         </div>
         <p className="mt-1.5 text-[10px] font-bold text-sky-900">
           Read-only runtime evidence Â· no entry logic change Â· no OB/FVG execution
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-2">
+        <div className="mb-1 text-[10px] font-black uppercase tracking-wide text-emerald-900">D5 Exact vs Heuristic</div>
+        <div className="grid grid-cols-1 gap-1.5">
+          <Row label="sample tier" value={mapD5SampleTier(d5.sampleTier)} tone={d5.exactSamples >= 100 ? "green" : d5.exactSamples >= 50 ? "amber" : "neutral"} />
+          <Row label="exact samples" value={String(d5.exactSamples)} />
+          <Row label="heuristic samples" value={String(d5.heuristicSamples)} />
+          <Row label="exact avg netRR" value={fmt(d5.exactAvgNetRR)} />
+          <Row label="heuristic avg netRR" value={fmt(d5.heuristicAvgNetRR)} />
+          <Row
+            label="exact vs heuristic delta"
+            value={fmt(d5.avgExactVsHeuristicDelta)}
+            tone={d5.avgExactVsHeuristicDelta != null && d5.avgExactVsHeuristicDelta > 0 ? "green" : d5.avgExactVsHeuristicDelta != null && d5.avgExactVsHeuristicDelta < 0 ? "red" : "neutral"}
+          />
+          <Row label="exact pass rate" value={pct(d5.exactPassRate)} />
+          <Row label="uses exact OB/FVG zones" value={String(d5.usesExactObFvgZonesCount)} />
+          <Row label="dominant exact status" value={d5.dominantExactStatus ?? dominantCountLabel(d5.exactDataStatusCounts)} />
+          <Row label="dominant exact readiness" value={d5.dominantExactReadiness ?? dominantCountLabel(d5.exactReadinessCounts)} />
+          <Row label="fill status" value={d5.fillResolution.status} />
+          <Row label="warning flags" value={warningFlagsLabel(d5.warningFlags)} tone={d5.warningFlags.length > 1 ? "amber" : "neutral"} />
+        </div>
+        <p className="mt-1.5 text-[10px] font-black text-emerald-950">
+          Comparison only — ไม่ใช่สัญญาณเข้าไม้
+        </p>
+        <p className="mt-1 text-[10px] font-bold text-emerald-900">
+          Need &gt;=100 exact samples for review eligibility
+        </p>
+        <p className="mt-1 text-[10px] font-bold text-[#6e5b49]">
+          No activation from this card
         </p>
       </div>
 

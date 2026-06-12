@@ -7,6 +7,7 @@
 
 import type { RrDrilldownResult } from "./rrBlockerDrilldown.ts";
 import type { MtfObFvgRefinementShadowResult } from "./mtfObFvgRefinementShadow.ts";
+import type { ExactZoneDataStatus, ExactZoneShadowOutput } from "./exactZoneShadowInput.ts";
 
 export interface RrSnapshot {
   schemaVersion: 1;
@@ -42,6 +43,21 @@ export interface SmcMtfShadowSnapshot {
   shadowOnly: true;
   usesExactObFvgZones: boolean;
   notes: string[];
+  exactZone?: SmcMtfExactZoneSnapshot;
+}
+
+export interface SmcMtfExactZoneSnapshot {
+  schemaVersion: 1;
+  usesExactObFvgZones: boolean;
+  exactZoneCandidateId: string | null;
+  exactZoneReadiness: string | null;
+  exactZoneDataStatus: ExactZoneDataStatus;
+  exactZoneSource: "MTF_OB_FVG_ZONE_MERGER_V1" | null;
+  exactRawRR: number | null;
+  exactNetRR: number | null;
+  exactVsHeuristicDelta: number | null;
+  wouldHaveFilledPending: true;
+  warnings: string[];
 }
 
 export interface MtfObFvgShadowSnapshotSummary {
@@ -60,6 +76,12 @@ export interface MtfObFvgShadowSnapshotSummary {
   qualityScoreAverage: number | null;
   classificationCounts: Record<string, number>;
   dataStatusCounts: Record<string, number>;
+  exactZoneSamples: number;
+  exactZoneDataStatusCounts: Record<string, number>;
+  exactZoneReadinessCounts: Record<string, number>;
+  exactAvgNetRR: number | null;
+  exactVsHeuristicAvgDelta: number | null;
+  usesExactObFvgZonesCount: number;
   latestSnapshot: SmcMtfShadowSnapshot | null;
   sampleWarning: boolean;
 }
@@ -107,6 +129,12 @@ export function emptyMtfObFvgShadowSnapshotSummary(): MtfObFvgShadowSnapshotSumm
     qualityScoreAverage: null,
     classificationCounts: {},
     dataStatusCounts: {},
+    exactZoneSamples: 0,
+    exactZoneDataStatusCounts: {},
+    exactZoneReadinessCounts: {},
+    exactAvgNetRR: null,
+    exactVsHeuristicAvgDelta: null,
+    usesExactObFvgZonesCount: 0,
     latestSnapshot: null,
     sampleWarning: true,
   };
@@ -130,10 +158,34 @@ export function buildRrSnapshot(result: RrDrilldownResult, capturedAt: string): 
   };
 }
 
-export function buildSmcMtfShadowSnapshot(result: MtfObFvgRefinementShadowResult, capturedAt: string): SmcMtfShadowSnapshot {
+function buildExactZoneSnapshot(exactZone: ExactZoneShadowOutput | null | undefined): SmcMtfExactZoneSnapshot | undefined {
+  if (!exactZone?.usesExactObFvgZones || !exactZone.mergedZoneCandidate || exactZone.mergedZoneCandidate.source !== "MTF_OB_FVG_ZONE_MERGER_V1") {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    usesExactObFvgZones: true,
+    exactZoneCandidateId: cleanString(exactZone.mergedZoneCandidate.id),
+    exactZoneReadiness: cleanString(exactZone.exactZoneReadiness),
+    exactZoneDataStatus: exactZone.dataStatus,
+    exactZoneSource: "MTF_OB_FVG_ZONE_MERGER_V1",
+    exactRawRR: finiteOrNull(exactZone.exactRawRR),
+    exactNetRR: finiteOrNull(exactZone.exactNetRR),
+    exactVsHeuristicDelta: finiteOrNull(exactZone.exactVsHeuristicDelta),
+    wouldHaveFilledPending: true,
+    warnings: cleanNotes(exactZone.warnings),
+  };
+}
+
+export function buildSmcMtfShadowSnapshot(
+  result: MtfObFvgRefinementShadowResult,
+  capturedAt: string,
+  exactZone?: ExactZoneShadowOutput | null,
+): SmcMtfShadowSnapshot {
   const dataStatus = cleanString(result.dataStatus, "INSUFFICIENT_DATA") ?? "INSUFFICIENT_DATA";
   const classification = cleanString(result.classification, "NO_DATA") ?? "NO_DATA";
   const notes = cleanNotes(result.notes);
+  const exactZoneSnapshot = buildExactZoneSnapshot(exactZone);
   if (dataStatus === "HEURISTIC_ESTIMATE_ONLY" && !notes.includes("heuristic geometry estimate only")) {
     notes.push("heuristic geometry estimate only");
   }
@@ -154,8 +206,40 @@ export function buildSmcMtfShadowSnapshot(result: MtfObFvgRefinementShadowResult
     wouldPassNetRR: typeof result.wouldPassNetRR === "boolean" ? result.wouldPassNetRR : null,
     requiredRR: finiteOrNull(result.requiredRR),
     shadowOnly: true,
-    usesExactObFvgZones: dataStatus === "ACTUAL_OB_FVG_AVAILABLE",
+    usesExactObFvgZones: exactZoneSnapshot?.usesExactObFvgZones === true || dataStatus === "ACTUAL_OB_FVG_AVAILABLE",
     notes,
+    ...(exactZoneSnapshot ? { exactZone: exactZoneSnapshot } : {}),
+  };
+}
+
+function validExactZoneDataStatus(v: unknown): v is ExactZoneDataStatus {
+  return (
+    v === "HEURISTIC_ESTIMATE_ONLY" ||
+    v === "EXACT_FVG_ONLY" ||
+    v === "EXACT_OB_ONLY" ||
+    v === "EXACT_OB_FVG_CONFLUENCE" ||
+    v === "MTF_EXACT_ZONE_ALIGNED" ||
+    v === "EXACT_ZONE_NO_DATA" ||
+    v === "EXACT_ZONE_CONFLICT"
+  );
+}
+
+function parseExactZoneSnapshot(raw: unknown): SmcMtfExactZoneSnapshot | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  if (o.schemaVersion !== 1 || o.usesExactObFvgZones !== true || !validExactZoneDataStatus(o.exactZoneDataStatus)) return undefined;
+  return {
+    schemaVersion: 1,
+    usesExactObFvgZones: true,
+    exactZoneCandidateId: cleanString(o.exactZoneCandidateId),
+    exactZoneReadiness: cleanString(o.exactZoneReadiness),
+    exactZoneDataStatus: o.exactZoneDataStatus,
+    exactZoneSource: o.exactZoneSource === "MTF_OB_FVG_ZONE_MERGER_V1" ? "MTF_OB_FVG_ZONE_MERGER_V1" : null,
+    exactRawRR: finiteOrNull(o.exactRawRR),
+    exactNetRR: finiteOrNull(o.exactNetRR),
+    exactVsHeuristicDelta: finiteOrNull(o.exactVsHeuristicDelta),
+    wouldHaveFilledPending: true,
+    warnings: cleanNotes(o.warnings),
   };
 }
 
@@ -167,6 +251,7 @@ function parseSmcMtfShadowSnapshot(raw: unknown): SmcMtfShadowSnapshot | null {
   const dataStatus = cleanString(o.dataStatus);
   const classification = cleanString(o.classification);
   if (!capturedAt || !dataStatus || !classification) return null;
+  const exactZone = parseExactZoneSnapshot(o.exactZone);
   return {
     schemaVersion: 1,
     source: "mtf-ob-fvg-refinement-shadow",
@@ -184,8 +269,9 @@ function parseSmcMtfShadowSnapshot(raw: unknown): SmcMtfShadowSnapshot | null {
     wouldPassNetRR: typeof o.wouldPassNetRR === "boolean" ? o.wouldPassNetRR : null,
     requiredRR: finiteOrNull(o.requiredRR),
     shadowOnly: true,
-    usesExactObFvgZones: o.usesExactObFvgZones === true,
+    usesExactObFvgZones: o.usesExactObFvgZones === true || exactZone?.usesExactObFvgZones === true,
     notes: cleanNotes(o.notes),
+    ...(exactZone ? { exactZone } : {}),
   };
 }
 
@@ -201,12 +287,20 @@ export function summarizeMtfObFvgShadowSnapshots(records: Array<{ smcMtfShadowSn
 
   const classificationCounts: Record<string, number> = {};
   const dataStatusCounts: Record<string, number> = {};
+  const exactZoneDataStatusCounts: Record<string, number> = {};
+  const exactZoneReadinessCounts: Record<string, number> = {};
   let latestSnapshot = snapshots[0]!;
   for (const s of snapshots) {
     classificationCounts[s.classification] = (classificationCounts[s.classification] ?? 0) + 1;
     dataStatusCounts[s.dataStatus] = (dataStatusCounts[s.dataStatus] ?? 0) + 1;
+    if (s.exactZone) {
+      exactZoneDataStatusCounts[s.exactZone.exactZoneDataStatus] = (exactZoneDataStatusCounts[s.exactZone.exactZoneDataStatus] ?? 0) + 1;
+      const readiness = s.exactZone.exactZoneReadiness ?? "UNKNOWN";
+      exactZoneReadinessCounts[readiness] = (exactZoneReadinessCounts[readiness] ?? 0) + 1;
+    }
     if (Date.parse(s.capturedAt) >= Date.parse(latestSnapshot.capturedAt)) latestSnapshot = s;
   }
+  const exactSnapshots = snapshots.filter((s) => s.exactZone != null);
 
   return {
     available: true,
@@ -224,6 +318,12 @@ export function summarizeMtfObFvgShadowSnapshots(records: Array<{ smcMtfShadowSn
     qualityScoreAverage: avg(snapshots.map((s) => s.qualityScore)),
     classificationCounts,
     dataStatusCounts,
+    exactZoneSamples: exactSnapshots.length,
+    exactZoneDataStatusCounts,
+    exactZoneReadinessCounts,
+    exactAvgNetRR: avg(exactSnapshots.map((s) => s.exactZone?.exactNetRR ?? null)),
+    exactVsHeuristicAvgDelta: avg(exactSnapshots.map((s) => s.exactZone?.exactVsHeuristicDelta ?? null)),
+    usesExactObFvgZonesCount: snapshots.filter((s) => s.usesExactObFvgZones === true).length,
     latestSnapshot,
     sampleWarning: snapshots.length < SUMMARY_MIN_SAMPLE,
   };

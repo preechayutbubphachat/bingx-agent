@@ -42,6 +42,7 @@ import {
   appendTrendEvidenceDecisionLog,
   buildTrendEvidenceDecisionRecord,
 } from "@/lib/trend/trendEvidenceDecisionLog";
+import { buildExactZoneShadowInput } from "@/lib/trend/exactZoneShadowInput";
 import { computeRrBlockerDrilldown } from "@/lib/trend/rrBlockerDrilldown";
 import { computeMtfObFvgRefinementShadow, type MtfDirection } from "@/lib/trend/mtfObFvgRefinementShadow";
 import { buildRrSnapshot, buildSmcMtfShadowSnapshot } from "@/lib/trend/mtfObFvgShadowSnapshot";
@@ -135,6 +136,7 @@ async function buildDiagnostics() {
     readTrendPaperArmSession().catch(() => null),
   ]);
   const trendPaperArmSession = sessionSnapshot?.session ?? null;
+  const candles4h = latest?.marketSnapshot ? getCandlesFromSnapshot(latest.marketSnapshot, "4H") : [];
   const candles15m = latest?.marketSnapshot ? getCandlesFromSnapshot(latest.marketSnapshot, "15M") : [];
   const candles5m = latest?.marketSnapshot ? getCandlesFromSnapshot(latest.marketSnapshot, "5M") : [];
   const candles1h = latest?.marketSnapshot ? getCandlesFromSnapshot(latest.marketSnapshot, "1H") : [];
@@ -164,7 +166,7 @@ async function buildDiagnostics() {
     trendPaperExecutionConfig: config, trendPaperArmSession,
   });
   const currentBarId = candles1h.length ? String(candles1h[candles1h.length - 1]?.t ?? "") : null;
-  return { diagnostics, config, candles5m, trendPaperArmSession, trendPaperJournalSnapshot, currentBarId };
+  return { diagnostics, config, candles4h, candles15m, candles5m, candles1h, trendPaperArmSession, trendPaperJournalSnapshot, currentBarId };
 }
 
 function statusBody(action: string, state: Record<string, unknown>, cfg: EvidenceRunnerConfig, extra: Record<string, unknown> = {}) {
@@ -214,7 +216,7 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
     feePct: diagnostics.config.feePct,
     slippagePct: diagnostics.config.slippagePct,
   });
-  const mtf = computeMtfObFvgRefinementShadow({
+  const mtfBaseInput = {
     direction,
     currentEntry: entry,
     currentStop: stop,
@@ -235,11 +237,46 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
     optionalFvgZone: null,
     optionalLiquidityTarget: num(trendZoneTargets.t1) ?? num(trendStrategy.target1),
     optionalInvalidation: num(trendZone.invalidation) ?? num(trendStrategy.invalidation),
+  };
+  const heuristicMtf = computeMtfObFvgRefinementShadow(mtfBaseInput);
+  const exactZone = buildExactZoneShadowInput({
+    candlesByTimeframe: {
+      "4H": diagnostics.candles4h,
+      "1H": diagnostics.candles1h,
+      "15M": diagnostics.candles15m,
+      "5M": diagnostics.candles5m,
+    },
+    direction,
+    htfBias:
+      canonicalMarketRegime.direction === "BULLISH" || canonicalMarketRegime.direction === "BEARISH"
+        ? canonicalMarketRegime.direction
+        : canonicalMarketRegime.direction === "NEUTRAL"
+          ? "NEUTRAL"
+          : undefined,
+    context: {
+      regime: typeof canonicalMarketRegime.regime === "string" ? canonicalMarketRegime.regime : typeof regimeDecision.regime === "string" ? regimeDecision.regime : null,
+      session: typeof d.session === "string" ? d.session : null,
+      currentPrice: num(trendStrategy.currentPrice) ?? num(d.currentPrice),
+      currentEntry: entry,
+      currentStop: stop,
+      currentTarget: target,
+      requiredRR: diagnostics.config.minRewardRisk,
+      feePct: diagnostics.config.feePct,
+      slippagePct: diagnostics.config.slippagePct,
+      heuristicNetRR: heuristicMtf.refinedNetRR,
+    },
   });
+  const mtf = exactZone.usesExactObFvgZones
+    ? computeMtfObFvgRefinementShadow({
+        ...mtfBaseInput,
+        optionalObZone: exactZone.optionalObZone,
+        optionalFvgZone: exactZone.optionalFvgZone,
+      })
+    : heuristicMtf;
 
   return {
     rrSnapshot: buildRrSnapshot(rr, capturedAt),
-    smcMtfShadowSnapshot: buildSmcMtfShadowSnapshot(mtf, capturedAt),
+    smcMtfShadowSnapshot: buildSmcMtfShadowSnapshot(mtf, capturedAt, exactZone.usesExactObFvgZones ? exactZone : null),
   };
 }
 

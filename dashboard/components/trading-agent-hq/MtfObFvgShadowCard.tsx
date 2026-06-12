@@ -92,6 +92,23 @@ function pct(v: number | null | undefined): string {
   return typeof v === "number" && Number.isFinite(v) ? `${(v * 100).toFixed(0)}%` : NA;
 }
 
+function dominantCountLabel(counts: Record<string, number>): string {
+  const entries = Object.entries(counts).filter(([, count]) => Number.isFinite(count) && count > 0);
+  if (!entries.length) return NA;
+  entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return `${entries[0]![0]} (${entries[0]![1]})`;
+}
+
+function exactRuntimeState(history: PaperVM["trendEvidenceDecisionSummary"]["mtfObFvgShadowSummary"]): {
+  label: string;
+  tone: "neutral" | "green" | "amber" | "red";
+} {
+  if (history.exactZoneSamples == null) return { label: "not exposed", tone: "neutral" };
+  if (history.exactZoneSamples === 0) return { label: "no exact samples yet", tone: "neutral" };
+  if ((history.usesExactObFvgZonesCount ?? 0) === 0) return { label: "producer ran, no valid exact candidate yet", tone: "amber" };
+  return { label: "exact candidates observed", tone: "green" };
+}
+
 function Row({
   label,
   value,
@@ -125,6 +142,7 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
   const direction = (pf.direction ?? ts.direction) as MtfDirection | null;
   const history = paper.trendEvidenceDecisionSummary.mtfObFvgShadowSummary;
   const review = reviewMtfObFvgShadowSummary(history);
+  const exactState = exactRuntimeState(history);
 
   const r = computeMtfObFvgRefinementShadow({
     direction,
@@ -252,6 +270,30 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
             {warning}
           </p>
         ))}
+      </div>
+
+      <div className="rounded-lg border border-sky-200 bg-sky-50/70 p-2">
+        <div className="mb-1 text-[10px] font-black uppercase tracking-wide text-sky-900">Exact Zone Runtime</div>
+        <div className="grid grid-cols-1 gap-1.5">
+          <Row label="state" value={exactState.label} tone={exactState.tone} />
+          <Row label="exact samples" value={history.exactZoneSamples == null ? "not exposed" : String(history.exactZoneSamples)} />
+          <Row
+            label="uses exact OB/FVG zones"
+            value={history.usesExactObFvgZonesCount == null ? "not exposed" : String(history.usesExactObFvgZonesCount)}
+            tone={(history.usesExactObFvgZonesCount ?? 0) > 0 ? "green" : "neutral"}
+          />
+          <Row label="dominant exact status" value={dominantCountLabel(history.exactZoneDataStatusCounts)} />
+          <Row label="dominant exact readiness" value={dominantCountLabel(history.exactZoneReadinessCounts)} />
+          <Row label="exact avg netRR" value={fmt(history.exactAvgNetRR)} />
+          <Row
+            label="exact vs heuristic delta"
+            value={fmt(history.exactVsHeuristicAvgDelta)}
+            tone={history.exactVsHeuristicAvgDelta != null && history.exactVsHeuristicAvgDelta > 0 ? "green" : "neutral"}
+          />
+        </div>
+        <p className="mt-1.5 text-[10px] font-bold text-sky-900">
+          Read-only runtime evidence Â· no entry logic change Â· no OB/FVG execution
+        </p>
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-900">

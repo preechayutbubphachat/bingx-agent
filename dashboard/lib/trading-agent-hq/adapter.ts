@@ -501,6 +501,12 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
     qualityScoreAverage: numOrNull(mtfRaw.qualityScoreAverage),
     classificationCounts: countMap(mtfRaw.classificationCounts),
     dataStatusCounts: countMap(mtfRaw.dataStatusCounts),
+    exactZoneSamples: typeof mtfRaw.exactZoneSamples === "number" && Number.isFinite(mtfRaw.exactZoneSamples) ? mtfRaw.exactZoneSamples : null,
+    exactZoneDataStatusCounts: countMap(mtfRaw.exactZoneDataStatusCounts),
+    exactZoneReadinessCounts: countMap(mtfRaw.exactZoneReadinessCounts),
+    usesExactObFvgZonesCount: typeof mtfRaw.usesExactObFvgZonesCount === "number" && Number.isFinite(mtfRaw.usesExactObFvgZonesCount) ? mtfRaw.usesExactObFvgZonesCount : null,
+    exactAvgNetRR: numOrNull(mtfRaw.exactAvgNetRR),
+    exactVsHeuristicAvgDelta: numOrNull(mtfRaw.exactVsHeuristicAvgDelta),
     latestSnapshot: hasLatest
       ? {
           capturedAt: strOrNull(latestRaw.capturedAt),

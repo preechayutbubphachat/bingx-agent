@@ -123,6 +123,12 @@ export interface TrendEvidenceDecisionSummaryVM {
     qualityScoreAverage: number | null;
     classificationCounts: Record<string, number>;
     dataStatusCounts: Record<string, number>;
+    exactZoneSamples: number | null;
+    exactZoneDataStatusCounts: Record<string, number>;
+    exactZoneReadinessCounts: Record<string, number>;
+    usesExactObFvgZonesCount: number | null;
+    exactAvgNetRR: number | null;
+    exactVsHeuristicAvgDelta: number | null;
     latestSnapshot: {
       capturedAt: string | null;
       dataStatus: string | null;

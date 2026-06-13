@@ -111,6 +111,8 @@ export interface PaperLoopDiagnostics {
   canonicalMarketRegime: CanonicalMarketRegime | null;
   regimeDiagnostic: RegimeDiagnostic;
   volBaselineDiagnostic: VolBaselineDiagnostic;
+  eventRiskContext: EventRiskContextDiagnostic;
+  regimeTransitionDiagnostic: RegimeTransitionDiagnostic;
   multiTimeframeIndicatorEvidence: MultiTimeframeIndicatorEvidence | null;
   /** Phase D — read-only trend zone shadow (never used for orders) */
   trendZoneCandidate: TrendZoneShadow | null;
@@ -180,6 +182,7 @@ export interface PaperLoopDiagnosticsContext {
   canonicalMarketRegime?: CanonicalMarketRegime | null;
   latestCanonicalMarketRegimeDiagnostic?: unknown;
   marketSnapshot?: unknown;
+  newsContext?: unknown;
   multiTimeframeIndicatorEvidence?: MultiTimeframeIndicatorEvidence | null;
   trendZoneCandidate?: TrendZoneShadow | null;
   session?: string | null;
@@ -222,6 +225,29 @@ export interface VolBaselineDiagnostic {
   baselineProgressPct: number | null;
   baselineReadiness: VolBaselineReadiness;
   warning: string | null;
+}
+
+export type EventRiskContextStatus = "NO_DATA" | "STALE" | "NORMAL" | "WATCH" | "HIGH_EVENT_RISK" | "UNKNOWN";
+
+export interface EventRiskContextDiagnostic {
+  status: EventRiskContextStatus;
+  headlineCount: number;
+  source: string | null;
+  freshness: "fresh" | "stale" | "unknown";
+  updatedAt: string | null;
+  riskLabel: string | null;
+  summary: string | null;
+  warning: string | null;
+  paperActivationAllowed: false;
+  liveActivationAllowed: false;
+}
+
+export interface RegimeTransitionDiagnostic {
+  status: "NOT_CONFIGURED";
+  hasHistoryStore: false;
+  hysteresisActive: false;
+  message: string;
+  warning: string;
 }
 
 const DEFAULT_TREND_PAPER_EXECUTION_CONFIG: TrendPaperExecutionConfig = {
@@ -270,6 +296,40 @@ function stringOrNull(value: unknown): string | null {
 
 function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    const text = stringOrNull(value);
+    if (text) return text;
+  }
+  return null;
+}
+
+function firstNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    const n = finiteOrNull(value);
+    if (n != null) return n;
+  }
+  return null;
+}
+
+function parseTimestampMs(value: string | null): number | null {
+  if (!value) return null;
+  const ts = Date.parse(value);
+  return Number.isFinite(ts) ? ts : null;
+}
+
+function countArray(value: unknown): number | null {
+  return Array.isArray(value) ? value.length : null;
+}
+
+function firstHeadlineSummary(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const first = value[0];
+  if (typeof first === "string") return first.slice(0, 120);
+  const item = unknownObj(first);
+  return firstString(item.summary, item.title, item.headline);
 }
 
 function normalizeRegimeForDiagnostic(value: unknown): string | null {
@@ -351,6 +411,111 @@ export function buildVolBaselineDiagnostic(marketSnapshot: unknown): VolBaseline
     baselineProgressPct,
     baselineReadiness,
     warning,
+  };
+}
+
+export function buildEventRiskContextDiagnostic(
+  newsContext: unknown,
+  nowMs: number = Date.now()
+): EventRiskContextDiagnostic {
+  const context = unknownObj(newsContext);
+  const macro = unknownObj(context.macro);
+  const meta = unknownObj(context.meta);
+  const hasAnyData = Object.keys(context).length > 0;
+  if (!hasAnyData) {
+    return {
+      status: "NO_DATA",
+      headlineCount: 0,
+      source: null,
+      freshness: "unknown",
+      updatedAt: null,
+      riskLabel: null,
+      summary: null,
+      warning: "News context missing/stale",
+      paperActivationAllowed: false,
+      liveActivationAllowed: false,
+    };
+  }
+
+  const updatedAt = firstString(
+    context.generated_at,
+    context.generatedAt,
+    context.updated_at,
+    context.updatedAt,
+    context.timestamp,
+    meta.generated_at,
+    meta.updatedAt
+  );
+  const updatedAtMs = parseTimestampMs(updatedAt);
+  const explicitStale = context.stale === true || stringOrNull(context.freshness)?.toLowerCase() === "stale";
+  const stale = explicitStale || updatedAtMs == null || nowMs - updatedAtMs > 30 * 60_000;
+  const riskLabel = firstString(
+    context.risk_label,
+    context.riskLabel,
+    context.risk_level,
+    context.riskLevel,
+    context.macro_risk_level,
+    context.eventRisk,
+    context.event_risk,
+    context.severity,
+    macro.overall_risk_level,
+    macro.risk_level,
+    meta.risk_label
+  );
+  const normalizedRisk = riskLabel?.trim().toUpperCase() ?? null;
+  const headlineCount = firstNumber(
+    context.headlineCount,
+    context.headline_count,
+    countArray(context.crypto_news_headlines),
+    countArray(context.headlines),
+    countArray(context.articles),
+    countArray(context.items),
+    countArray(context.news)
+  ) ?? 0;
+  const summaryText = firstString(
+    context.summary,
+    context.message,
+    context.note,
+    firstHeadlineSummary(context.headlines),
+    firstHeadlineSummary(context.crypto_news_headlines)
+  );
+  const hasHotNews = context.has_hot_news === true || context.hasHotNews === true;
+  const status: EventRiskContextStatus = stale
+    ? "STALE"
+    : normalizedRisk === "HIGH" || normalizedRisk === "CRITICAL" || hasHotNews
+      ? "HIGH_EVENT_RISK"
+      : normalizedRisk === "MED" || normalizedRisk === "MEDIUM" || normalizedRisk === "WATCH"
+        ? "WATCH"
+        : normalizedRisk === "LOW" || headlineCount > 0
+          ? "NORMAL"
+          : "UNKNOWN";
+  const warning =
+    status === "STALE" ? "News context missing/stale"
+    : status === "HIGH_EVENT_RISK" ? "High event risk - monitoring only"
+    : status === "WATCH" ? "Event risk watch - operator review required"
+    : null;
+
+  return {
+    status,
+    headlineCount,
+    source: "news_context.json",
+    freshness: stale ? "stale" : "fresh",
+    updatedAt,
+    riskLabel: normalizedRisk,
+    summary: summaryText,
+    warning,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+  };
+}
+
+export function buildRegimeTransitionDiagnostic(): RegimeTransitionDiagnostic {
+  return {
+    status: "NOT_CONFIGURED",
+    hasHistoryStore: false,
+    hysteresisActive: false,
+    message: "Regime transition history is not configured",
+    warning: "Design-only - no regime behavior change",
   };
 }
 
@@ -489,6 +654,8 @@ export function buildPaperLoopDiagnostics(
     latestCanonicalMarketRegimeDiagnostic: context.latestCanonicalMarketRegimeDiagnostic,
   });
   const volBaselineDiagnostic = buildVolBaselineDiagnostic(context.marketSnapshot);
+  const eventRiskContext = buildEventRiskContextDiagnostic(context.newsContext);
+  const regimeTransitionDiagnostic = buildRegimeTransitionDiagnostic();
   const canonicalRegimeGate = buildCanonicalRegimeGate({
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
     currentRegridReadiness: regridReadinessBeforeCanonicalGate,
@@ -660,6 +827,8 @@ export function buildPaperLoopDiagnostics(
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
     regimeDiagnostic,
     volBaselineDiagnostic,
+    eventRiskContext,
+    regimeTransitionDiagnostic,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
     canonicalRegimeGate,

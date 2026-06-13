@@ -67,6 +67,8 @@ export interface PaperVM {
   canonicalMarketRegime: CanonicalMarketRegimeVM;
   regimeDiagnostic: RegimeDiagnosticVM;
   volBaselineDiagnostic: VolBaselineDiagnosticVM;
+  eventRiskContext: EventRiskContextVM;
+  regimeTransitionDiagnostic: RegimeTransitionDiagnosticVM;
   canonicalRegimeGate: CanonicalRegimeGateVM;
   regridReadinessBeforeCanonicalGate: RegridReadinessVM;
   regridReadinessAfterCanonicalGate: RegridReadinessVM;
@@ -114,6 +116,27 @@ export interface CostGateBreakdownVM {
 }
 
 // T-3H-6-a — aggregated view of the append-only decision log. Pure display data.
+export interface EventRiskContextVM {
+  status: "NO_DATA" | "STALE" | "NORMAL" | "WATCH" | "HIGH_EVENT_RISK" | "UNKNOWN";
+  headlineCount: number;
+  source: string | null;
+  freshness: "fresh" | "stale" | "unknown";
+  updatedAt: string | null;
+  riskLabel: string | null;
+  summary: string | null;
+  warning: string | null;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+}
+
+export interface RegimeTransitionDiagnosticVM {
+  status: "NOT_CONFIGURED";
+  hasHistoryStore: boolean;
+  hysteresisActive: boolean;
+  message: string;
+  warning: string;
+}
+
 export interface TrendEvidenceDecisionSummaryVM {
   available: boolean;
   totalRecords: number;

@@ -96,6 +96,8 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const canonicalRegime = obj(loop.canonicalMarketRegime);
   const regimeDiagnostic = obj(loop.regimeDiagnostic);
   const volBaselineDiagnostic = obj(loop.volBaselineDiagnostic);
+  const eventRiskContext = obj(loop.eventRiskContext ?? perf.newsContextSummary);
+  const regimeTransitionDiagnostic = obj(loop.regimeTransitionDiagnostic);
   const canonicalFreshness = obj(canonicalRegime.sourceFreshness);
   const canonicalCompleteness = obj(canonicalRegime.evidenceCompleteness);
   const dynamicGrid = obj(loop.dynamicGrid);
@@ -270,6 +272,8 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       baselineReadiness: mapVolBaselineReadiness(str(volBaselineDiagnostic.baselineReadiness, "NO_DATA")),
       warning: strOrNull(volBaselineDiagnostic.warning),
     },
+    eventRiskContext: mapEventRiskContext(eventRiskContext),
+    regimeTransitionDiagnostic: mapRegimeTransitionDiagnostic(regimeTransitionDiagnostic),
     trendZoneCandidate: mapTrendZoneCandidate(loop.trendZoneCandidate),
     trendStrategy: mapTrendStrategy(trendStrategy),
     trendPaperEpoch: {
@@ -918,6 +922,41 @@ function mapVolBaselineReadiness(status: string): PaperVM["volBaselineDiagnostic
   if (status === "INSUFFICIENT") return "INSUFFICIENT";
   if (status === "BUILDING") return "BUILDING";
   return "NO_DATA";
+}
+
+function mapEventRiskContext(raw: AnyObj): PaperVM["eventRiskContext"] {
+  const statusRaw = str(raw.status || raw.risk_level || "NO_DATA").toUpperCase();
+  const status: PaperVM["eventRiskContext"]["status"] =
+    statusRaw === "STALE" ? "STALE"
+    : statusRaw === "NORMAL" || statusRaw === "LOW" ? "NORMAL"
+    : statusRaw === "WATCH" || statusRaw === "MED" || statusRaw === "MEDIUM" ? "WATCH"
+    : statusRaw === "HIGH_EVENT_RISK" || statusRaw === "HIGH" || statusRaw === "CRITICAL" ? "HIGH_EVENT_RISK"
+    : statusRaw === "UNKNOWN" ? "UNKNOWN"
+    : "NO_DATA";
+  const stale = raw.stale === true || status === "STALE";
+  const hasData = Object.keys(raw).length > 0;
+  return {
+    status: hasData ? status : "NO_DATA",
+    headlineCount: num(raw.headlineCount ?? raw.headline_count, 0),
+    source: strOrNull(raw.source) ?? (hasData ? "news_context.json" : null),
+    freshness: stale ? "stale" : hasData ? "fresh" : "unknown",
+    updatedAt: strOrNull(raw.updatedAt ?? raw.generated_at),
+    riskLabel: strOrNull(raw.riskLabel ?? raw.risk_level),
+    summary: strOrNull(raw.summary),
+    warning: strOrNull(raw.warning) ?? (!hasData || stale ? "News context missing/stale" : null),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+  };
+}
+
+function mapRegimeTransitionDiagnostic(raw: AnyObj): PaperVM["regimeTransitionDiagnostic"] {
+  return {
+    status: "NOT_CONFIGURED",
+    hasHistoryStore: bool(raw.hasHistoryStore),
+    hysteresisActive: bool(raw.hysteresisActive),
+    message: str(raw.message, "Regime transition history is not configured"),
+    warning: str(raw.warning, "Design-only - no regime behavior change"),
+  };
 }
 
 function mapStringRecord(value: unknown): Record<string, string | null> {

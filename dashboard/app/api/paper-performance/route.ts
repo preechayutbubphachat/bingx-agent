@@ -67,6 +67,29 @@ function envNumber(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function newsContextSummary(raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+  const context = raw as {
+    risk_level?: unknown;
+    has_hot_news?: unknown;
+    generated_at?: unknown;
+    crypto_news_headlines?: unknown;
+    macro?: { overall_risk_level?: unknown; events?: unknown };
+  };
+  const generatedAt = typeof context.generated_at === "string" ? context.generated_at : null;
+  const generatedAtMs = generatedAt ? Date.parse(generatedAt) : NaN;
+  const stale = !Number.isFinite(generatedAtMs) || Date.now() - generatedAtMs > 30 * 60_000;
+  return {
+    risk_level: typeof context.risk_level === "string" ? context.risk_level : null,
+    has_hot_news: typeof context.has_hot_news === "boolean" ? context.has_hot_news : null,
+    headline_count: Array.isArray(context.crypto_news_headlines) ? context.crypto_news_headlines.length : null,
+    macro_risk_level: typeof context.macro?.overall_risk_level === "string" ? context.macro.overall_risk_level : null,
+    macro_events_count: Array.isArray(context.macro?.events) ? context.macro.events.length : null,
+    generated_at: generatedAt,
+    stale,
+  };
+}
+
 export async function GET() {
   try {
     const report = await computePaperPerformance();
@@ -77,6 +100,7 @@ export async function GET() {
       const summary = await readPaperJournal();
       const runtimeCounters = await readRuntimeMonitorCounters().catch(() => null);
       const latest = await readLatest().catch(() => null);
+      const safeNewsContextSummary = newsContextSummary(latest?.newsContext ?? null);
       const candles15m = latest?.marketSnapshot
         ? getCandlesFromSnapshot(latest.marketSnapshot, "15M")
         : [];
@@ -141,6 +165,7 @@ export async function GET() {
         canonicalMarketRegime,
         latestCanonicalMarketRegimeDiagnostic: latest?.decision?.diagnostics?.canonicalMarketRegime ?? null,
         marketSnapshot: latest?.marketSnapshot ?? null,
+        newsContext: safeNewsContextSummary,
         multiTimeframeIndicatorEvidence,
         trendZoneCandidate,
         session: sessionMeta?.current ?? null,
@@ -149,6 +174,7 @@ export async function GET() {
         trendPaperExecutionConfig,
         trendPaperArmSession: trendPaperArmSessionSnapshot?.session ?? null,
       });
+      (paperLoopDiagnostics as unknown as Record<string, unknown>).newsContextSummary = safeNewsContextSummary;
       // T-3H-4-b: attach read-only evidence-runner state (read-only display; no runner is invoked here)
       const evidenceSnap = await readTrendPaperEvidenceState().catch(() => null);
       const evidenceMetrics = buildTrendEvidenceMetrics(trendPaperJournalSnapshot?.closedTrades ?? []);
@@ -211,6 +237,9 @@ export async function GET() {
           note: report.costGate?.nextAction ?? "",
         },
         // Part F — additive observability (backward-compatible)
+        newsContextSummary: paperLoopDiagnostics
+          ? (paperLoopDiagnostics as unknown as { newsContextSummary?: unknown }).newsContextSummary ?? null
+          : null,
         paperLoopDiagnostics,
         paperDataQuality: {
           ...report.paperDataQuality,
@@ -328,6 +357,7 @@ export async function GET() {
           passes: null,
           note: "Error — ดู server logs",
         },
+        newsContextSummary: null,
         noTradeReasons: ["data_missing"],
         noTradeReadiness: "unknown",
         attribution: { byMode: [], byRegime: [], bySession: [] },

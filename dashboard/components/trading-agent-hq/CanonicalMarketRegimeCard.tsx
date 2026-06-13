@@ -61,6 +61,23 @@ function volReadinessLabel(value: PaperVM["volBaselineDiagnostic"]["baselineRead
   }
 }
 
+function eventRiskLabel(value: PaperVM["eventRiskContext"]["status"]): string {
+  switch (value) {
+    case "STALE": return "news context stale";
+    case "NORMAL": return "normal";
+    case "WATCH": return "event risk watch";
+    case "HIGH_EVENT_RISK": return "high event risk";
+    case "UNKNOWN": return "unknown";
+    default: return "news context missing";
+  }
+}
+
+function eventRiskPillClass(value: PaperVM["eventRiskContext"]["status"]): string {
+  if (value === "HIGH_EVENT_RISK") return "bg-red-100 text-red-900";
+  if (value === "WATCH" || value === "STALE" || value === "NO_DATA") return "bg-amber-100 text-amber-900";
+  return "bg-[#fff7e8] text-[#6d5745]";
+}
+
 function pctLabel(value: number | null): string {
   return value == null ? "n/a" : `${value}%`;
 }
@@ -110,6 +127,8 @@ export default function CanonicalMarketRegimeCard({ paper }: CanonicalMarketRegi
   const regime = paper.canonicalMarketRegime;
   const diag = paper.regimeDiagnostic;
   const vol = paper.volBaselineDiagnostic;
+  const eventRisk = paper.eventRiskContext;
+  const transition = paper.regimeTransitionDiagnostic;
   const legacyPlanMode = paper.dynamicRegrid.marketMode ?? "ยังไม่มีข้อมูล";
   const latestCandles = Object.entries(regime.sourceFreshness.latestCandleAtByTimeframe)
     .map(([tf, at]) => `${tf}: ${at ?? "ยังไม่มีข้อมูล"}`);
@@ -197,6 +216,60 @@ export default function CanonicalMarketRegimeCard({ paper }: CanonicalMarketRegi
             {vol.warning}
           </div>
         ) : null}
+      </div>
+
+      <div className="mt-3 rounded-md border border-[#dcc7aa] bg-white/70 p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-black text-[#5b4432]">Event Risk Context</div>
+            <div className="text-[10px] font-bold text-[#80644c]">
+              Read-only warning - does not trigger trades · No external news API call from dashboard
+            </div>
+          </div>
+          <span className={`rounded-full px-2 py-1 text-[10px] font-black ${eventRiskPillClass(eventRisk.status)}`}>
+            {eventRiskLabel(eventRisk.status)}
+          </span>
+        </div>
+        {eventRisk.status === "NO_DATA" || eventRisk.status === "STALE" ? (
+          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-black text-amber-950">
+            News context missing/stale - monitoring only. No-trade policy must be operator-reviewed.
+          </div>
+        ) : eventRisk.status === "HIGH_EVENT_RISK" ? (
+          <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] font-black text-red-950">
+            High event risk - monitoring only. No-trade policy must be operator-reviewed.
+          </div>
+        ) : null}
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Status" value={eventRisk.status} />
+          <Field label="Headlines" value={eventRisk.headlineCount} />
+          <Field label="Source" value={eventRisk.source ?? "no data"} />
+          <Field label="Freshness" value={eventRisk.freshness} />
+          <Field label="Updated at" value={eventRisk.updatedAt ?? "n/a"} />
+          <Field label="Risk label" value={eventRisk.riskLabel ?? "no data"} />
+          <Field label="Summary" value={eventRisk.summary ?? "no data"} />
+          <Field label="paper/live activation" value={`${boolLabel(eventRisk.paperActivationAllowed)} / ${boolLabel(eventRisk.liveActivationAllowed)}`} />
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-md border border-[#dcc7aa] bg-white/70 p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-black text-[#5b4432]">Regime Transition Monitor</div>
+            <div className="text-[10px] font-bold text-[#80644c]">Design-only - no regime behavior change</div>
+          </div>
+          <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-900">
+            {transition.status}
+          </span>
+        </div>
+        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-black text-amber-950">
+          Regime transition history is not configured. No hysteresis behavior is active.
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="History store" value={boolLabel(transition.hasHistoryStore)} />
+          <Field label="Hysteresis active" value={boolLabel(transition.hysteresisActive)} />
+          <Field label="Message" value={transition.message} />
+          <Field label="Warning" value={transition.warning} />
+        </div>
       </div>
 
       <div className="mt-3 grid gap-2 lg:grid-cols-2">

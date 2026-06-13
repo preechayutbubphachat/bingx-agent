@@ -4,8 +4,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildEventRiskContextDiagnostic,
   buildPaperLoopDiagnostics,
   buildRegimeDiagnostic,
+  buildRegimeTransitionDiagnostic,
   buildVolBaselineDiagnostic,
 } from "./paperLoopDiagnostics.ts";
 import type { PaperJournalSummary, PaperEventSummary } from "../readPaperJournal.ts";
@@ -193,6 +195,76 @@ test("OBS-02 ready baseline does not warn", () => {
 test("OBS-02 missing volatility or required points returns NO_DATA", () => {
   assert.equal(buildVolBaselineDiagnostic(null).baselineReadiness, "NO_DATA");
   assert.equal(buildVolBaselineDiagnostic({ volatility: { baseline: { samples_1h: 24 } } }).baselineReadiness, "NO_DATA");
+});
+
+test("R1F missing news context returns NO_DATA and remains read-only", () => {
+  const d = buildEventRiskContextDiagnostic(null, Date.parse("2026-06-13T12:00:00.000Z"));
+
+  assert.equal(d.status, "NO_DATA");
+  assert.equal(d.headlineCount, 0);
+  assert.equal(d.freshness, "unknown");
+  assert.equal(d.warning, "News context missing/stale");
+  assert.equal(d.paperActivationAllowed, false);
+  assert.equal(d.liveActivationAllowed, false);
+});
+
+test("R1F stale news context is labeled STALE without mutating input", () => {
+  const input = {
+    risk_level: "LOW",
+    generated_at: "2026-06-13T10:00:00.000Z",
+    crypto_news_headlines: [{ title: "sample headline that must not be exposed raw by route" }],
+  };
+  const before = JSON.stringify(input);
+  const d = buildEventRiskContextDiagnostic(input, Date.parse("2026-06-13T11:00:01.000Z"));
+
+  assert.equal(d.status, "STALE");
+  assert.equal(d.headlineCount, 1);
+  assert.equal(d.updatedAt, "2026-06-13T10:00:00.000Z");
+  assert.equal(d.warning, "News context missing/stale");
+  assert.equal(JSON.stringify(input), before);
+});
+
+test("R1F populated high event risk maps safe summary fields only", () => {
+  const d = buildEventRiskContextDiagnostic(
+    {
+      risk_level: "HIGH",
+      has_hot_news: true,
+      headline_count: 4,
+      generated_at: "2026-06-13T11:45:00.000Z",
+      macro_risk_level: "MED",
+      summary: "macro risk elevated",
+    },
+    Date.parse("2026-06-13T12:00:00.000Z")
+  );
+
+  assert.equal(d.status, "HIGH_EVENT_RISK");
+  assert.equal(d.headlineCount, 4);
+  assert.equal(d.source, "news_context.json");
+  assert.equal(d.freshness, "fresh");
+  assert.equal(d.riskLabel, "HIGH");
+  assert.equal(d.summary, "macro risk elevated");
+  assert.equal(d.warning, "High event risk - monitoring only");
+});
+
+test("OBS-D regime transition diagnostic is static NOT_CONFIGURED", () => {
+  const d = buildRegimeTransitionDiagnostic();
+
+  assert.equal(d.status, "NOT_CONFIGURED");
+  assert.equal(d.hasHistoryStore, false);
+  assert.equal(d.hysteresisActive, false);
+  assert.equal(d.message, "Regime transition history is not configured");
+  assert.equal(d.warning, "Design-only - no regime behavior change");
+});
+
+test("old paper diagnostics payload remains valid with R1 Pack B defaults", () => {
+  const d = buildPaperLoopDiagnostics(summary({ recentEvents: [] }));
+
+  assert.equal(d.eventRiskContext.status, "NO_DATA");
+  assert.equal(d.eventRiskContext.paperActivationAllowed, false);
+  assert.equal(d.eventRiskContext.liveActivationAllowed, false);
+  assert.equal(d.regimeTransitionDiagnostic.status, "NOT_CONFIGURED");
+  assert.equal(d.regimeTransitionDiagnostic.hasHistoryStore, false);
+  assert.equal(d.regimeTransitionDiagnostic.hysteresisActive, false);
 });
 
 test("runtime monitor PASS when activation is blocked and safety journals advance after fills", () => {

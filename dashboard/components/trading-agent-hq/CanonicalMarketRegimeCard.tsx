@@ -41,6 +41,34 @@ function boolLabel(value: boolean): string {
   return value ? "ใช่" : "ไม่";
 }
 
+function diagnosticStatusLabel(value: PaperVM["regimeDiagnostic"]["status"]): string {
+  switch (value) {
+    case "MATCHED": return "matched";
+    case "MISMATCH": return "mismatch";
+    case "DECISION_REGIME_NULL_CANONICAL_AVAILABLE": return "Decision regime is null/unknown but canonical regime is available";
+    case "LOW_CONFIDENCE": return "low confidence";
+    case "NO_CANONICAL_DATA": return "no canonical data";
+    default: return "unknown";
+  }
+}
+
+function volReadinessLabel(value: PaperVM["volBaselineDiagnostic"]["baselineReadiness"]): string {
+  switch (value) {
+    case "READY": return "ready";
+    case "INSUFFICIENT": return "insufficient";
+    case "BUILDING": return "building";
+    default: return "no data";
+  }
+}
+
+function pctLabel(value: number | null): string {
+  return value == null ? "n/a" : `${value}%`;
+}
+
+function decimalLabel(value: number | null): string {
+  return value == null ? "n/a" : String(value);
+}
+
 function Field({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-md border border-[#dcc7aa] bg-white/75 px-2 py-1.5">
@@ -67,6 +95,8 @@ function ListBlock({ title, items, translate = true }: { title: string; items: s
 
 export default function CanonicalMarketRegimeCard({ paper }: CanonicalMarketRegimeCardProps) {
   const regime = paper.canonicalMarketRegime;
+  const diag = paper.regimeDiagnostic;
+  const vol = paper.volBaselineDiagnostic;
   const legacyPlanMode = paper.dynamicRegrid.marketMode ?? "ยังไม่มีข้อมูล";
   const latestCandles = Object.entries(regime.sourceFreshness.latestCandleAtByTimeframe)
     .map(([tf, at]) => `${tf}: ${at ?? "ยังไม่มีข้อมูล"}`);
@@ -98,6 +128,52 @@ export default function CanonicalMarketRegimeCard({ paper }: CanonicalMarketRegi
         <Field label="Legacy Plan Mode" value={`${legacyPlanMode} / โหมดจากแผนเดิม ไม่ใช่ regime หลัก`} />
         <Field label="Shadow" value={boolLabel(regime.shadowOnly)} />
         <Field label="paper/live activation" value={`${boolLabel(regime.paperActivationAllowed)} / ${boolLabel(regime.liveActivationAllowed)}`} />
+      </div>
+
+      <div className="mt-3 rounded-md border border-[#dcc7aa] bg-white/70 p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-black text-[#5b4432]">Regime mismatch diagnostic</div>
+            <div className="text-[10px] font-bold text-[#80644c]">Read-only diagnostic - not a trading trigger</div>
+          </div>
+          <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">
+            {diagnosticStatusLabel(diag.status)}
+          </span>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Decision regime" value={diag.decisionRegime ?? "null/unknown"} />
+          <Field label="Canonical regime" value={diag.canonicalRegime ?? "n/a"} />
+          <Field label="Canonical confidence" value={decimalLabel(diag.canonicalConfidence)} />
+          <Field label="Regime mismatch" value={boolLabel(diag.decisionRegimeMismatch)} />
+          <Field label="Canonical direction" value={diag.canonicalDirection ?? "n/a"} />
+          <Field label="Canonical source" value={diag.canonicalSource ?? "n/a"} />
+          <Field label="Computed at" value={diag.canonicalComputedAt ?? "n/a"} />
+          <Field label="Null decision + canonical" value={boolLabel(diag.regimeNullButCanonicalAvailable)} />
+        </div>
+        <ListBlock title="Canonical reason summary" items={diag.canonicalReasons.slice(0, 4)} translate={false} />
+      </div>
+
+      <div className="mt-3 rounded-md border border-[#dcc7aa] bg-white/70 p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-black text-[#5b4432]">Vol baseline diagnostic</div>
+            <div className="text-[10px] font-bold text-[#80644c]">Uses latest.marketSnapshot.volatility only</div>
+          </div>
+          <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">
+            {volReadinessLabel(vol.baselineReadiness)}
+          </span>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Vol state" value={vol.volState ?? "n/a"} />
+          <Field label="Confidence" value={decimalLabel(vol.confidence)} />
+          <Field label="Baseline samples" value={vol.baselineSamples1h == null || vol.requiredBaselineSamples == null ? "n/a" : `${vol.baselineSamples1h}/${vol.requiredBaselineSamples}`} />
+          <Field label="Baseline progress" value={pctLabel(vol.baselineProgressPct)} />
+        </div>
+        {vol.warning ? (
+          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-black text-amber-950">
+            {vol.warning}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-3 grid gap-2 lg:grid-cols-2">

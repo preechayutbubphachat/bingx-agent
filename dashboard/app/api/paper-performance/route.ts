@@ -139,6 +139,8 @@ export async function GET() {
         },
         regimeEvidence,
         canonicalMarketRegime,
+        latestCanonicalMarketRegimeDiagnostic: latest?.decision?.diagnostics?.canonicalMarketRegime ?? null,
+        marketSnapshot: latest?.marketSnapshot ?? null,
         multiTimeframeIndicatorEvidence,
         trendZoneCandidate,
         session: sessionMeta?.current ?? null,

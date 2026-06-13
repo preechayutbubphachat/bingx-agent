@@ -64,6 +64,8 @@ export interface PaperVM {
   regimeEvidence: RegimeEvidenceVM;
   indicatorGate: IndicatorGateVM;
   canonicalMarketRegime: CanonicalMarketRegimeVM;
+  regimeDiagnostic: RegimeDiagnosticVM;
+  volBaselineDiagnostic: VolBaselineDiagnosticVM;
   canonicalRegimeGate: CanonicalRegimeGateVM;
   regridReadinessBeforeCanonicalGate: RegridReadinessVM;
   regridReadinessAfterCanonicalGate: RegridReadinessVM;
@@ -508,6 +510,31 @@ export interface CanonicalMarketRegimeVM {
   shadowOnly: boolean;
   paperActivationAllowed: boolean;
   liveActivationAllowed: boolean;
+}
+
+export interface RegimeDiagnosticVM {
+  decisionRegime: string | null;
+  canonicalRegime: string | null;
+  canonicalDirection: string | null;
+  canonicalConfidence: number | null;
+  canonicalSource: string | null;
+  canonicalReasons: string[];
+  canonicalComputedAt: string | null;
+  decisionRegimeMismatch: boolean;
+  regimeNullButCanonicalAvailable: boolean;
+  status: "NO_CANONICAL_DATA" | "MATCHED" | "DECISION_REGIME_NULL_CANONICAL_AVAILABLE" | "MISMATCH" | "LOW_CONFIDENCE" | "UNKNOWN";
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+}
+
+export interface VolBaselineDiagnosticVM {
+  volState: string | null;
+  confidence: number | null;
+  baselineSamples1h: number | null;
+  requiredBaselineSamples: number | null;
+  baselineProgressPct: number | null;
+  baselineReadiness: "NO_DATA" | "INSUFFICIENT" | "BUILDING" | "READY";
+  warning: string | null;
 }
 
 export interface CanonicalRegimeGateVM {

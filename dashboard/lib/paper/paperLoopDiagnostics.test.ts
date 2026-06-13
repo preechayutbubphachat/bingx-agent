@@ -3,9 +3,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPaperLoopDiagnostics } from "./paperLoopDiagnostics.ts";
+import {
+  buildPaperLoopDiagnostics,
+  buildRegimeDiagnostic,
+  buildVolBaselineDiagnostic,
+} from "./paperLoopDiagnostics.ts";
 import type { PaperJournalSummary, PaperEventSummary } from "../readPaperJournal.ts";
 import { buildRegimeEvidence } from "./regimeEvidence.ts";
+import type { CanonicalMarketRegime } from "../market-regime/canonicalMarketRegime.ts";
 
 function ev(p: Partial<PaperEventSummary>): PaperEventSummary {
   return {
@@ -27,6 +32,27 @@ function summary(p: Partial<PaperJournalSummary>): PaperJournalSummary {
     lastPaperEventAt: null, lastPaperEventType: null, lastPaperMode: null,
     paperModeDetected: true, auditFilesScanned: 1, auditRootDir: "/tmp", warnings: [],
     checkedAt: "now", recentEvents: [], ...p,
+  };
+}
+
+function canonicalRegime(p: Partial<CanonicalMarketRegime> = {}): CanonicalMarketRegime {
+  return {
+    regime: "DOWNTREND",
+    direction: "BEARISH",
+    confidence: 80,
+    confidenceLabel: "high",
+    reasons: ["trend_down_confirmed_by_indicators"],
+    warnings: [],
+    allowedModes: ["NO_TRADE", "TREND_CHECK"],
+    blockedModes: ["NEUTRAL_GRID", "DYNAMIC_NEUTRAL_GRID", "PHASE_2B_ACTIVATION"],
+    sourcePriority: ["market_snapshot.klines"],
+    ignoredLegacyFields: ["latest_decision.market_mode"],
+    sourceFreshness: { status: "fresh", generatedAt: null, latestCandleAtByTimeframe: {}, warnings: [] },
+    evidenceCompleteness: { status: "partial", scorePct: 80, availableGroups: ["multi_timeframe_indicators"], missingGroups: [] },
+    shadowOnly: true,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    ...p,
   };
 }
 
@@ -71,6 +97,102 @@ test("empty journal → safe defaults, no throw", () => {
   assert.equal(d.priceVsGrid, "UNKNOWN");
   assert.equal(d.lastNoTradeReason, null);
   assert.equal(d.dynamicGrid.enabled, false);
+});
+
+test("OBS-01 decision regime null with canonical available is surfaced read-only", () => {
+  const d = buildRegimeDiagnostic({
+    canonicalMarketRegime: canonicalRegime(),
+    latestCanonicalMarketRegimeDiagnostic: {
+      regime: "DOWNTREND",
+      direction: "BEARISH",
+      confidence: 80,
+      source: "canonicalMarketRegime",
+      reasons: ["trend_down_confirmed_by_indicators"],
+      computedAt: "2026-06-13T00:00:00.000Z",
+      decisionRegime: null,
+      decisionRegimeMismatch: false,
+    },
+  });
+
+  assert.equal(d.regimeNullButCanonicalAvailable, true);
+  assert.equal(d.status, "DECISION_REGIME_NULL_CANONICAL_AVAILABLE");
+  assert.equal(d.paperActivationAllowed, false);
+  assert.equal(d.liveActivationAllowed, false);
+});
+
+test("OBS-01 decision/canonical mismatch is explicit", () => {
+  const d = buildRegimeDiagnostic({
+    canonicalMarketRegime: canonicalRegime(),
+    latestCanonicalMarketRegimeDiagnostic: {
+      regime: "DOWNTREND",
+      direction: "BEARISH",
+      confidence: 80,
+      decisionRegime: "RANGE",
+      decisionRegimeMismatch: true,
+    },
+  });
+
+  assert.equal(d.decisionRegimeMismatch, true);
+  assert.equal(d.status, "MISMATCH");
+});
+
+test("OBS-01 matching decision/canonical regime is marked matched", () => {
+  const d = buildRegimeDiagnostic({
+    canonicalMarketRegime: canonicalRegime(),
+    latestCanonicalMarketRegimeDiagnostic: {
+      regime: "DOWNTREND",
+      direction: "BEARISH",
+      confidence: 80,
+      decisionRegime: "DOWNTREND",
+      decisionRegimeMismatch: false,
+    },
+  });
+
+  assert.equal(d.status, "MATCHED");
+  assert.equal(d.decisionRegimeMismatch, false);
+});
+
+test("OBS-01 missing canonical returns NO_CANONICAL_DATA", () => {
+  const d = buildRegimeDiagnostic({});
+  assert.equal(d.status, "NO_CANONICAL_DATA");
+  assert.equal(d.canonicalRegime, null);
+});
+
+test("OBS-02 NORMAL vol state with insufficient baseline samples warns", () => {
+  const snapshot = {
+    volatility: {
+      baseline: { samples_1h: 24 },
+      required_points: { for_baseline_50: 50 },
+      relative: { vol_state: "NORMAL", confidence: 0.85 },
+    },
+  };
+  const before = JSON.stringify(snapshot);
+  const d = buildVolBaselineDiagnostic(snapshot);
+
+  assert.equal(d.baselineReadiness, "INSUFFICIENT");
+  assert.equal(d.baselineSamples1h, 24);
+  assert.equal(d.requiredBaselineSamples, 50);
+  assert.equal(d.baselineProgressPct, 48);
+  assert.equal(d.warning, "Vol state is NORMAL, but baseline is still building. Treat confidence cautiously.");
+  assert.equal(JSON.stringify(snapshot), before);
+});
+
+test("OBS-02 ready baseline does not warn", () => {
+  const d = buildVolBaselineDiagnostic({
+    volatility: {
+      baseline: { samples_1h: 50 },
+      required_points: { for_baseline_50: 50 },
+      relative: { vol_state: "NORMAL", confidence: 0.9 },
+    },
+  });
+
+  assert.equal(d.baselineReadiness, "READY");
+  assert.equal(d.warning, null);
+});
+
+test("OBS-02 missing volatility or required points returns NO_DATA", () => {
+  assert.equal(buildVolBaselineDiagnostic(null).baselineReadiness, "NO_DATA");
+  assert.equal(buildVolBaselineDiagnostic({ volatility: { baseline: { samples_1h: 24 } } }).baselineReadiness, "NO_DATA");
 });
 
 test("runtime monitor PASS when activation is blocked and safety journals advance after fills", () => {

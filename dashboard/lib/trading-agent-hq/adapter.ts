@@ -94,6 +94,8 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const epoch = obj(loop.paperEpoch);
   const indicatorGate = obj(loop.indicatorGate);
   const canonicalRegime = obj(loop.canonicalMarketRegime);
+  const regimeDiagnostic = obj(loop.regimeDiagnostic);
+  const volBaselineDiagnostic = obj(loop.volBaselineDiagnostic);
   const canonicalFreshness = obj(canonicalRegime.sourceFreshness);
   const canonicalCompleteness = obj(canonicalRegime.evidenceCompleteness);
   const dynamicGrid = obj(loop.dynamicGrid);
@@ -225,6 +227,29 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       shadowOnly: bool(canonicalRegime.shadowOnly),
       paperActivationAllowed: bool(canonicalRegime.paperActivationAllowed),
       liveActivationAllowed: bool(canonicalRegime.liveActivationAllowed),
+    },
+    regimeDiagnostic: {
+      decisionRegime: strOrNull(regimeDiagnostic.decisionRegime),
+      canonicalRegime: strOrNull(regimeDiagnostic.canonicalRegime),
+      canonicalDirection: strOrNull(regimeDiagnostic.canonicalDirection),
+      canonicalConfidence: numOrNull(regimeDiagnostic.canonicalConfidence),
+      canonicalSource: strOrNull(regimeDiagnostic.canonicalSource),
+      canonicalReasons: strArray(regimeDiagnostic.canonicalReasons),
+      canonicalComputedAt: strOrNull(regimeDiagnostic.canonicalComputedAt),
+      decisionRegimeMismatch: bool(regimeDiagnostic.decisionRegimeMismatch),
+      regimeNullButCanonicalAvailable: bool(regimeDiagnostic.regimeNullButCanonicalAvailable),
+      status: mapRegimeDiagnosticStatus(str(regimeDiagnostic.status, "UNKNOWN")),
+      paperActivationAllowed: bool(regimeDiagnostic.paperActivationAllowed),
+      liveActivationAllowed: bool(regimeDiagnostic.liveActivationAllowed),
+    },
+    volBaselineDiagnostic: {
+      volState: strOrNull(volBaselineDiagnostic.volState),
+      confidence: numOrNull(volBaselineDiagnostic.confidence),
+      baselineSamples1h: numOrNull(volBaselineDiagnostic.baselineSamples1h),
+      requiredBaselineSamples: numOrNull(volBaselineDiagnostic.requiredBaselineSamples),
+      baselineProgressPct: numOrNull(volBaselineDiagnostic.baselineProgressPct),
+      baselineReadiness: mapVolBaselineReadiness(str(volBaselineDiagnostic.baselineReadiness, "NO_DATA")),
+      warning: strOrNull(volBaselineDiagnostic.warning),
     },
     trendZoneCandidate: mapTrendZoneCandidate(loop.trendZoneCandidate),
     trendStrategy: mapTrendStrategy(trendStrategy),
@@ -858,6 +883,22 @@ function mapCanonicalCompletenessStatus(status: string): PaperVM["canonicalMarke
   if (status === "partial") return "partial";
   if (status === "missing") return "missing";
   return "unknown";
+}
+
+function mapRegimeDiagnosticStatus(status: string): PaperVM["regimeDiagnostic"]["status"] {
+  if (status === "NO_CANONICAL_DATA") return "NO_CANONICAL_DATA";
+  if (status === "MATCHED") return "MATCHED";
+  if (status === "DECISION_REGIME_NULL_CANONICAL_AVAILABLE") return "DECISION_REGIME_NULL_CANONICAL_AVAILABLE";
+  if (status === "MISMATCH") return "MISMATCH";
+  if (status === "LOW_CONFIDENCE") return "LOW_CONFIDENCE";
+  return "UNKNOWN";
+}
+
+function mapVolBaselineReadiness(status: string): PaperVM["volBaselineDiagnostic"]["baselineReadiness"] {
+  if (status === "READY") return "READY";
+  if (status === "INSUFFICIENT") return "INSUFFICIENT";
+  if (status === "BUILDING") return "BUILDING";
+  return "NO_DATA";
 }
 
 function mapStringRecord(value: unknown): Record<string, string | null> {

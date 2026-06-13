@@ -109,6 +109,8 @@ export interface PaperLoopDiagnostics {
   regimeEvidence: RegimeEvidence;
   indicatorGate: IndicatorGate;
   canonicalMarketRegime: CanonicalMarketRegime | null;
+  regimeDiagnostic: RegimeDiagnostic;
+  volBaselineDiagnostic: VolBaselineDiagnostic;
   multiTimeframeIndicatorEvidence: MultiTimeframeIndicatorEvidence | null;
   /** Phase D — read-only trend zone shadow (never used for orders) */
   trendZoneCandidate: TrendZoneShadow | null;
@@ -176,6 +178,8 @@ export interface PaperLoopDiagnosticsContext {
   } | null;
   regimeEvidence?: RegimeEvidence | null;
   canonicalMarketRegime?: CanonicalMarketRegime | null;
+  latestCanonicalMarketRegimeDiagnostic?: unknown;
+  marketSnapshot?: unknown;
   multiTimeframeIndicatorEvidence?: MultiTimeframeIndicatorEvidence | null;
   trendZoneCandidate?: TrendZoneShadow | null;
   session?: string | null;
@@ -183,6 +187,41 @@ export interface PaperLoopDiagnosticsContext {
   trendPaperJournalSnapshot?: TrendPaperJournalSnapshot | null;
   trendPaperExecutionConfig?: TrendPaperExecutionConfig | null;
   trendPaperArmSession?: TrendPaperArmSession | null;
+}
+
+export type RegimeDiagnosticStatus =
+  | "NO_CANONICAL_DATA"
+  | "MATCHED"
+  | "DECISION_REGIME_NULL_CANONICAL_AVAILABLE"
+  | "MISMATCH"
+  | "LOW_CONFIDENCE"
+  | "UNKNOWN";
+
+export interface RegimeDiagnostic {
+  decisionRegime: string | null;
+  canonicalRegime: string | null;
+  canonicalDirection: string | null;
+  canonicalConfidence: number | null;
+  canonicalSource: string | null;
+  canonicalReasons: string[];
+  canonicalComputedAt: string | null;
+  decisionRegimeMismatch: boolean;
+  regimeNullButCanonicalAvailable: boolean;
+  status: RegimeDiagnosticStatus;
+  paperActivationAllowed: false;
+  liveActivationAllowed: false;
+}
+
+export type VolBaselineReadiness = "NO_DATA" | "INSUFFICIENT" | "BUILDING" | "READY";
+
+export interface VolBaselineDiagnostic {
+  volState: string | null;
+  confidence: number | null;
+  baselineSamples1h: number | null;
+  requiredBaselineSamples: number | null;
+  baselineProgressPct: number | null;
+  baselineReadiness: VolBaselineReadiness;
+  warning: string | null;
 }
 
 const DEFAULT_TREND_PAPER_EXECUTION_CONFIG: TrendPaperExecutionConfig = {
@@ -215,6 +254,104 @@ function firstMatch<T>(events: PaperEventSummary[], pick: (e: PaperEventSummary)
 
 function evidenceNumber(value: { value: number | string | boolean | null } | null | undefined): number | null {
   return typeof value?.value === "number" && Number.isFinite(value.value) ? value.value : null;
+}
+
+function unknownObj(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
+function finiteOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function normalizeRegimeForDiagnostic(value: unknown): string | null {
+  const text = String(value ?? "").trim().toUpperCase();
+  return text && text !== "UNKNOWN" ? text : null;
+}
+
+export function buildRegimeDiagnostic(input: {
+  canonicalMarketRegime?: CanonicalMarketRegime | null;
+  latestCanonicalMarketRegimeDiagnostic?: unknown;
+}): RegimeDiagnostic {
+  const latestDiag = unknownObj(input.latestCanonicalMarketRegimeDiagnostic);
+  const canonicalRegime = normalizeRegimeForDiagnostic(latestDiag.regime ?? input.canonicalMarketRegime?.regime);
+  const decisionRegime = normalizeRegimeForDiagnostic(latestDiag.decisionRegime);
+  const canonicalConfidence = finiteOrNull(latestDiag.confidence) ?? input.canonicalMarketRegime?.confidence ?? null;
+  const canonicalDirection = stringOrNull(latestDiag.direction ?? input.canonicalMarketRegime?.direction);
+  const canonicalSource = stringOrNull(latestDiag.source) ?? (canonicalRegime ? "canonicalMarketRegime" : null);
+  const canonicalReasons = stringArray(latestDiag.reasons).length
+    ? stringArray(latestDiag.reasons)
+    : input.canonicalMarketRegime?.reasons ?? [];
+  const canonicalComputedAt = stringOrNull(latestDiag.computedAt);
+  const decisionRegimeMismatch = typeof latestDiag.decisionRegimeMismatch === "boolean"
+    ? latestDiag.decisionRegimeMismatch
+    : Boolean(decisionRegime && canonicalRegime && decisionRegime !== canonicalRegime);
+  const regimeNullButCanonicalAvailable = !decisionRegime && Boolean(canonicalRegime);
+  let status: RegimeDiagnosticStatus = "UNKNOWN";
+  if (!canonicalRegime) status = "NO_CANONICAL_DATA";
+  else if (decisionRegimeMismatch) status = "MISMATCH";
+  else if (regimeNullButCanonicalAvailable) status = "DECISION_REGIME_NULL_CANONICAL_AVAILABLE";
+  else if (canonicalConfidence != null && canonicalConfidence < 50) status = "LOW_CONFIDENCE";
+  else if (decisionRegime === canonicalRegime) status = "MATCHED";
+
+  return {
+    decisionRegime,
+    canonicalRegime,
+    canonicalDirection,
+    canonicalConfidence,
+    canonicalSource,
+    canonicalReasons,
+    canonicalComputedAt,
+    decisionRegimeMismatch,
+    regimeNullButCanonicalAvailable,
+    status,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+  };
+}
+
+export function buildVolBaselineDiagnostic(marketSnapshot: unknown): VolBaselineDiagnostic {
+  const snapshot = unknownObj(marketSnapshot);
+  const volatility = unknownObj(snapshot.volatility);
+  const baseline = unknownObj(volatility.baseline);
+  const requiredPoints = unknownObj(volatility.required_points);
+  const relative = unknownObj(volatility.relative);
+  const baselineSamples1h = finiteOrNull(baseline.samples_1h);
+  const requiredBaselineSamples = finiteOrNull(requiredPoints.for_baseline_50);
+  const volState = stringOrNull(relative.vol_state);
+  const confidence = finiteOrNull(relative.confidence);
+  const hasData = baselineSamples1h != null && requiredBaselineSamples != null && requiredBaselineSamples > 0;
+  const baselineProgressPct = hasData
+    ? Math.round(Math.min(100, (baselineSamples1h / requiredBaselineSamples) * 100))
+    : null;
+  const baselineReadiness: VolBaselineReadiness = !hasData
+    ? "NO_DATA"
+    : baselineSamples1h >= requiredBaselineSamples
+      ? "READY"
+      : baselineSamples1h > 0
+        ? "INSUFFICIENT"
+        : "BUILDING";
+  const warning = volState === "NORMAL" && hasData && baselineSamples1h < requiredBaselineSamples
+    ? "Vol state is NORMAL, but baseline is still building. Treat confidence cautiously."
+    : null;
+
+  return {
+    volState,
+    confidence,
+    baselineSamples1h,
+    requiredBaselineSamples,
+    baselineProgressPct,
+    baselineReadiness,
+    warning,
+  };
 }
 
 export function buildPaperLoopDiagnostics(summary: PaperJournalSummary): PaperLoopDiagnostics;
@@ -347,6 +484,11 @@ export function buildPaperLoopDiagnostics(
     emaSlope: evidenceNumber(regimeEvidence.indicators.emaSlope),
     freshness: regimeEvidence.indicatorEvidence?.freshness ?? null,
   });
+  const regimeDiagnostic = buildRegimeDiagnostic({
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    latestCanonicalMarketRegimeDiagnostic: context.latestCanonicalMarketRegimeDiagnostic,
+  });
+  const volBaselineDiagnostic = buildVolBaselineDiagnostic(context.marketSnapshot);
   const canonicalRegimeGate = buildCanonicalRegimeGate({
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
     currentRegridReadiness: regridReadinessBeforeCanonicalGate,
@@ -516,6 +658,8 @@ export function buildPaperLoopDiagnostics(
     regimeEvidence,
     indicatorGate,
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    regimeDiagnostic,
+    volBaselineDiagnostic,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
     canonicalRegimeGate,

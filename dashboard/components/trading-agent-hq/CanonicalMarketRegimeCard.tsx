@@ -69,6 +69,19 @@ function decimalLabel(value: number | null): string {
   return value == null ? "n/a" : String(value);
 }
 
+function isUnknownOrDataGap(paper: PaperVM): boolean {
+  const regime = paper.canonicalMarketRegime;
+  const diag = paper.regimeDiagnostic;
+  return (
+    regime.regime === "UNKNOWN" ||
+    diag.status === "NO_CANONICAL_DATA" ||
+    (!diag.decisionRegime && !diag.canonicalRegime) ||
+    regime.evidenceCompleteness.status === "missing" ||
+    regime.sourceFreshness.status === "stale" ||
+    regime.sourceFreshness.status === "unknown"
+  );
+}
+
 function Field({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-md border border-[#dcc7aa] bg-white/75 px-2 py-1.5">
@@ -100,6 +113,7 @@ export default function CanonicalMarketRegimeCard({ paper }: CanonicalMarketRegi
   const legacyPlanMode = paper.dynamicRegrid.marketMode ?? "ยังไม่มีข้อมูล";
   const latestCandles = Object.entries(regime.sourceFreshness.latestCandleAtByTimeframe)
     .map(([tf, at]) => `${tf}: ${at ?? "ยังไม่มีข้อมูล"}`);
+  const unknownOrDataGap = isUnknownOrDataGap(paper);
 
   return (
     <section className="rounded-lg border border-[#d1b58c] bg-[#f3eadf] p-3 text-[#3f2f22] shadow-sm">
@@ -118,6 +132,15 @@ export default function CanonicalMarketRegimeCard({ paper }: CanonicalMarketRegi
       <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-black leading-relaxed text-amber-950">
         Market Regime หลักตอนนี้เป็น Shadow diagnostics เท่านั้น ยังไม่เปลี่ยนคำสั่งเทรด และยังไม่ปลดล็อก M-0B
       </div>
+
+      {unknownOrDataGap ? (
+        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-black leading-relaxed text-red-950">
+          <div>UNKNOWN / DATA GAP - fail closed</div>
+          <div className="mt-1 text-[11px]">
+            No trade should be inferred from incomplete regime data. Read-only warning - does not change trading behavior.
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Regime หลัก" value={REGIME_LABELS[regime.regime]} />

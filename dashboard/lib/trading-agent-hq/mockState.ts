@@ -39,6 +39,8 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       feePctConfig: 0.05,
       slippagePctConfig: 0.02,
       status: "PASS",
+      spacingBufferRatio: 5.142857142857143,
+      feeGrindRisk: "HEALTHY_BUFFER",
     },
     runtimeMonitor: {
       cumulativeBuyFillCount: 1460,

@@ -116,6 +116,9 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     sampleRaw === "sufficient" ? "SUFFICIENT"
     : sampleRaw === "insufficient_data" || sampleRaw === "insufficient" ? "INSUFFICIENT_SAMPLE"
     : "UNKNOWN";
+  const spacingBufferRatio = costSpacingBufferRatio(costGate);
+  const costGatePass = boolOrNull(costGate.pass);
+  const costGateWarning = boolOrNull(costGate.warning);
   // honest edge: 0 closed cycles can NEVER be edge PASS
   const edgeStatus: PaperVM["edgeStatus"] =
     closedCycles === 0 ? "DATA_GAP"
@@ -132,8 +135,8 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       roundTripCostPct: numOrNull(costGate.roundTripCostPct),
       gridSpacingPct: numOrNull(costGate.gridSpacingPct),
       requiredMinSpacingPct: numOrNull(costGate.requiredMinSpacingPct),
-      pass: boolOrNull(costGate.pass),
-      warning: boolOrNull(costGate.warning),
+      pass: costGatePass,
+      warning: costGateWarning,
       nextAction: strOrNull(costGate.nextAction),
       feeEstimateTotal: numOrNull(perf.feeEstimateTotal),
       slippageEstimateTotal: numOrNull(perf.slippageEstimateTotal),
@@ -141,6 +144,8 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       feePctConfig: numOrNull(obj(loop.trendPaperConfigPublic).feePct),
       slippagePctConfig: numOrNull(obj(loop.trendPaperConfigPublic).slippagePct),
       status: mapCostGateBreakdownStatus(costGate),
+      spacingBufferRatio,
+      feeGrindRisk: mapFeeGrindRisk({ pass: costGatePass, warning: costGateWarning, spacingBufferRatio }),
     },
     runtimeMonitor: {
       cumulativeBuyFillCount: num(runtimeMonitor.cumulativeBuyFillCount, 0),
@@ -944,6 +949,25 @@ function mapCostGateBreakdownStatus(costGate: AnyObj): PaperVM["costGateBreakdow
   if (bool(costGate.warning)) return "WARNING";
   if (costGate.pass === false) return "FAIL";
   return mapCostGateStatus(str(costGate.status, "UNKNOWN"));
+}
+
+function costSpacingBufferRatio(costGate: AnyObj): number | null {
+  const spacing = numOrNull(costGate.gridSpacingPct);
+  const roundTrip = numOrNull(costGate.roundTripCostPct);
+  if (spacing == null || roundTrip == null || roundTrip <= 0) return null;
+  return spacing / roundTrip;
+}
+
+function mapFeeGrindRisk(input: {
+  pass: boolean | null;
+  warning: boolean | null;
+  spacingBufferRatio: number | null;
+}): PaperVM["costGateBreakdown"]["feeGrindRisk"] {
+  if (input.pass === false) return "COST_GATE_FAIL";
+  if (input.spacingBufferRatio == null) return "NO_DATA";
+  if (input.spacingBufferRatio < 1) return "FEE_GRIND_RISK";
+  if (input.spacingBufferRatio < 1.5 || input.warning === true) return "THIN_BUFFER";
+  return "HEALTHY_BUFFER";
 }
 
 function mapLog(status: AnyObj): LogEntry[] {

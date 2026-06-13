@@ -109,6 +109,8 @@ export interface CostGateBreakdownVM {
   feePctConfig: number | null;
   slippagePctConfig: number | null;
   status: "NO_DATA" | "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+  spacingBufferRatio: number | null;
+  feeGrindRisk: "NO_DATA" | "HEALTHY_BUFFER" | "THIN_BUFFER" | "FEE_GRIND_RISK" | "COST_GATE_FAIL";
 }
 
 // T-3H-6-a — aggregated view of the append-only decision log. Pure display data.

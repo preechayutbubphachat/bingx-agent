@@ -42,6 +42,20 @@ function boolText(value: boolean | null): string {
   return value ? "yes" : "no";
 }
 
+function ratio(value: number | null): string {
+  return value == null ? "—" : `${value.toFixed(2)}x`;
+}
+
+function feeGrindLabel(value: PaperVM["costGateBreakdown"]["feeGrindRisk"]): string {
+  switch (value) {
+    case "HEALTHY_BUFFER": return "healthy buffer";
+    case "THIN_BUFFER": return "thin buffer";
+    case "FEE_GRIND_RISK": return "fee-grind risk";
+    case "COST_GATE_FAIL": return "cost gate fail";
+    default: return "no data";
+  }
+}
+
 export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegridStatusCardProps) {
   const regrid = paper.dynamicRegrid;
   const candidate = regrid.candidate;
@@ -119,20 +133,31 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
             <div className="text-[11px] font-black text-[#5b4432]">Cost Gate Breakdown</div>
             <div className="text-[10px] font-bold text-[#80644c]">Read-only diagnostic - does not change grid behavior</div>
           </div>
-          <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">
-            {cost.status}
-          </span>
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">
+              {cost.status}
+            </span>
+            <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-900">
+              {feeGrindLabel(cost.feeGrindRisk)}
+            </span>
+          </div>
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Round-trip cost" value={pct(cost.roundTripCostPct)} />
           <Metric label="Grid spacing" value={pct(cost.gridSpacingPct)} />
           <Metric label="Required min spacing" value={pct(cost.requiredMinSpacingPct)} />
+          <Metric label="Spacing buffer" value={ratio(cost.spacingBufferRatio)} />
           <Metric label="Cost gate pass" value={boolText(cost.pass)} />
           <Metric label="Fee estimate" value={money(cost.feeEstimateTotal)} />
           <Metric label="Slippage estimate" value={money(cost.slippageEstimateTotal)} />
           <Metric label="Funding estimate" value={money(cost.fundingEstimateTotal)} />
           <Metric label="Fee / slippage config" value={`${pct(cost.feePctConfig)} / ${pct(cost.slippagePctConfig)}`} />
         </div>
+        {cost.feeGrindRisk === "FEE_GRIND_RISK" || cost.feeGrindRisk === "THIN_BUFFER" || cost.feeGrindRisk === "COST_GATE_FAIL" ? (
+          <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] font-black text-red-950">
+            Fee-grind risk: spacing may not sufficiently exceed round-trip costs. Cost diagnostic only - does not change grid parameters.
+          </div>
+        ) : null}
         {cost.warning || cost.nextAction ? (
           <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-black text-amber-950">
             {cost.warning ? "Cost gate warning. " : ""}{cost.nextAction ?? "Review cost gate details."}

@@ -106,6 +106,28 @@ test("closing event produces closed trade and clears open position", async () =>
   });
 });
 
+test("legacy closing event with missing stop loss is excluded from closed-trade evidence", async () => {
+  await withTempFile(async (filePath) => {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, `${JSON.stringify(exit({ stopLoss: null }))}\n`, "utf8");
+    const snapshot = await readTrendPaperJournalSnapshot({ filePath });
+    assert.equal(snapshot.closedTrades.length, 0);
+    assert.equal(snapshot.invalidMissingStopLossCount, 1);
+    assert.equal(snapshot.invalidRiskModelCount, 1);
+  });
+});
+
+test("legacy closing event with finite stop loss remains valid evidence", async () => {
+  await withTempFile(async (filePath) => {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, `${JSON.stringify(exit({ stopLoss: 64552 }))}\n`, "utf8");
+    const snapshot = await readTrendPaperJournalSnapshot({ filePath });
+    assert.equal(snapshot.closedTrades.length, 1);
+    assert.equal(snapshot.closedTrades[0].stopLoss, 64552);
+    assert.equal(snapshot.invalidMissingStopLossCount, 0);
+  });
+});
+
 test("trend closed trades remain separate from grid closed cycles", async () => {
   await withTempFile(async (filePath) => {
     await appendTrendPaperJournalEvent(entry(), { filePath });

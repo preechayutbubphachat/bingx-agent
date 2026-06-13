@@ -288,6 +288,34 @@ test("entry created when all gates pass", () => {
   assert.equal(result.validation?.valid, true);
 });
 
+test("missing stop loss blocks paper entry with explicit risk-model reason", () => {
+  const result = run({
+    trendPaperExecutionPreflight: { ...PREFLIGHT_READY, stopLoss: null },
+  });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "PAPER_TRADE_BLOCKED_MISSING_STOP_LOSS");
+  assert.equal(result.paperOrderIntent, null);
+  assert.equal(result.journalEventDraft, null);
+  assert.equal(result.liveActivationAllowed, false);
+  assert.equal(result.exchangeOrderAllowed, false);
+});
+
+test("non-finite stop loss blocks paper entry", () => {
+  const result = run({
+    trendPaperExecutionPreflight: { ...PREFLIGHT_READY, stopLoss: Number.NaN },
+  });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "PAPER_TRADE_BLOCKED_MISSING_STOP_LOSS");
+});
+
+test("zero risk distance blocks paper entry as invalid risk model", () => {
+  const result = run({
+    currentPrice: PREFLIGHT_READY.stopLoss,
+  });
+  assert.equal(result.action, "NO_ACTION");
+  assert.equal(result.reason, "INVALID_RISK_MODEL");
+});
+
 test("entry event validates before write", () => {
   const result = run();
   assert.ok(result.validation);

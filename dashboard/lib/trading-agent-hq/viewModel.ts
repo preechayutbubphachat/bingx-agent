@@ -290,6 +290,8 @@ export interface TrendEdgeReviewVM {
   costDrag: number | null;
   slippageAttribution: number | null;
   fundingAttribution: number | null;
+  invalidRiskModelCount: number;
+  invalidMissingStopLossCount: number;
   decision: "HOLD" | "CONTINUE_PAPER" | "PARAMETER_REVIEW" | "PAUSE_STRATEGY" | "READY_FOR_LIMITED_CANARY_REVIEW" | "UNKNOWN";
   paperActivationAllowed: boolean;
   liveActivationAllowed: boolean;

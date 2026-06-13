@@ -535,6 +535,7 @@ function evaluateExitLifecycle(input: {
   const candles = normalizeCandles(input.candles);
   const latest = candles[candles.length - 1];
   if (!latest) return noAction("INSUFFICIENT_5M_CONFIRMATION");
+  if (!finite(input.position.stopLoss)) return noAction("INVALID_RISK_MODEL");
 
   const direction = input.position.direction;
   const stopHit = direction === "SHORT" ? latest.high >= input.position.stopLoss : latest.low <= input.position.stopLoss;
@@ -693,7 +694,9 @@ export function evaluateTrendPaperExecutionEngine(
 
   const entryZone = strategy.entryZone;
   if (!entryZone || !finite(entryZone[0]) || !finite(entryZone[1])) return noAction("ENTRY_ZONE_MISSING");
-  if (!finite(preflight.stopLoss) || !finite(preflight.takeProfit1)) return noAction("PRELOAD_PRICE_LEVELS_MISSING");
+  if (!finite(preflight.stopLoss)) return noAction("PAPER_TRADE_BLOCKED_MISSING_STOP_LOSS");
+  if (!finite(preflight.takeProfit1)) return noAction("PRELOAD_PRICE_LEVELS_MISSING");
+  if (Math.abs(currentPrice - preflight.stopLoss) <= 0) return noAction("INVALID_RISK_MODEL");
 
   const tolerancePct = finite(config.entryEdgeTolerancePct) ? config.entryEdgeTolerancePct! : DEFAULT_ENTRY_EDGE_TOLERANCE_PCT;
   if (!priceInsideOrEdge(currentPrice, entryZone, tolerancePct)) return noAction("PRICE_NOT_IN_ENTRY_ZONE_OR_EDGE");

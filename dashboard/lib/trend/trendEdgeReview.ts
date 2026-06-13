@@ -42,6 +42,8 @@ export interface TrendClosedTradeInput {
   holdTimeMinutes?: number | null;
   direction?: "LONG" | "SHORT" | null;
   exitReason?: string | null;
+  /** optional legacy audit field; when present it must be finite or the trade is invalid evidence */
+  stopLoss?: number | null;
 }
 
 export interface TrendEdgeReviewInput {
@@ -55,6 +57,8 @@ export interface TrendEdgeReviewInput {
   minNetExpectancyR?: number;
   /** max acceptable maxDrawdownR for canary-ready (default 8R). */
   maxAcceptableDrawdownR?: number;
+  /** legacy records excluded before this evaluator because stop loss was missing/non-finite. */
+  invalidMissingStopLossCount?: number;
 }
 
 export interface TrendEdgeAttributionBucket {
@@ -94,6 +98,8 @@ export interface TrendEdgeReview {
   unlocksGrid: false;
   unlocksLive: false;
   oldExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE";
+  invalidRiskModelCount: number;
+  invalidMissingStopLossCount: number;
   notes: string[];
 }
 
@@ -151,7 +157,10 @@ function emptyReview(
   status: TrendEdgeReviewStatus,
   tier: TrendEdgeSampleTier,
   notes: string[],
+  invalidCounts: { invalidRiskModelCount?: number; invalidMissingStopLossCount?: number } = {},
 ): TrendEdgeReview {
+  const invalidMissingStopLossCount = invalidCounts.invalidMissingStopLossCount ?? 0;
+  const invalidRiskModelCount = invalidCounts.invalidRiskModelCount ?? invalidMissingStopLossCount;
   return {
     phase: "T-4_EDGE_REVIEW",
     status,
@@ -183,8 +192,14 @@ function emptyReview(
     unlocksGrid: false,
     unlocksLive: false,
     oldExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE",
+    invalidRiskModelCount,
+    invalidMissingStopLossCount,
     notes,
   };
+}
+
+function hasValidStopLoss(t: TrendClosedTradeInput): boolean {
+  return !("stopLoss" in t) || finite(t.stopLoss);
 }
 
 export function evaluateTrendEdgeReview(input: TrendEdgeReviewInput): TrendEdgeReview {
@@ -198,8 +213,20 @@ export function evaluateTrendEdgeReview(input: TrendEdgeReviewInput): TrendEdgeR
     ]);
   }
 
-  const trades = input.closedTrades.filter((t) => t && finite(t.rMultiple));
+  const invalidMissingStopLossCount =
+    (finite(input.invalidMissingStopLossCount) && input.invalidMissingStopLossCount > 0)
+      ? input.invalidMissingStopLossCount
+      : input.closedTrades.filter((t) => t && !hasValidStopLoss(t)).length;
+  const trades = input.closedTrades.filter((t) => t && finite(t.rMultiple) && hasValidStopLoss(t));
   const n = trades.length;
+
+  if (n === 0 && invalidMissingStopLossCount > 0) {
+    return emptyReview("INSUFFICIENT_DATA", "none", [
+      "trend journal present but no valid closed trade evidence - trendClosedTrades = 0",
+      "MISSING_STOP_LOSS records excluded from edge metrics",
+      "shadow read-only - edge cannot be evaluated yet - HOLD",
+    ], { invalidMissingStopLossCount });
+  }
 
   // INSUFFICIENT_DATA — journal present but 0 closed trades (current expected runtime state)
   if (n === 0) {
@@ -285,6 +312,9 @@ export function evaluateTrendEdgeReview(input: TrendEdgeReviewInput): TrendEdgeR
   // Decision — netExpectancyAfterCosts is the main edge metric; confidence rises with sample.
   let decision: TrendEdgeReviewDecision;
   const notes: string[] = [];
+  if (invalidMissingStopLossCount > 0) {
+    notes.push("MISSING_STOP_LOSS records excluded from edge metrics");
+  }
   if (tier === "early" || tier === "usable") {
     decision = "HOLD";
     notes.push("sample < review (20) — ยังประเมิน edge ไม่ได้ คง HOLD เก็บต่อ");
@@ -338,6 +368,8 @@ export function evaluateTrendEdgeReview(input: TrendEdgeReviewInput): TrendEdgeR
     unlocksGrid: false,
     unlocksLive: false,
     oldExposurePolicy: "QUARANTINE_OLD_GRID_EXPOSURE",
+    invalidRiskModelCount: invalidMissingStopLossCount,
+    invalidMissingStopLossCount,
     notes,
   };
 }

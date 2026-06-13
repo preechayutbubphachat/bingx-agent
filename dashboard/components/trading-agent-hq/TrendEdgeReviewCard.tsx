@@ -88,6 +88,8 @@ export default function TrendEdgeReviewCard({ paper }: Props) {
         <Field label="Max Consec. Losses" value={p?.maxConsecutiveLosses != null ? String(p.maxConsecutiveLosses) : NA} />
         <Field label="Risk of Ruin" value={fmtPct(p?.riskOfRuinEstimate)} />
         <Field label="Cost Drag" value={fmtR(p?.costDrag)} />
+        <Field label="Invalid Risk Model" value={String(p?.invalidRiskModelCount ?? 0)} />
+        <Field label="Missing Stop Loss" value={String(p?.invalidMissingStopLossCount ?? 0)} />
         <Field label="paper/live" value={`${yn(p?.paperActivationAllowed)}/${yn(p?.liveActivationAllowed)}`} />
       </div>
 

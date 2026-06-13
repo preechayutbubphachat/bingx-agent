@@ -2319,8 +2319,23 @@ export async function GET() {
         // กันการเปิดซ้ำ
         if (!ob_trade.active) {
             const bias = ob_gate?.bias_1h === "LONG" ? "LONG" : ob_gate?.bias_1h === "SHORT" ? "SHORT" : null;
+            const stopLoss = toNumber(entry?.sl);
 
             // Mode A: entry_price ใช้ close ตอน READY (ถ้าไม่มี fallback เป็น mid zone)
+            if (stopLoss === null) {
+                await appendBothLogs({
+                    t: Date.now(),
+                    type: "OB_TRADE_BLOCKED_MISSING_STOP_LOSS",
+                    symbol: sym,
+                    bias,
+                    reason: "MISSING_STOP_LOSS",
+                    risk_model_status: "INVALID_RISK_MODEL",
+                    source_updated_at: sourceUpdatedAt ?? null,
+                    plan_state: planState,
+                    mode_lock: modeLock,
+                    explain_th: "บล็อก paper OB trade เพราะไม่มี stop loss",
+                });
+            } else {
             const entryZone = entry?.entry_zone ?? null;
             const entryPrice = last5m?.close ?? midZone(entryZone);
 
@@ -2334,7 +2349,7 @@ export async function GET() {
                 closed_t: null,
                 entry_price: entryPrice ?? null,
                 entry_zone: entryZone,
-                sl: entry?.sl ?? null,
+                sl: stopLoss,
                 tp1: entry?.tp1 ?? null,
                 result: null,
                 exit_price: null,
@@ -2359,6 +2374,7 @@ export async function GET() {
                 mode_lock: modeLock,
                 explain_th: `🟢 เปิดเทรด (Mode A) เพราะ OB Gate READY • ${ob_trade.bias ?? "UNKNOWN"}`,
             });
+            }
         }
     }
 

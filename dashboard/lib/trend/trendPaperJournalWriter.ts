@@ -20,6 +20,8 @@ export interface TrendPaperJournalSnapshot {
   lastEntryAt: string | null;
   lastExitAt: string | null;
   closedTrades: TrendClosedTradeInput[];
+  invalidRiskModelCount?: number;
+  invalidMissingStopLossCount?: number;
 }
 
 function finite(value: unknown): value is number {
@@ -72,6 +74,8 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function toTrendClosedTrade(event: TrendPaperJournalEvent): TrendClosedTradeInput | null {
   if (event.eventType !== "TREND_PAPER_EXIT" && event.eventType !== "TREND_PAPER_INVALIDATED") return null;
   if (event.countTowardTrendEvidence !== true) return null;
+  const stopLoss = numberOrNull(event.stopLoss);
+  if (!finite(stopLoss)) return null;
   const riskAmount = numberOrNull(event.riskAmountPaper);
   const grossPnl = numberOrNull(event.grossPnlPaper);
   const netPnl = numberOrNull(event.netPnlPaper);
@@ -89,7 +93,19 @@ function toTrendClosedTrade(event: TrendPaperJournalEvent): TrendClosedTradeInpu
     holdTimeMinutes: numberOrNull((event as { holdTimeMinutes?: unknown }).holdTimeMinutes),
     direction: event.direction === "LONG" || event.direction === "SHORT" ? event.direction : null,
     exitReason: strOrNull(event.exitReason),
+    stopLoss,
   };
+}
+
+function isClosingTrendEvidenceEvent(event: TrendPaperJournalEvent): boolean {
+  return (
+    (event.eventType === "TREND_PAPER_EXIT" || event.eventType === "TREND_PAPER_INVALIDATED") &&
+    event.countTowardTrendEvidence === true
+  );
+}
+
+function hasMissingStopLoss(event: TrendPaperJournalEvent): boolean {
+  return isClosingTrendEvidenceEvent(event) && !finite(numberOrNull(event.stopLoss));
 }
 
 function replayOpenPosition(events: TrendPaperJournalEvent[]): TrendPaperPosition | null {
@@ -200,6 +216,8 @@ export async function readTrendPaperJournalSnapshot(
       lastEntryAt: null,
       lastExitAt: null,
       closedTrades: [],
+      invalidRiskModelCount: 0,
+      invalidMissingStopLossCount: 0,
     };
   }
 
@@ -228,6 +246,7 @@ export async function readTrendPaperJournalSnapshot(
     const trade = toTrendClosedTrade(event);
     return trade ? [trade] : [];
   });
+  const invalidMissingStopLossCount = events.filter(hasMissingStopLoss).length;
 
   return {
     path: filePath,
@@ -237,5 +256,7 @@ export async function readTrendPaperJournalSnapshot(
     lastEntryAt: lastEntry ? eventTsIso(lastEntry) : null,
     lastExitAt: lastExit ? eventTsIso(lastExit) : null,
     closedTrades,
+    invalidRiskModelCount: invalidMissingStopLossCount,
+    invalidMissingStopLossCount,
   };
 }

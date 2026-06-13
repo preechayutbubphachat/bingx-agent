@@ -428,6 +428,7 @@ export function buildPaperLoopDiagnostics(
   const trendEdgeReview = evaluateTrendEdgeReview({
     closedTrades: trendPaperJournalSnapshot ? trendPaperJournalSnapshot.closedTrades : [],
     journalExists: trendPaperJournalSnapshot ? trendPaperJournalSnapshot.exists : true,
+    invalidMissingStopLossCount: trendPaperJournalSnapshot?.invalidMissingStopLossCount ?? 0,
   });
   const trendPaperArmSessionRaw = context.trendPaperArmSession ?? null;
   const trendPaperArmSession = summarizeTrendPaperArmSession(trendPaperArmSessionRaw, summary.checkedAt);

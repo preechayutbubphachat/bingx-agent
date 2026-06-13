@@ -426,6 +426,8 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       costDrag: null,
       slippageAttribution: null,
       fundingAttribution: null,
+      invalidRiskModelCount: 0,
+      invalidMissingStopLossCount: 0,
       decision: "HOLD",
       paperActivationAllowed: false,
       liveActivationAllowed: false,

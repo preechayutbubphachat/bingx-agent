@@ -688,6 +688,8 @@ function mapTrendEdgeReview(raw: AnyObj): PaperVM["trendEdgeReview"] {
     costDrag: numOrNull(raw.costDrag),
     slippageAttribution: numOrNull(raw.slippageAttribution),
     fundingAttribution: numOrNull(raw.fundingAttribution),
+    invalidRiskModelCount: num(raw.invalidRiskModelCount, 0),
+    invalidMissingStopLossCount: num(raw.invalidMissingStopLossCount, 0),
     decision: (validDecision.includes(decisionRaw) ? decisionRaw : "UNKNOWN") as PaperVM["trendEdgeReview"]["decision"],
     paperActivationAllowed: bool(raw.paperActivationAllowed),
     liveActivationAllowed: bool(raw.liveActivationAllowed),

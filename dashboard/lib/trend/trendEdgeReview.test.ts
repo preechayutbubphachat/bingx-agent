@@ -101,6 +101,35 @@ test("metrics: winRate, costDrag, profitFactor, maxConsecutiveLosses computed", 
   assert.ok(r.maxDrawdownR != null && r.maxDrawdownR >= 0);
 });
 
+test("invalid missing stop loss records are excluded from expectancy and counted", () => {
+  const trades = [
+    mk({ rMultiple: 2, netRMultiple: 1.8, stopLoss: 100 }),
+    mk({ rMultiple: 50, netRMultiple: 50, stopLoss: null }),
+    mk({ rMultiple: -1, netRMultiple: -1, stopLoss: Number.NaN }),
+  ];
+  const before = JSON.stringify(trades);
+  const r = evaluateTrendEdgeReview({ closedTrades: trades });
+  assert.equal(r.trendClosedTrades, 1);
+  assert.equal(r.expectancyR, 2);
+  assert.equal(r.netExpectancyAfterCosts, 1.8);
+  assert.equal(r.invalidMissingStopLossCount, 2);
+  assert.equal(r.invalidRiskModelCount, 2);
+  assert.ok(r.notes.includes("MISSING_STOP_LOSS records excluded from edge metrics"));
+  assert.equal(JSON.stringify(trades), before);
+});
+
+test("pre-filtered invalid missing stop loss count remains visible", () => {
+  const r = evaluateTrendEdgeReview({
+    closedTrades: [],
+    invalidMissingStopLossCount: 2,
+  });
+  assert.equal(r.status, "INSUFFICIENT_DATA");
+  assert.equal(r.trendClosedTrades, 0);
+  assert.equal(r.invalidMissingStopLossCount, 2);
+  assert.equal(r.invalidRiskModelCount, 2);
+  assert.equal(r.expectancyR, null);
+});
+
 test("attribution + failure taxonomy aggregated by net R", () => {
   const trades = [
     mk({ rMultiple: 2, netRMultiple: 1.8, regime: "DOWNTREND", session: "NY", confirmationType: "close_back" }),

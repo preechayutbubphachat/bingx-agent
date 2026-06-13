@@ -56,14 +56,36 @@ function feeGrindLabel(value: PaperVM["costGateBreakdown"]["feeGrindRisk"]): str
   }
 }
 
+function isThinSpacingBuffer(cost: PaperVM["costGateBreakdown"]): boolean {
+  return (
+    (cost.spacingBufferRatio != null && cost.spacingBufferRatio < 1.2) ||
+    cost.feeGrindRisk === "THIN_BUFFER" ||
+    cost.feeGrindRisk === "FEE_GRIND_RISK" ||
+    cost.feeGrindRisk === "COST_GATE_FAIL"
+  );
+}
+
+function isLowVolOrBuilding(vol: PaperVM["volBaselineDiagnostic"]): boolean {
+  const volState = (vol.volState ?? "").toUpperCase();
+  return (
+    volState.includes("LOW") ||
+    volState.includes("COMPRESS") ||
+    volState.includes("SQUEEZE") ||
+    vol.baselineReadiness === "BUILDING" ||
+    vol.baselineReadiness === "INSUFFICIENT"
+  );
+}
+
 export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegridStatusCardProps) {
   const regrid = paper.dynamicRegrid;
   const candidate = regrid.candidate;
   const cost = paper.costGateBreakdown;
+  const vol = paper.volBaselineDiagnostic;
   const inventory = paper.runtimeMonitor;
   const oldExposurePolicy = paper.paperEpoch.oldExposurePolicy;
   const oneSided = inventory.cumulativeBuyFillCount > 0 && inventory.cumulativeSellFillCount === 0;
   const quarantined = oldExposurePolicy.some((item) => item.toUpperCase().includes("QUARANTINE"));
+  const lowVolFeeGrindSqueezeRisk = isThinSpacingBuffer(cost) && isLowVolOrBuilding(vol);
   const activationLabel = activationAllowedLabel(candidate.activationAllowed);
   const cooldownText =
     typeof candidate.cooldownRemaining === "number"
@@ -156,6 +178,11 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
         {cost.feeGrindRisk === "FEE_GRIND_RISK" || cost.feeGrindRisk === "THIN_BUFFER" || cost.feeGrindRisk === "COST_GATE_FAIL" ? (
           <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] font-black text-red-950">
             Fee-grind risk: spacing may not sufficiently exceed round-trip costs. Cost diagnostic only - does not change grid parameters.
+          </div>
+        ) : null}
+        {lowVolFeeGrindSqueezeRisk ? (
+          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-black text-amber-950">
+            Low-vol fee-grind squeeze risk: Spacing buffer is thin while volatility is compressed/building. Read-only warning - does not change grid behavior.
           </div>
         ) : null}
         {cost.warning || cost.nextAction ? (

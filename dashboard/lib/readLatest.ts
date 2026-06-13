@@ -1,5 +1,10 @@
 import { promises as fs } from "fs";
 import path from "path";
+import {
+    buildCanonicalMarketRegime,
+    buildMultiTimeframeIndicatorEvidence,
+    type CanonicalMarketRegime,
+} from "./market-regime/canonicalMarketRegime.ts";
 
 type RuntimeFileStatus = "ok" | "missing" | "empty" | "invalid";
 
@@ -216,6 +221,51 @@ function fallbackDecision() {
     };
 }
 
+export type LatestCanonicalMarketRegimeDiagnostic = {
+    regime: CanonicalMarketRegime["regime"];
+    direction: CanonicalMarketRegime["direction"];
+    confidence: number;
+    source: "canonicalMarketRegime";
+    reasons: string[];
+    computedAt: string;
+    decisionRegime: string | null;
+    decisionRegimeMismatch: boolean;
+    paperActivationAllowed: false;
+    liveActivationAllowed: false;
+};
+
+function normalizeDecisionRegimeForCompare(value: unknown): string | null {
+    const text = String(value ?? "").trim().toUpperCase();
+    return text && text !== "UNKNOWN" ? text : null;
+}
+
+export function buildLatestCanonicalMarketRegimeDiagnostic(input: {
+    decision: Record<string, any> | null | undefined;
+    marketSnapshot: unknown;
+    computedAt?: string;
+}): LatestCanonicalMarketRegimeDiagnostic | null {
+    if (!input.marketSnapshot) return null;
+    const indicatorEvidenceByTimeframe = buildMultiTimeframeIndicatorEvidence(input.marketSnapshot);
+    const canonical = buildCanonicalMarketRegime({
+        marketSnapshot: input.marketSnapshot,
+        indicatorEvidenceByTimeframe,
+        legacyPlanMode: typeof input.decision?.market_mode === "string" ? input.decision.market_mode : null,
+    });
+    const decisionRegime = normalizeDecisionRegimeForCompare(input.decision?.regime);
+    return {
+        regime: canonical.regime,
+        direction: canonical.direction,
+        confidence: canonical.confidence,
+        source: "canonicalMarketRegime",
+        reasons: canonical.reasons,
+        computedAt: input.computedAt ?? new Date().toISOString(),
+        decisionRegime,
+        decisionRegimeMismatch: decisionRegime != null && decisionRegime !== canonical.regime,
+        paperActivationAllowed: false,
+        liveActivationAllowed: false,
+    };
+}
+
 export async function readLatest() {
     const { dir, mirrorDir } = await resolveRuntimeDir();
 
@@ -239,6 +289,16 @@ export async function readLatest() {
         decision.regime_raw = regimeRaw ?? null;
     }
     decision.regime = regimeNorm;
+    const canonicalDiagnostic = buildLatestCanonicalMarketRegimeDiagnostic({
+        decision,
+        marketSnapshot: snapshotRead.ok ? snapshotRead.value : null,
+    });
+    if (canonicalDiagnostic) {
+        decision.diagnostics = {
+            ...(decision.diagnostics && typeof decision.diagnostics === "object" ? decision.diagnostics : {}),
+            canonicalMarketRegime: canonicalDiagnostic,
+        };
+    }
 
     const sourceInfo = buildSourceInfo(dir, mirrorDir, [snapshotRead, decisionRead, newsRead, stateRead]);
     if (step2Stat) {

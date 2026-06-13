@@ -57,6 +57,7 @@ export interface PaperVM {
   edgeStatus: "DATA_GAP" | "REAL_FILLS_ACCUMULATING" | "UNKNOWN";
   /** cost gate status from public-safe performance payload; never means edge/live-ready */
   costGateStatus: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+  costGateBreakdown: CostGateBreakdownVM;
   dynamicRegrid: DynamicRegridVM;
   runtimeMonitor: RuntimeMonitorVM;
   regridReadiness: RegridReadinessVM;
@@ -93,6 +94,21 @@ export interface TrendPaperConfigPublicVM {
   minRewardRisk: number | null;
   feePct: number | null;
   slippagePct: number | null;
+}
+
+export interface CostGateBreakdownVM {
+  roundTripCostPct: number | null;
+  gridSpacingPct: number | null;
+  requiredMinSpacingPct: number | null;
+  pass: boolean | null;
+  warning: boolean | null;
+  nextAction: string | null;
+  feeEstimateTotal: number | null;
+  slippageEstimateTotal: number | null;
+  fundingEstimateTotal: number | null;
+  feePctConfig: number | null;
+  slippagePctConfig: number | null;
+  status: "NO_DATA" | "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
 }
 
 // T-3H-6-a — aggregated view of the append-only decision log. Pure display data.

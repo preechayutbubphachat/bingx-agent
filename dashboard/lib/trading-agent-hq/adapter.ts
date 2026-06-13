@@ -128,6 +128,20 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     paperModeDetected: bool(journal.paperModeDetected),
     edgeStatus,
     costGateStatus: mapCostGateStatus(str(costGate.status, "")),
+    costGateBreakdown: {
+      roundTripCostPct: numOrNull(costGate.roundTripCostPct),
+      gridSpacingPct: numOrNull(costGate.gridSpacingPct),
+      requiredMinSpacingPct: numOrNull(costGate.requiredMinSpacingPct),
+      pass: boolOrNull(costGate.pass),
+      warning: boolOrNull(costGate.warning),
+      nextAction: strOrNull(costGate.nextAction),
+      feeEstimateTotal: numOrNull(perf.feeEstimateTotal),
+      slippageEstimateTotal: numOrNull(perf.slippageEstimateTotal),
+      fundingEstimateTotal: numOrNull(perf.fundingEstimateTotal),
+      feePctConfig: numOrNull(obj(loop.trendPaperConfigPublic).feePct),
+      slippagePctConfig: numOrNull(obj(loop.trendPaperConfigPublic).slippagePct),
+      status: mapCostGateBreakdownStatus(costGate),
+    },
     runtimeMonitor: {
       cumulativeBuyFillCount: num(runtimeMonitor.cumulativeBuyFillCount, 0),
       cumulativeSellFillCount: num(runtimeMonitor.cumulativeSellFillCount, 0),
@@ -916,6 +930,20 @@ function mapCostGateStatus(status: string): PaperVM["costGateStatus"] {
   if (normalized === "WARNING" || normalized === "WARN") return "WARNING";
   if (normalized === "FAIL" || normalized === "FAILED") return "FAIL";
   return "UNKNOWN";
+}
+
+function mapCostGateBreakdownStatus(costGate: AnyObj): PaperVM["costGateBreakdown"]["status"] {
+  const hasData =
+    numOrNull(costGate.roundTripCostPct) != null ||
+    numOrNull(costGate.gridSpacingPct) != null ||
+    numOrNull(costGate.requiredMinSpacingPct) != null ||
+    typeof costGate.pass === "boolean" ||
+    typeof costGate.warning === "boolean";
+  if (!hasData) return "NO_DATA";
+  if (bool(costGate.pass)) return "PASS";
+  if (bool(costGate.warning)) return "WARNING";
+  if (costGate.pass === false) return "FAIL";
+  return mapCostGateStatus(str(costGate.status, "UNKNOWN"));
 }
 
 function mapLog(status: AnyObj): LogEntry[] {

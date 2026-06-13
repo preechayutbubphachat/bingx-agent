@@ -26,6 +26,20 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
     paperModeDetected: true,
     edgeStatus: "DATA_GAP", // closedCycles===0 → never edge PASS
     costGateStatus: "PASS",
+    costGateBreakdown: {
+      roundTripCostPct: 0.14,
+      gridSpacingPct: 0.72,
+      requiredMinSpacingPct: 0.25,
+      pass: true,
+      warning: false,
+      nextAction: "read_only_mock_no_action",
+      feeEstimateTotal: 0.05,
+      slippageEstimateTotal: 0.02,
+      fundingEstimateTotal: 0,
+      feePctConfig: 0.05,
+      slippagePctConfig: 0.02,
+      status: "PASS",
+    },
     runtimeMonitor: {
       cumulativeBuyFillCount: 1460,
       cumulativeSellFillCount: 0,

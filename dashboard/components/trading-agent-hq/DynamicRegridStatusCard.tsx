@@ -29,9 +29,27 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+function pct(value: number | null): string {
+  return value == null ? "—" : `${value.toFixed(4)}%`;
+}
+
+function money(value: number | null): string {
+  return value == null ? "—" : value.toFixed(4);
+}
+
+function boolText(value: boolean | null): string {
+  if (value == null) return "—";
+  return value ? "yes" : "no";
+}
+
 export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegridStatusCardProps) {
   const regrid = paper.dynamicRegrid;
   const candidate = regrid.candidate;
+  const cost = paper.costGateBreakdown;
+  const inventory = paper.runtimeMonitor;
+  const oldExposurePolicy = paper.paperEpoch.oldExposurePolicy;
+  const oneSided = inventory.cumulativeBuyFillCount > 0 && inventory.cumulativeSellFillCount === 0;
+  const quarantined = oldExposurePolicy.some((item) => item.toUpperCase().includes("QUARANTINE"));
   const activationLabel = activationAllowedLabel(candidate.activationAllowed);
   const cooldownText =
     typeof candidate.cooldownRemaining === "number"
@@ -93,6 +111,55 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
           label="stableCandleCount"
           value={typeof candidate.stableCandleCount === "number" ? candidate.stableCandleCount : "—"}
         />
+      </div>
+
+      <div className="mt-3 rounded-md border border-[#e4cba8] bg-white/60 p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-black text-[#5b4432]">Cost Gate Breakdown</div>
+            <div className="text-[10px] font-bold text-[#80644c]">Read-only diagnostic - does not change grid behavior</div>
+          </div>
+          <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">
+            {cost.status}
+          </span>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Round-trip cost" value={pct(cost.roundTripCostPct)} />
+          <Metric label="Grid spacing" value={pct(cost.gridSpacingPct)} />
+          <Metric label="Required min spacing" value={pct(cost.requiredMinSpacingPct)} />
+          <Metric label="Cost gate pass" value={boolText(cost.pass)} />
+          <Metric label="Fee estimate" value={money(cost.feeEstimateTotal)} />
+          <Metric label="Slippage estimate" value={money(cost.slippageEstimateTotal)} />
+          <Metric label="Funding estimate" value={money(cost.fundingEstimateTotal)} />
+          <Metric label="Fee / slippage config" value={`${pct(cost.feePctConfig)} / ${pct(cost.slippagePctConfig)}`} />
+        </div>
+        {cost.warning || cost.nextAction ? (
+          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-black text-amber-950">
+            {cost.warning ? "Cost gate warning. " : ""}{cost.nextAction ?? "Review cost gate details."}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-3 rounded-md border border-[#e4cba8] bg-white/60 p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-black text-[#5b4432]">Inventory / One-sided Exposure</div>
+            <div className="text-[10px] font-bold text-[#80644c]">Quarantined exposure is not edge evidence</div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {oneSided ? <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-900">one-sided</span> : null}
+            {quarantined ? <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">quarantined</span> : null}
+          </div>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Buy:Sell fill ratio" value={`${inventory.cumulativeBuyFillCount}:${inventory.cumulativeSellFillCount}`} />
+          <Metric label="Sell fill count" value={regrid.sellFillCount} />
+          <Metric label="Closed cycles" value={paper.closedCycles} />
+          <Metric label="priceVsGrid" value={regridStatusLabel(regrid.priceVsGrid)} />
+        </div>
+        <div className="mt-2 rounded-md border border-[#dcc7aa] bg-[#fffaf0] px-2 py-1.5 text-[11px] font-black text-[#5b4432]">
+          One-sided exposure detected: {oneSided ? "yes" : "no"} · Old exposure is {quarantined ? "quarantined" : "not marked quarantined"} · No force close / no fake closed cycles
+        </div>
       </div>
 
       <div className="mt-3 rounded-md border border-[#e4cba8] bg-white/60 p-2 text-[11px] leading-relaxed text-[#6d5745]">

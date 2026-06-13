@@ -67,6 +67,15 @@ test("old heuristic-only records remain valid", () => {
   assert.equal(s.exactSamples, 0);
   assert.equal(s.heuristicSamples, 1);
   assert.equal(s.heuristicAvgNetRR, 1.28);
+  assert.equal(s.rrMetricScope, "TOP_CLEAN_CANDIDATE");
+  assert.equal(s.readinessMetricScope, "AGGREGATE_WORST_OF_ALL_ZONES");
+  assert.match(s.conflictLabelNote, /EXACT_ZONE_CONFLICT/);
+  assert.deepEqual(s.conflictBreakdown, {
+    TARGET_TOO_CLOSE: 0,
+    COST_TOO_HIGH: 0,
+    CONFLICTING_MTF: 0,
+    other: {},
+  });
   assert.equal(s.readiness, "NO_DATA");
 });
 
@@ -87,6 +96,43 @@ test("exact records counted and averaged correctly", () => {
   assert.equal(s.exactDataStatusCounts.EXACT_OB_ONLY, 1);
   assert.equal(s.exactReadinessCounts.MTF_ALIGNED, 1);
   assert.equal(s.exactReadinessCounts.OB_ONLY, 1);
+});
+
+test("scope metadata is additive and does not change D5 math", () => {
+  const s = summarizeExactZoneComparison([
+    exactRecord({ exactNetRR: 1.42, exactVsHeuristicDelta: 0.14 }),
+    exactRecord({ exactZoneDataStatus: "EXACT_OB_ONLY", exactZoneReadiness: "OB_ONLY", exactNetRR: 1.32, exactVsHeuristicDelta: 0.04 }),
+  ]);
+  assert.equal(s.exactAvgNetRR, 1.37);
+  assert.equal(s.exactPassRate, 1);
+  assert.deepEqual([...s.warningFlags].sort(), ["LOW_EXACT_SAMPLE_SIZE", "REVIEW_NOT_ACTIVATION"].sort());
+  assert.equal(s.rrMetricScope, "TOP_CLEAN_CANDIDATE");
+  assert.equal(s.readinessMetricScope, "AGGREGATE_WORST_OF_ALL_ZONES");
+  assert.match(s.conflictLabelNote, /target-too-close/);
+});
+
+test("conflictBreakdown mirrors exactReadinessCounts without relabeling math", () => {
+  const s = summarizeExactZoneComparison([
+    exactRecord({ exactZoneReadiness: "TARGET_TOO_CLOSE" }),
+    exactRecord({ exactZoneReadiness: "COST_TOO_HIGH" }),
+    exactRecord({ exactZoneReadiness: "CONFLICTING_MTF" }),
+    exactRecord({ exactZoneReadiness: "OB_ONLY" }),
+    exactRecord({ exactZoneReadiness: "MTF_ALIGNED" }),
+  ]);
+  assert.equal(s.exactReadinessCounts.TARGET_TOO_CLOSE, 1);
+  assert.equal(s.exactReadinessCounts.COST_TOO_HIGH, 1);
+  assert.equal(s.exactReadinessCounts.CONFLICTING_MTF, 1);
+  assert.equal(s.exactReadinessCounts.OB_ONLY, 1);
+  assert.equal(s.exactReadinessCounts.MTF_ALIGNED, 1);
+  assert.deepEqual(s.conflictBreakdown, {
+    TARGET_TOO_CLOSE: 1,
+    COST_TOO_HIGH: 1,
+    CONFLICTING_MTF: 1,
+    other: {
+      OB_ONLY: 1,
+      MTF_ALIGNED: 1,
+    },
+  });
 });
 
 test("sample tiers use <50 / 50-99 / >=100", () => {

@@ -103,6 +103,13 @@ function warningFlagsLabel(flags: string[]): string {
   return flags.slice(0, 3).join(", ");
 }
 
+function breakdownOtherLabel(other: Record<string, number>): string {
+  const entries = Object.entries(other).filter(([, count]) => Number.isFinite(count) && count > 0);
+  if (!entries.length) return NA;
+  entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return entries.map(([key, count]) => `${key}:${count}`).join(", ");
+}
+
 function pct(v: number | null | undefined): string {
   return typeof v === "number" && Number.isFinite(v) ? `${(v * 100).toFixed(0)}%` : NA;
 }
@@ -318,22 +325,32 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
           <Row label="sample tier" value={mapD5SampleTier(d5.sampleTier)} tone={d5.exactSamples >= 100 ? "green" : d5.exactSamples >= 50 ? "amber" : "neutral"} />
           <Row label="exact samples" value={String(d5.exactSamples)} />
           <Row label="heuristic samples" value={String(d5.heuristicSamples)} />
-          <Row label="exact avg netRR" value={fmt(d5.exactAvgNetRR)} />
+          <Row label="candidate avg netRR" value={fmt(d5.exactAvgNetRR)} />
           <Row label="heuristic avg netRR" value={fmt(d5.heuristicAvgNetRR)} />
           <Row
-            label="exact vs heuristic delta"
+            label="candidate vs heuristic delta"
             value={fmt(d5.avgExactVsHeuristicDelta)}
             tone={d5.avgExactVsHeuristicDelta != null && d5.avgExactVsHeuristicDelta > 0 ? "green" : d5.avgExactVsHeuristicDelta != null && d5.avgExactVsHeuristicDelta < 0 ? "red" : "neutral"}
           />
-          <Row label="exact pass rate" value={pct(d5.exactPassRate)} />
+          <Row label="RR pass rate - top clean candidate only" value={pct(d5.exactPassRate)} />
           <Row label="uses exact OB/FVG zones" value={String(d5.usesExactObFvgZonesCount)} />
-          <Row label="dominant exact status" value={d5.dominantExactStatus ?? dominantCountLabel(d5.exactDataStatusCounts)} />
-          <Row label="dominant exact readiness" value={d5.dominantExactReadiness ?? dominantCountLabel(d5.exactReadinessCounts)} />
+          <Row label="aggregate worst status" value={d5.dominantExactStatus ?? dominantCountLabel(d5.exactDataStatusCounts)} />
+          <Row label="aggregate worst readiness" value={d5.dominantExactReadiness ?? dominantCountLabel(d5.exactReadinessCounts)} />
           <Row label="fill status" value={d5.fillResolution.status} />
+          <Row label="TARGET_TOO_CLOSE count" value={String(d5.conflictBreakdown.TARGET_TOO_CLOSE)} />
+          <Row label="COST_TOO_HIGH count" value={String(d5.conflictBreakdown.COST_TOO_HIGH)} />
+          <Row label="CONFLICTING_MTF count" value={String(d5.conflictBreakdown.CONFLICTING_MTF)} />
+          <Row label="other readiness counts" value={breakdownOtherLabel(d5.conflictBreakdown.other)} />
           <Row label="warning flags" value={warningFlagsLabel(d5.warningFlags)} tone={d5.warningFlags.length > 1 ? "amber" : "neutral"} />
         </div>
+        <p className="mt-1.5 text-[10px] font-bold text-emerald-950">
+          RR metrics are candidate-scoped. Aggregate status/readiness summarize worst-of-all detected zones.
+        </p>
+        <p className="mt-1 text-[10px] font-bold text-amber-900">
+          {d5.conflictLabelNote ?? "EXACT_ZONE_CONFLICT may aggregate target-too-close, cost-too-high, or true MTF conflict. Check readiness breakdown."}
+        </p>
         <p className="mt-1.5 text-[10px] font-black text-emerald-950">
-          Comparison only — ไม่ใช่สัญญาณเข้าไม้
+          Comparison only - ไม่ใช่สัญญาณเข้าไม้
         </p>
         <p className="mt-1 text-[10px] font-bold text-emerald-900">
           Need &gt;=100 exact samples for review eligibility

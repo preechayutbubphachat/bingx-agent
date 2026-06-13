@@ -132,6 +132,15 @@ export interface TrendEvidenceDecisionSummaryVM {
       missedFillRate: number | null;
     };
     warningFlags: string[];
+    rrMetricScope: string;
+    readinessMetricScope: string;
+    conflictLabelNote: string | null;
+    conflictBreakdown: {
+      TARGET_TOO_CLOSE: number;
+      COST_TOO_HIGH: number;
+      CONFLICTING_MTF: number;
+      other: Record<string, number>;
+    };
     readiness: string;
     source: string;
   };

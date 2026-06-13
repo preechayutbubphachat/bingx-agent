@@ -59,6 +59,13 @@ export interface ExactZoneFillResolution {
   missedFillRate: number | null;
 }
 
+export interface ExactZoneConflictBreakdown {
+  TARGET_TOO_CLOSE: number;
+  COST_TOO_HIGH: number;
+  CONFLICTING_MTF: number;
+  other: Record<string, number>;
+}
+
 export interface ExactZoneComparisonSummary {
   schemaVersion: 1;
   sampleTier: ExactZoneComparisonSampleTier;
@@ -76,6 +83,10 @@ export interface ExactZoneComparisonSummary {
   dominantExactReadiness: string | null;
   fillResolution: ExactZoneFillResolution;
   warningFlags: ExactZoneWarningFlag[];
+  rrMetricScope: "TOP_CLEAN_CANDIDATE";
+  readinessMetricScope: "AGGREGATE_WORST_OF_ALL_ZONES";
+  conflictLabelNote: string;
+  conflictBreakdown: ExactZoneConflictBreakdown;
   readiness: ExactZoneComparisonReadiness;
   source: "EXACT_ZONE_COMPARISON_SUMMARY_V1";
 }
@@ -145,7 +156,23 @@ function emptyFillResolution(status: ExactZoneFillResolutionStatus): ExactZoneFi
   };
 }
 
+function conflictBreakdownFromReadinessCounts(counts: Record<string, number>): ExactZoneConflictBreakdown {
+  const other: Record<string, number> = {};
+  for (const [key, value] of Object.entries(counts)) {
+    if (!Number.isFinite(value) || value <= 0) continue;
+    if (key === "TARGET_TOO_CLOSE" || key === "COST_TOO_HIGH" || key === "CONFLICTING_MTF") continue;
+    other[key] = value;
+  }
+  return {
+    TARGET_TOO_CLOSE: counts.TARGET_TOO_CLOSE ?? 0,
+    COST_TOO_HIGH: counts.COST_TOO_HIGH ?? 0,
+    CONFLICTING_MTF: counts.CONFLICTING_MTF ?? 0,
+    other,
+  };
+}
+
 export function emptyExactZoneComparisonSummary(): ExactZoneComparisonSummary {
+  const emptyCounts: Record<string, number> = {};
   return {
     schemaVersion: 1,
     sampleTier: "NO_DATA",
@@ -157,12 +184,16 @@ export function emptyExactZoneComparisonSummary(): ExactZoneComparisonSummary {
     exactPassCount: 0,
     exactPassRate: null,
     exactDataStatusCounts: {},
-    exactReadinessCounts: {},
+    exactReadinessCounts: emptyCounts,
     usesExactObFvgZonesCount: 0,
     dominantExactStatus: null,
     dominantExactReadiness: null,
     fillResolution: emptyFillResolution("NOT_CONFIGURED"),
     warningFlags: ["REVIEW_NOT_ACTIVATION"],
+    rrMetricScope: "TOP_CLEAN_CANDIDATE",
+    readinessMetricScope: "AGGREGATE_WORST_OF_ALL_ZONES",
+    conflictLabelNote: "EXACT_ZONE_CONFLICT may aggregate target-too-close, cost-too-high, or true MTF conflict. Check readiness breakdown.",
+    conflictBreakdown: conflictBreakdownFromReadinessCounts(emptyCounts),
     readiness: "NO_DATA",
     source: SOURCE,
   };
@@ -377,6 +408,10 @@ export function summarizeExactZoneComparison(
     dominantExactReadiness,
     fillResolution,
     warningFlags: [...warningFlags],
+    rrMetricScope: "TOP_CLEAN_CANDIDATE",
+    readinessMetricScope: "AGGREGATE_WORST_OF_ALL_ZONES",
+    conflictLabelNote: "EXACT_ZONE_CONFLICT may aggregate target-too-close, cost-too-high, or true MTF conflict. Check readiness breakdown.",
+    conflictBreakdown: conflictBreakdownFromReadinessCounts(exactReadinessCounts),
     readiness,
     source: SOURCE,
   };

@@ -485,6 +485,7 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
   const mtfRaw = obj(raw.mtfObFvgShadowSummary);
   const exactComparisonRaw = obj(raw.exactZoneComparisonSummary);
   const fillResolutionRaw = obj(exactComparisonRaw.fillResolution);
+  const conflictBreakdownRaw = obj(exactComparisonRaw.conflictBreakdown);
   const latestRaw = obj(mtfRaw.latestSnapshot);
   const hasLatest = mtfRaw.latestSnapshot != null && Object.keys(latestRaw).length > 0;
   const mtfSummary: PaperVM["trendEvidenceDecisionSummary"]["mtfObFvgShadowSummary"] = {
@@ -569,6 +570,15 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
         missedFillRate: numOrNull(fillResolutionRaw.missedFillRate),
       },
       warningFlags: strArray(exactComparisonRaw.warningFlags),
+      rrMetricScope: str(exactComparisonRaw.rrMetricScope, "TOP_CLEAN_CANDIDATE"),
+      readinessMetricScope: str(exactComparisonRaw.readinessMetricScope, "AGGREGATE_WORST_OF_ALL_ZONES"),
+      conflictLabelNote: strOrNull(exactComparisonRaw.conflictLabelNote),
+      conflictBreakdown: {
+        TARGET_TOO_CLOSE: num(conflictBreakdownRaw.TARGET_TOO_CLOSE, 0),
+        COST_TOO_HIGH: num(conflictBreakdownRaw.COST_TOO_HIGH, 0),
+        CONFLICTING_MTF: num(conflictBreakdownRaw.CONFLICTING_MTF, 0),
+        other: countMap(conflictBreakdownRaw.other),
+      },
       readiness: str(exactComparisonRaw.readiness, "NO_DATA"),
       source: str(exactComparisonRaw.source, "EXACT_ZONE_COMPARISON_SUMMARY_V1"),
     },

@@ -136,6 +136,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     costGateBreakdown: {
       roundTripCostPct: numOrNull(costGate.roundTripCostPct),
       gridSpacingPct: numOrNull(costGate.gridSpacingPct),
+      gridSpacingSource: strOrNull(costGate.gridSpacingSource),
       requiredMinSpacingPct: numOrNull(costGate.requiredMinSpacingPct),
       pass: costGatePass,
       warning: costGateWarning,

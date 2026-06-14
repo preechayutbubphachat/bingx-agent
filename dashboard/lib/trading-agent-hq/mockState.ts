@@ -29,6 +29,7 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
     costGateBreakdown: {
       roundTripCostPct: 0.14,
       gridSpacingPct: 0.72,
+      gridSpacingSource: "dynamicGrid.spacingPct",
       requiredMinSpacingPct: 0.25,
       pass: true,
       warning: false,

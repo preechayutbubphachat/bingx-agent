@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildEventRiskContextDiagnostic,
+  enrichCostGateWithGridSpacing,
   buildPaperLoopDiagnostics,
   buildRegimeDiagnostic,
   buildRegimeTransitionDiagnostic,
@@ -99,6 +100,62 @@ test("empty journal → safe defaults, no throw", () => {
   assert.equal(d.priceVsGrid, "UNKNOWN");
   assert.equal(d.lastNoTradeReason, null);
   assert.equal(d.dynamicGrid.enabled, false);
+});
+
+test("CostGate spacing observability uses finite dynamicGrid spacing", () => {
+  const costGate = enrichCostGateWithGridSpacing(
+    {
+      status: "unknown",
+      roundTripCostPct: 0.09,
+      gridSpacingPct: null,
+      requiredMinSpacingPct: 0.225,
+      pass: null,
+      warning: "gridSpacingPct missing",
+      nextAction: "add gridSpacingPct",
+    },
+    { dynamicGrid: { spacingPct: 0.72, candidate: { candidateSpacingPct: 0.61 } } },
+  );
+
+  assert.equal(costGate.gridSpacingPct, 0.72);
+  assert.equal(costGate.gridSpacingSource, "dynamicGrid.spacingPct");
+  assert.equal(costGate.status, "pass");
+  assert.equal(costGate.pass, true);
+  assert.equal(costGate.warning, null);
+});
+
+test("CostGate spacing observability falls back to candidate spacing", () => {
+  const costGate = enrichCostGateWithGridSpacing(
+    { status: "unknown", roundTripCostPct: 0.09, gridSpacingPct: null, requiredMinSpacingPct: 0.225, pass: null },
+    { dynamicGrid: { spacingPct: null, candidate: { candidateSpacingPct: 0.44 } } },
+  );
+
+  assert.equal(costGate.gridSpacingPct, 0.44);
+  assert.equal(costGate.gridSpacingSource, "candidateSpacingPct");
+  assert.equal(costGate.status, "pass");
+});
+
+test("CostGate spacing observability preserves null when spacing is missing or non-finite", () => {
+  const costGate = enrichCostGateWithGridSpacing(
+    { status: "unknown", roundTripCostPct: 0.09, gridSpacingPct: null, requiredMinSpacingPct: 0.225, pass: null, warning: "gridSpacingPct missing" },
+    { dynamicGrid: { spacingPct: Number.NaN, candidate: { candidateSpacingPct: Infinity } } },
+  );
+
+  assert.equal(costGate.gridSpacingPct, null);
+  assert.equal(costGate.gridSpacingSource, null);
+  assert.equal(costGate.status, "unknown");
+  assert.equal(costGate.pass, null);
+  assert.equal(costGate.warning, "gridSpacingPct missing");
+});
+
+test("CostGate spacing observability keeps strict existing spacing comparison", () => {
+  const costGate = enrichCostGateWithGridSpacing(
+    { status: "unknown", roundTripCostPct: 0.09, gridSpacingPct: null, requiredMinSpacingPct: 0.225, pass: null },
+    { dynamicGrid: { spacingPct: 0.225 } },
+  );
+
+  assert.equal(costGate.gridSpacingPct, 0.225);
+  assert.equal(costGate.status, "fail");
+  assert.equal(costGate.pass, false);
 });
 
 test("OBS-01 decision regime null with canonical available is surfaced read-only", () => {

@@ -31,7 +31,7 @@
 import { NextResponse } from "next/server";
 import { computePaperPerformance } from "@/lib/paperPerformance";
 import { readPaperJournal } from "@/lib/readPaperJournal";
-import { buildPaperLoopDiagnostics } from "@/lib/paper/paperLoopDiagnostics";
+import { buildPaperLoopDiagnostics, enrichCostGateWithGridSpacing } from "@/lib/paper/paperLoopDiagnostics";
 import { readRuntimeMonitorCounters } from "@/lib/paper/runtimeMonitorCounters";
 import { readLatest } from "@/lib/readLatest";
 import { buildRegimeEvidence } from "@/lib/paper/regimeEvidence";
@@ -93,6 +93,7 @@ function newsContextSummary(raw: unknown) {
 export async function GET() {
   try {
     const report = await computePaperPerformance();
+    let costGate = enrichCostGateWithGridSpacing(report.costGate, null);
 
     // Part F — additive paper-loop diagnostics (never throws the endpoint)
     let paperLoopDiagnostics = null;
@@ -159,6 +160,7 @@ export async function GET() {
         closedCycles: report.edgeDiagnostics?.closedCycles ?? 0,
         costGate: {
           pass: report.costGate?.pass ?? null,
+          gridSpacingPct: report.costGate?.gridSpacingPct ?? null,
           requiredMinSpacingPct: report.costGate?.requiredMinSpacingPct ?? null,
         },
         regimeEvidence,
@@ -174,6 +176,7 @@ export async function GET() {
         trendPaperExecutionConfig,
         trendPaperArmSession: trendPaperArmSessionSnapshot?.session ?? null,
       });
+      costGate = enrichCostGateWithGridSpacing(report.costGate, paperLoopDiagnostics);
       (paperLoopDiagnostics as unknown as Record<string, unknown>).newsContextSummary = safeNewsContextSummary;
       // T-3H-4-b: attach read-only evidence-runner state (read-only display; no runner is invoked here)
       const evidenceSnap = await readTrendPaperEvidenceState().catch(() => null);
@@ -229,12 +232,13 @@ export async function GET() {
       {
         version: PAPER_PERFORMANCE_VERSION,
         ...report,
+        costGate,
         // legacy field — derived from costGate so UI ที่ยังอ่าน gridSpacingCheck ไม่พัง
         gridSpacingCheck: {
-          spacingPct: report.costGate?.gridSpacingPct ?? null,
-          roundTripCostPct: report.costGate?.roundTripCostPct ?? null,
-          passes: report.costGate?.pass ?? null,
-          note: report.costGate?.nextAction ?? "",
+          spacingPct: costGate.gridSpacingPct ?? null,
+          roundTripCostPct: costGate.roundTripCostPct ?? null,
+          passes: typeof costGate.pass === "boolean" ? costGate.pass : null,
+          note: typeof costGate.nextAction === "string" ? costGate.nextAction : "",
         },
         // Part F — additive observability (backward-compatible)
         newsContextSummary: paperLoopDiagnostics

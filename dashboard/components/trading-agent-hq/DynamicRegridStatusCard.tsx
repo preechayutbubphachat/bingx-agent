@@ -167,6 +167,7 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Round-trip cost" value={pct(cost.roundTripCostPct)} />
           <Metric label="Grid spacing" value={pct(cost.gridSpacingPct)} />
+          <Metric label="Grid spacing source" value={cost.gridSpacingSource ?? "not exposed"} />
           <Metric label="Required min spacing" value={pct(cost.requiredMinSpacingPct)} />
           <Metric label="Spacing buffer" value={ratio(cost.spacingBufferRatio)} />
           <Metric label="Cost gate pass" value={boolText(cost.pass)} />

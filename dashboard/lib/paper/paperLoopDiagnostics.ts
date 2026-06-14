@@ -176,6 +176,7 @@ export interface PaperLoopDiagnosticsContext {
   closedCycles?: number | null;
   costGate?: {
     pass?: boolean | null;
+    gridSpacingPct?: number | null;
     requiredMinSpacingPct?: number | null;
   } | null;
   regimeEvidence?: RegimeEvidence | null;
@@ -190,6 +191,23 @@ export interface PaperLoopDiagnosticsContext {
   trendPaperJournalSnapshot?: TrendPaperJournalSnapshot | null;
   trendPaperExecutionConfig?: TrendPaperExecutionConfig | null;
   trendPaperArmSession?: TrendPaperArmSession | null;
+}
+
+export type CostGateGridSpacingSource =
+  | "dynamicGrid.spacingPct"
+  | "candidateSpacingPct"
+  | "paper_config"
+  | null;
+
+export interface CostGateWithGridSpacing {
+  status?: unknown;
+  roundTripCostPct?: unknown;
+  gridSpacingPct?: number | null;
+  gridSpacingSource?: CostGateGridSpacingSource;
+  requiredMinSpacingPct?: unknown;
+  pass?: unknown;
+  warning?: unknown;
+  nextAction?: unknown;
 }
 
 export type RegimeDiagnosticStatus =
@@ -312,6 +330,66 @@ function firstNumber(...values: unknown[]): number | null {
     if (n != null) return n;
   }
   return null;
+}
+
+function costGateStatusText(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function costGateBool(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function validCostGateSpacingSource(value: unknown): CostGateGridSpacingSource {
+  return value === "dynamicGrid.spacingPct" || value === "candidateSpacingPct" || value === "paper_config"
+    ? value
+    : null;
+}
+
+function resolveCostGateSpacingSource(diagnostics: unknown): { value: number | null; source: CostGateGridSpacingSource } {
+  const d = unknownObj(diagnostics);
+  const dynamicGrid = unknownObj(d.dynamicGrid);
+  const candidate = unknownObj(dynamicGrid.candidate);
+  const dynamicSpacing = finiteOrNull(dynamicGrid.spacingPct);
+  if (dynamicSpacing != null) return { value: dynamicSpacing, source: "dynamicGrid.spacingPct" };
+  const candidateSpacing = finiteOrNull(candidate.candidateSpacingPct);
+  if (candidateSpacing != null) return { value: candidateSpacing, source: "candidateSpacingPct" };
+  return { value: null, source: null };
+}
+
+export function enrichCostGateWithGridSpacing<T extends CostGateWithGridSpacing | null | undefined>(
+  costGate: T,
+  diagnostics: unknown,
+): (T extends null | undefined ? CostGateWithGridSpacing : T & CostGateWithGridSpacing) {
+  const base = unknownObj(costGate) as CostGateWithGridSpacing;
+  const existingSpacing = finiteOrNull(base.gridSpacingPct);
+  const resolved = existingSpacing != null
+    ? { value: existingSpacing, source: validCostGateSpacingSource(base.gridSpacingSource) ?? "paper_config" }
+    : resolveCostGateSpacingSource(diagnostics);
+  const gridSpacingPct = resolved.value;
+  const requiredMinSpacingPct = finiteOrNull(base.requiredMinSpacingPct);
+  const currentStatus = costGateStatusText(base.status);
+  const currentPass = costGateBool(base.pass);
+  const shouldDeriveStatus = gridSpacingPct != null && requiredMinSpacingPct != null && (currentStatus === "" || currentStatus === "unknown" || currentPass == null);
+
+  if (!shouldDeriveStatus) {
+    return {
+      ...base,
+      gridSpacingPct,
+      gridSpacingSource: gridSpacingPct != null ? resolved.source : null,
+    } as T extends null | undefined ? CostGateWithGridSpacing : T & CostGateWithGridSpacing;
+  }
+
+  const pass = gridSpacingPct > requiredMinSpacingPct;
+  return {
+    ...base,
+    status: pass ? "pass" : "fail",
+    gridSpacingPct,
+    gridSpacingSource: resolved.source,
+    pass,
+    warning: pass ? null : `Grid spacing ${gridSpacingPct.toFixed(3)}% <= required ${requiredMinSpacingPct.toFixed(3)}% - cost gate fail`,
+    nextAction: pass ? "Cost gate passed from existing dynamic grid spacing" : "widen_spacing_or_reduce_trade_frequency",
+  } as T extends null | undefined ? CostGateWithGridSpacing : T & CostGateWithGridSpacing;
 }
 
 function parseTimestampMs(value: string | null): number | null {

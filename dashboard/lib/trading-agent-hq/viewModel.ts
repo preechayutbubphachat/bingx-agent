@@ -101,6 +101,7 @@ export interface TrendPaperConfigPublicVM {
 export interface CostGateBreakdownVM {
   roundTripCostPct: number | null;
   gridSpacingPct: number | null;
+  gridSpacingSource: string | null;
   requiredMinSpacingPct: number | null;
   pass: boolean | null;
   warning: boolean | null;

@@ -176,6 +176,7 @@ test("fillResolution returns NOT_CONFIGURED when no candles", () => {
 
 test("fillResolution handles filled before invalidation", () => {
   const candles: ExactZoneComparisonCandle[] = [
+    { t: iso(0), high: 110, low: 90 },
     { t: iso(15), high: 105, low: 103 },
     { t: iso(30), high: 107, low: 106.5 },
   ];
@@ -190,6 +191,7 @@ test("fillResolution handles filled before invalidation", () => {
 
 test("fillResolution uses persisted geometry input without changing D5 math", () => {
   const candles: ExactZoneComparisonCandle[] = [
+    { t: iso(0), high: 110, low: 90 },
     { t: iso(15), high: 105, low: 103 },
     { t: iso(30), high: 107, low: 106.5 },
   ];
@@ -246,6 +248,7 @@ test("invalid persisted geometry input is ignored and counted missing", () => {
 
 test("fillResolution handles invalidation before fill", () => {
   const candles: ExactZoneComparisonCandle[] = [
+    { t: iso(0), high: 110, low: 90 },
     { t: iso(15), high: 106.5, low: 105.5 },
     { t: iso(30), high: 104.5, low: 103.5 },
   ];
@@ -263,10 +266,30 @@ test("fillResolution handles invalidation before fill", () => {
 test("fillResolution handles pending when fields or future candles are insufficient", () => {
   const s = summarizeExactZoneComparison(
     [exactRecord({ direction: "SHORT", refinedEntry: 104, invalidationPrice: 106 })],
-    { candlesByTimeframe: { "15m": [{ t: iso(15), high: 105, low: 104.5 }] }, settings: { fillLookaheadBars: 2 } },
+    { candlesByTimeframe: { "15m": [{ t: iso(0), high: 110, low: 90 }, { t: iso(15), high: 105, low: 104.5 }] }, settings: { fillLookaheadBars: 2 } },
   );
   assert.equal(s.fillResolution.status, "PENDING");
   assert.equal(s.fillResolution.pending, 1);
+});
+
+test("fillResolution does not resolve when rolling candle window starts after capturedAt", () => {
+  const s = summarizeExactZoneComparison(
+    [exactRecord({ direction: "SHORT", refinedEntry: 104, invalidationPrice: 106 })],
+    { candlesByTimeframe: { "15m": [{ t: iso(15), high: 105, low: 103 }, { t: iso(30), high: 107, low: 106.5 }] }, settings: { fillLookaheadBars: 2 } },
+  );
+  assert.equal(s.fillResolution.status, "PENDING");
+  assert.equal(s.fillResolution.totalResolvable, 0);
+  assert.equal(s.fillResolution.pending, 1);
+});
+
+test("fillResolution handles no touch within covered lookahead window as missed", () => {
+  const s = summarizeExactZoneComparison(
+    [exactRecord({ direction: "SHORT", refinedEntry: 104, invalidationPrice: 106 })],
+    { candlesByTimeframe: { "15m": [{ t: iso(0), high: 110, low: 90 }, { t: iso(15), high: 103, low: 101 }, { t: iso(30), high: 103.5, low: 101.5 }] }, settings: { fillLookaheadBars: 2 } },
+  );
+  assert.equal(s.fillResolution.status, "RESOLVED");
+  assert.equal(s.fillResolution.missed, 1);
+  assert.equal(s.fillResolution.missedFillRate, 1);
 });
 
 test("helper is deterministic and does not mutate input", () => {

@@ -279,6 +279,15 @@ function priceTouched(candle: ExactZoneComparisonCandle, price: number): boolean
   return candle.low <= price && candle.high >= price;
 }
 
+function hasCandleCoverageForSnapshot(snapshot: NormalizedSnapshot, candles: ExactZoneComparisonCandle[]): boolean {
+  if (!snapshot.capturedAt) return false;
+  const capturedAt = Date.parse(snapshot.capturedAt);
+  if (!Number.isFinite(capturedAt)) return false;
+  const candleTimes = candles.map(candleTime).filter(Number.isFinite);
+  if (!candleTimes.length) return false;
+  return Math.min(...candleTimes) <= capturedAt;
+}
+
 function resolveOneFill(snapshot: NormalizedSnapshot, candles: ExactZoneComparisonCandle[], lookahead: number): "FILLED" | "MISSED" | "PENDING" | "INVALIDATION_FIRST" {
   if (!snapshot.capturedAt || !snapshot.direction || snapshot.entry == null || snapshot.invalidation == null) return "PENDING";
   const capturedAt = Date.parse(snapshot.capturedAt);
@@ -314,6 +323,10 @@ function computeFillResolution(
   let invalidationFirst = 0;
 
   for (const snapshot of snapshots.filter((s) => s.exactNetRR != null)) {
+    if (!hasCandleCoverageForSnapshot(snapshot, candles)) {
+      pending += 1;
+      continue;
+    }
     const result = resolveOneFill(snapshot, candles, lookahead);
     if (result === "PENDING") {
       pending += 1;

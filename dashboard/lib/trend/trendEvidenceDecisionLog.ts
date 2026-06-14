@@ -16,6 +16,7 @@ import * as path from "path";
 import {
   emptyExactZoneComparisonSummary,
   summarizeExactZoneComparison,
+  type ExactZoneComparisonCandle,
   type ExactZoneComparisonSummary,
 } from "./exactZoneComparisonSummary.ts";
 import {
@@ -254,7 +255,13 @@ async function readRecords(filePath: string): Promise<{ records: TrendEvidenceDe
 }
 
 export async function readTrendEvidenceDecisionLogSummary(
-  options: { filePath?: string | null; now?: number; windowHours?: number; topN?: number } = {},
+  options: {
+    filePath?: string | null;
+    now?: number;
+    windowHours?: number;
+    topN?: number;
+    candlesByTimeframe?: Record<string, readonly ExactZoneComparisonCandle[]> | null;
+  } = {},
 ): Promise<TrendEvidenceDecisionSummary> {
   let filePath: string;
   try {
@@ -333,7 +340,9 @@ export async function readTrendEvidenceDecisionLogSummary(
     sampleWarning: records.length < DECISION_LOG_MIN_SAMPLE,
     malformedLines: malformed,
     mtfObFvgShadowSummary: summarizeMtfObFvgShadowSnapshots(records),
-    exactZoneComparisonSummary: summarizeExactZoneComparison(records),
+    exactZoneComparisonSummary: summarizeExactZoneComparison(records, {
+      candlesByTimeframe: options.candlesByTimeframe,
+    }),
   };
 }
 

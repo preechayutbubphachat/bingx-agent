@@ -211,7 +211,10 @@ export async function GET() {
         exchangeOrderAllowed: false,
       };
       // T-3H-6-a: attach read-only rejection/decision summary (48h window; safe fallback)
-      const decisionSummary = await readTrendEvidenceDecisionLogSummary({ windowHours: 48 }).catch(() => null);
+      const decisionSummary = await readTrendEvidenceDecisionLogSummary({
+        windowHours: 48,
+        candlesByTimeframe: { "15M": candles15m },
+      }).catch(() => null);
       (paperLoopDiagnostics as unknown as Record<string, unknown>).trendEvidenceDecisionSummary = decisionSummary ?? {
         available: false,
         totalRecords: 0,

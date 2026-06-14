@@ -87,6 +87,9 @@ test("exact records counted and averaged correctly", () => {
   assert.equal(s.exactSamples, 2);
   assert.equal(s.heuristicSamples, 2);
   assert.equal(s.usesExactObFvgZonesCount, 2);
+  assert.equal(s.fillResolutionInputSamples, 0);
+  assert.equal(s.fillResolutionInputMissing, 2);
+  assert.equal(s.fillResolutionGeometryReadyCount, 0);
   assert.equal(s.exactAvgNetRR, 1.37);
   assert.equal(s.heuristicAvgNetRR, 1.28);
   assert.equal(s.avgExactVsHeuristicDelta, 0.09);
@@ -183,6 +186,62 @@ test("fillResolution handles filled before invalidation", () => {
   assert.equal(s.fillResolution.status, "RESOLVED");
   assert.equal(s.fillResolution.filled, 1);
   assert.equal(s.fillResolution.missed, 0);
+});
+
+test("fillResolution uses persisted geometry input without changing D5 math", () => {
+  const candles: ExactZoneComparisonCandle[] = [
+    { t: iso(15), high: 105, low: 103 },
+    { t: iso(30), high: 107, low: 106.5 },
+  ];
+  const s = summarizeExactZoneComparison(
+    [
+      exactRecord({
+        exactNetRR: 1.42,
+        exactVsHeuristicDelta: 0.14,
+        fillResolutionInput: {
+          schemaVersion: 1,
+          direction: "SHORT",
+          entry: 104,
+          invalidation: 106,
+          target: 100,
+          timeframe: "15M",
+          capturedAt: iso(0),
+          source: "D5_1_FILL_RESOLUTION_INPUT_V1",
+        },
+      }),
+    ],
+    { candlesByTimeframe: { "15m": candles }, settings: { fillLookaheadBars: 2 } },
+  );
+  assert.equal(s.exactSamples, 1);
+  assert.equal(s.exactAvgNetRR, 1.42);
+  assert.equal(s.exactPassRate, 1);
+  assert.equal(s.fillResolutionInputSamples, 1);
+  assert.equal(s.fillResolutionInputMissing, 0);
+  assert.equal(s.fillResolutionGeometryReadyCount, 1);
+  assert.equal(s.fillResolution.status, "RESOLVED");
+  assert.equal(s.fillResolution.filled, 1);
+});
+
+test("invalid persisted geometry input is ignored and counted missing", () => {
+  const s = summarizeExactZoneComparison([
+    exactRecord({
+      fillResolutionInput: {
+        schemaVersion: 1,
+        direction: "SHORT",
+        entry: Number.NaN,
+        invalidation: 106,
+        target: 100,
+        timeframe: "15M",
+        capturedAt: iso(0),
+        source: "D5_1_FILL_RESOLUTION_INPUT_V1",
+      },
+    }),
+  ]);
+  assert.equal(s.exactSamples, 1);
+  assert.equal(s.fillResolutionInputSamples, 0);
+  assert.equal(s.fillResolutionInputMissing, 1);
+  assert.equal(s.fillResolutionGeometryReadyCount, 0);
+  assert.equal(s.fillResolution.status, "NOT_CONFIGURED");
 });
 
 test("fillResolution handles invalidation before fill", () => {

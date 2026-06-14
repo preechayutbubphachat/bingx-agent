@@ -79,6 +79,9 @@ export interface ExactZoneComparisonSummary {
   exactDataStatusCounts: Record<string, number>;
   exactReadinessCounts: Record<string, number>;
   usesExactObFvgZonesCount: number;
+  fillResolutionInputSamples: number;
+  fillResolutionInputMissing: number;
+  fillResolutionGeometryReadyCount: number;
   dominantExactStatus: string | null;
   dominantExactReadiness: string | null;
   fillResolution: ExactZoneFillResolution;
@@ -102,6 +105,9 @@ interface NormalizedSnapshot {
   usesExactObFvgZones: boolean;
   entry: number | null;
   invalidation: number | null;
+  target: number | null;
+  hasFillResolutionInput: boolean;
+  fillResolutionGeometryReady: boolean;
 }
 
 const SOURCE = "EXACT_ZONE_COMPARISON_SUMMARY_V1" as const;
@@ -186,6 +192,9 @@ export function emptyExactZoneComparisonSummary(): ExactZoneComparisonSummary {
     exactDataStatusCounts: {},
     exactReadinessCounts: emptyCounts,
     usesExactObFvgZonesCount: 0,
+    fillResolutionInputSamples: 0,
+    fillResolutionInputMissing: 0,
+    fillResolutionGeometryReadyCount: 0,
     dominantExactStatus: null,
     dominantExactReadiness: null,
     fillResolution: emptyFillResolution("NOT_CONFIGURED"),
@@ -209,15 +218,28 @@ function normalizeSnapshot(record: unknown): NormalizedSnapshot | null {
   if (!isObj(raw)) return null;
   if (raw.schemaVersion !== 1 || raw.source !== "mtf-ob-fvg-refinement-shadow") return null;
   const exactZone = isObj(raw.exactZone) ? raw.exactZone : null;
-  const directionRaw = strOrNull(raw.direction ?? exactZone?.direction);
+  const rawFillInput = exactZone && isObj(exactZone.fillResolutionInput) ? exactZone.fillResolutionInput : null;
+  const fillInput =
+    rawFillInput &&
+    rawFillInput.schemaVersion === 1 &&
+    rawFillInput.source === "D5_1_FILL_RESOLUTION_INPUT_V1" &&
+    (rawFillInput.direction === "LONG" || rawFillInput.direction === "SHORT") &&
+    fin(rawFillInput.entry) &&
+    fin(rawFillInput.invalidation) &&
+    fin(rawFillInput.target)
+      ? rawFillInput
+      : null;
+  const directionRaw = strOrNull(fillInput?.direction ?? raw.direction ?? exactZone?.direction);
   const direction = directionRaw === "LONG" || directionRaw === "SHORT" ? directionRaw : null;
   const heuristicNetRR = finiteOrNull(raw.refinedNetRR ?? raw.currentNetRR);
   const exactNetRR = exactZone ? finiteOrNull(exactZone.exactNetRR) : null;
   const storedDelta = exactZone ? finiteOrNull(exactZone.exactVsHeuristicDelta) : null;
   const computedDelta = exactNetRR != null && heuristicNetRR != null ? round4(exactNetRR - heuristicNetRR) : null;
   const exactVsHeuristicDelta = storedDelta ?? computedDelta;
-  const entry = exactZone ? finiteOrNull(exactZone.refinedEntry ?? exactZone.entry ?? exactZone.entryPrice) : null;
-  const invalidation = exactZone ? finiteOrNull(exactZone.invalidationPrice ?? exactZone.invalidation ?? exactZone.stopLoss) : null;
+  const entry = exactZone ? finiteOrNull(fillInput?.entry) ?? finiteOrNull(exactZone.refinedEntry ?? exactZone.entry ?? exactZone.entryPrice) : null;
+  const invalidation = exactZone ? finiteOrNull(fillInput?.invalidation) ?? finiteOrNull(exactZone.invalidationPrice ?? exactZone.invalidation ?? exactZone.stopLoss) : null;
+  const target = exactZone ? finiteOrNull(fillInput?.target) ?? finiteOrNull(exactZone.targetPrice ?? exactZone.target ?? exactZone.takeProfit1) : null;
+  const hasFillResolutionInput = fillInput != null;
   return {
     capturedAt: strOrNull(raw.capturedAt),
     direction,
@@ -229,6 +251,9 @@ function normalizeSnapshot(record: unknown): NormalizedSnapshot | null {
     usesExactObFvgZones: raw.usesExactObFvgZones === true || exactZone?.usesExactObFvgZones === true,
     entry,
     invalidation,
+    target,
+    hasFillResolutionInput,
+    fillResolutionGeometryReady: hasFillResolutionInput && direction != null && entry != null && invalidation != null && target != null,
   };
 }
 
@@ -356,6 +381,8 @@ export function summarizeExactZoneComparison(
   const dominantExactStatus = dominant(exactDataStatusCounts);
   const dominantExactReadiness = dominant(exactReadinessCounts);
   const usesExactObFvgZonesCount = snapshots.filter((s) => s.usesExactObFvgZones).length;
+  const fillResolutionInputSamples = exactSnapshots.filter((s) => s.hasFillResolutionInput).length;
+  const fillResolutionGeometryReadyCount = exactSnapshots.filter((s) => s.fillResolutionGeometryReady).length;
   const avgExactVsHeuristicDelta = avg(exactSnapshots.map((s) => s.exactVsHeuristicDelta));
 
   const warningFlags = new Set<ExactZoneWarningFlag>(["REVIEW_NOT_ACTIVATION"]);
@@ -404,6 +431,9 @@ export function summarizeExactZoneComparison(
     exactDataStatusCounts,
     exactReadinessCounts,
     usesExactObFvgZonesCount,
+    fillResolutionInputSamples,
+    fillResolutionInputMissing: Math.max(0, exactSamples - fillResolutionInputSamples),
+    fillResolutionGeometryReadyCount,
     dominantExactStatus,
     dominantExactReadiness,
     fillResolution,

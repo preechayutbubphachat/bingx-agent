@@ -58,6 +58,26 @@ export interface SmcMtfExactZoneSnapshot {
   exactVsHeuristicDelta: number | null;
   wouldHaveFilledPending: true;
   warnings: string[];
+  fillResolutionInput?: FillResolutionInputSnapshot;
+}
+
+export interface FillResolutionInputSnapshot {
+  schemaVersion: 1;
+  direction: "LONG" | "SHORT";
+  entry: number;
+  invalidation: number;
+  target: number;
+  timeframe: string;
+  capturedAt: string;
+  source: "D5_1_FILL_RESOLUTION_INPUT_V1";
+}
+
+export interface FillResolutionInputParams {
+  direction?: "LONG" | "SHORT" | null;
+  entry?: number | null;
+  invalidation?: number | null;
+  target?: number | null;
+  timeframe?: string | null;
 }
 
 export interface MtfObFvgShadowSnapshotSummary {
@@ -82,6 +102,9 @@ export interface MtfObFvgShadowSnapshotSummary {
   exactAvgNetRR: number | null;
   exactVsHeuristicAvgDelta: number | null;
   usesExactObFvgZonesCount: number;
+  fillResolutionInputSamples: number;
+  fillResolutionInputMissing: number;
+  fillResolutionGeometryReadyCount: number;
   latestSnapshot: SmcMtfShadowSnapshot | null;
   sampleWarning: boolean;
 }
@@ -135,6 +158,9 @@ export function emptyMtfObFvgShadowSnapshotSummary(): MtfObFvgShadowSnapshotSumm
     exactAvgNetRR: null,
     exactVsHeuristicAvgDelta: null,
     usesExactObFvgZonesCount: 0,
+    fillResolutionInputSamples: 0,
+    fillResolutionInputMissing: 0,
+    fillResolutionGeometryReadyCount: 0,
     latestSnapshot: null,
     sampleWarning: true,
   };
@@ -158,9 +184,33 @@ export function buildRrSnapshot(result: RrDrilldownResult, capturedAt: string): 
   };
 }
 
-function buildExactZoneSnapshot(exactZone: ExactZoneShadowOutput | null | undefined): SmcMtfExactZoneSnapshot | undefined {
+function buildFillResolutionInput(input: FillResolutionInputParams | null | undefined, capturedAt: string): FillResolutionInputSnapshot | undefined {
+  if (!input || (input.direction !== "LONG" && input.direction !== "SHORT")) return undefined;
+  if (!fin(input.entry) || !fin(input.invalidation) || !fin(input.target)) return undefined;
+  return {
+    schemaVersion: 1,
+    direction: input.direction,
+    entry: round4(input.entry),
+    invalidation: round4(input.invalidation),
+    target: round4(input.target),
+    timeframe: cleanString(input.timeframe, "15M") ?? "15M",
+    capturedAt: cleanIso(capturedAt),
+    source: "D5_1_FILL_RESOLUTION_INPUT_V1",
+  };
+}
+
+function buildExactZoneSnapshot(
+  exactZone: ExactZoneShadowOutput | null | undefined,
+  capturedAt: string,
+  fillResolutionInput?: FillResolutionInputParams | null,
+): SmcMtfExactZoneSnapshot | undefined {
   if (!exactZone?.usesExactObFvgZones || !exactZone.mergedZoneCandidate || exactZone.mergedZoneCandidate.source !== "MTF_OB_FVG_ZONE_MERGER_V1") {
     return undefined;
+  }
+  const fillInput = buildFillResolutionInput(fillResolutionInput, capturedAt);
+  const warnings = cleanNotes(exactZone.warnings);
+  if (!fillInput && !warnings.includes("fill_resolution_input_missing")) {
+    warnings.push("fill_resolution_input_missing");
   }
   return {
     schemaVersion: 1,
@@ -173,7 +223,8 @@ function buildExactZoneSnapshot(exactZone: ExactZoneShadowOutput | null | undefi
     exactNetRR: finiteOrNull(exactZone.exactNetRR),
     exactVsHeuristicDelta: finiteOrNull(exactZone.exactVsHeuristicDelta),
     wouldHaveFilledPending: true,
-    warnings: cleanNotes(exactZone.warnings),
+    warnings,
+    ...(fillInput ? { fillResolutionInput: fillInput } : {}),
   };
 }
 
@@ -181,11 +232,12 @@ export function buildSmcMtfShadowSnapshot(
   result: MtfObFvgRefinementShadowResult,
   capturedAt: string,
   exactZone?: ExactZoneShadowOutput | null,
+  fillResolutionInput?: FillResolutionInputParams | null,
 ): SmcMtfShadowSnapshot {
   const dataStatus = cleanString(result.dataStatus, "INSUFFICIENT_DATA") ?? "INSUFFICIENT_DATA";
   const classification = cleanString(result.classification, "NO_DATA") ?? "NO_DATA";
   const notes = cleanNotes(result.notes);
-  const exactZoneSnapshot = buildExactZoneSnapshot(exactZone);
+  const exactZoneSnapshot = buildExactZoneSnapshot(exactZone, capturedAt, fillResolutionInput);
   if (dataStatus === "HEURISTIC_ESTIMATE_ONLY" && !notes.includes("heuristic geometry estimate only")) {
     notes.push("heuristic geometry estimate only");
   }
@@ -224,10 +276,31 @@ function validExactZoneDataStatus(v: unknown): v is ExactZoneDataStatus {
   );
 }
 
+function parseFillResolutionInputSnapshot(raw: unknown): FillResolutionInputSnapshot | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  if (o.schemaVersion !== 1 || o.source !== "D5_1_FILL_RESOLUTION_INPUT_V1") return undefined;
+  if (o.direction !== "LONG" && o.direction !== "SHORT") return undefined;
+  if (!fin(o.entry) || !fin(o.invalidation) || !fin(o.target)) return undefined;
+  const capturedAt = cleanString(o.capturedAt);
+  if (!capturedAt) return undefined;
+  return {
+    schemaVersion: 1,
+    direction: o.direction,
+    entry: round4(o.entry),
+    invalidation: round4(o.invalidation),
+    target: round4(o.target),
+    timeframe: cleanString(o.timeframe, "15M") ?? "15M",
+    capturedAt: cleanIso(capturedAt),
+    source: "D5_1_FILL_RESOLUTION_INPUT_V1",
+  };
+}
+
 function parseExactZoneSnapshot(raw: unknown): SmcMtfExactZoneSnapshot | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const o = raw as Record<string, unknown>;
   if (o.schemaVersion !== 1 || o.usesExactObFvgZones !== true || !validExactZoneDataStatus(o.exactZoneDataStatus)) return undefined;
+  const fillResolutionInput = parseFillResolutionInputSnapshot(o.fillResolutionInput);
   return {
     schemaVersion: 1,
     usesExactObFvgZones: true,
@@ -240,6 +313,7 @@ function parseExactZoneSnapshot(raw: unknown): SmcMtfExactZoneSnapshot | undefin
     exactVsHeuristicDelta: finiteOrNull(o.exactVsHeuristicDelta),
     wouldHaveFilledPending: true,
     warnings: cleanNotes(o.warnings),
+    ...(fillResolutionInput ? { fillResolutionInput } : {}),
   };
 }
 
@@ -301,6 +375,7 @@ export function summarizeMtfObFvgShadowSnapshots(records: Array<{ smcMtfShadowSn
     if (Date.parse(s.capturedAt) >= Date.parse(latestSnapshot.capturedAt)) latestSnapshot = s;
   }
   const exactSnapshots = snapshots.filter((s) => s.exactZone != null);
+  const fillResolutionInputSamples = exactSnapshots.filter((s) => s.exactZone?.fillResolutionInput != null).length;
 
   return {
     available: true,
@@ -324,6 +399,9 @@ export function summarizeMtfObFvgShadowSnapshots(records: Array<{ smcMtfShadowSn
     exactAvgNetRR: avg(exactSnapshots.map((s) => s.exactZone?.exactNetRR ?? null)),
     exactVsHeuristicAvgDelta: avg(exactSnapshots.map((s) => s.exactZone?.exactVsHeuristicDelta ?? null)),
     usesExactObFvgZonesCount: snapshots.filter((s) => s.usesExactObFvgZones === true).length,
+    fillResolutionInputSamples,
+    fillResolutionInputMissing: Math.max(0, exactSnapshots.length - fillResolutionInputSamples),
+    fillResolutionGeometryReadyCount: fillResolutionInputSamples,
     latestSnapshot,
     sampleWarning: snapshots.length < SUMMARY_MIN_SAMPLE,
   };

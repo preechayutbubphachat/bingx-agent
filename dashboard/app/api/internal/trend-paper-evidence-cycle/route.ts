@@ -276,7 +276,13 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
 
   return {
     rrSnapshot: buildRrSnapshot(rr, capturedAt),
-    smcMtfShadowSnapshot: buildSmcMtfShadowSnapshot(mtf, capturedAt, exactZone.usesExactObFvgZones ? exactZone : null),
+    smcMtfShadowSnapshot: buildSmcMtfShadowSnapshot(mtf, capturedAt, exactZone.usesExactObFvgZones ? exactZone : null, {
+      direction,
+      entry,
+      invalidation: stop,
+      target,
+      timeframe: "15M",
+    }),
   };
 }
 

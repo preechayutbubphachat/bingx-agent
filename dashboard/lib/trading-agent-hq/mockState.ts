@@ -411,6 +411,9 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
         exactDataStatusCounts: {},
         exactReadinessCounts: {},
         usesExactObFvgZonesCount: 0,
+        fillResolutionInputSamples: 0,
+        fillResolutionInputMissing: 0,
+        fillResolutionGeometryReadyCount: 0,
         dominantExactStatus: null,
         dominantExactReadiness: null,
         fillResolution: {

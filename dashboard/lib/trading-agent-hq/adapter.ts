@@ -606,6 +606,9 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
       exactDataStatusCounts: countMap(exactComparisonRaw.exactDataStatusCounts),
       exactReadinessCounts: countMap(exactComparisonRaw.exactReadinessCounts),
       usesExactObFvgZonesCount: num(exactComparisonRaw.usesExactObFvgZonesCount, 0),
+      fillResolutionInputSamples: num(exactComparisonRaw.fillResolutionInputSamples, 0),
+      fillResolutionInputMissing: num(exactComparisonRaw.fillResolutionInputMissing, 0),
+      fillResolutionGeometryReadyCount: num(exactComparisonRaw.fillResolutionGeometryReadyCount, 0),
       dominantExactStatus: strOrNull(exactComparisonRaw.dominantExactStatus),
       dominantExactReadiness: strOrNull(exactComparisonRaw.dominantExactReadiness),
       fillResolution: {

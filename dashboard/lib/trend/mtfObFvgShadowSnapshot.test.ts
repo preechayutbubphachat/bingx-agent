@@ -131,21 +131,62 @@ test("MTF snapshot is sanitized, shadow-only, and deterministic", () => {
 });
 
 test("MTF snapshot stores optional exact-zone block only for real exact detector output", () => {
-  const s = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE);
+  const s = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE, {
+    direction: "SHORT",
+    entry: 104,
+    invalidation: 106,
+    target: 100,
+    timeframe: "15M",
+  });
   assert.equal(s.usesExactObFvgZones, true);
   assert.equal(s.exactZone?.schemaVersion, 1);
   assert.equal(s.exactZone?.exactZoneCandidateId, "mtfzone:1H:BEARISH:ob:1");
   assert.equal(s.exactZone?.exactZoneDataStatus, "MTF_EXACT_ZONE_ALIGNED");
   assert.equal(s.exactZone?.exactNetRR, 1.8);
   assert.equal(s.exactZone?.wouldHaveFilledPending, true);
+  assert.deepEqual(s.exactZone?.fillResolutionInput, {
+    schemaVersion: 1,
+    direction: "SHORT",
+    entry: 104,
+    invalidation: 106,
+    target: 100,
+    timeframe: "15M",
+    capturedAt: NOW,
+    source: "D5_1_FILL_RESOLUTION_INPUT_V1",
+  });
+  assert.equal(s.exactZone?.warnings.includes("fill_resolution_input_missing"), false);
 
   const noExact = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, { ...EXACT_ZONE, usesExactObFvgZones: false });
   assert.equal(noExact.usesExactObFvgZones, false);
   assert.equal(noExact.exactZone, undefined);
 });
 
+test("MTF snapshot omits fill-resolution input and records warning when geometry is missing", () => {
+  const s = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE);
+  assert.equal(s.exactZone?.fillResolutionInput, undefined);
+  assert.equal(s.exactZone?.warnings.includes("fill_resolution_input_missing"), true);
+});
+
+test("MTF snapshot rejects non-finite fill-resolution geometry", () => {
+  const s = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE, {
+    direction: "SHORT",
+    entry: Number.NaN,
+    invalidation: 106,
+    target: 100,
+    timeframe: "15M",
+  });
+  assert.equal(s.exactZone?.fillResolutionInput, undefined);
+  assert.equal(s.exactZone?.warnings.includes("fill_resolution_input_missing"), true);
+});
+
 test("summary computes averages and counts", () => {
-  const one = buildSmcMtfShadowSnapshot(MTF_RESULT, "2026-06-11T12:00:00.000Z", EXACT_ZONE);
+  const one = buildSmcMtfShadowSnapshot(MTF_RESULT, "2026-06-11T12:00:00.000Z", EXACT_ZONE, {
+    direction: "SHORT",
+    entry: 104,
+    invalidation: 106,
+    target: 100,
+    timeframe: "15M",
+  });
   const two = buildSmcMtfShadowSnapshot(
     { ...MTF_RESULT, classification: "COST_DRAG_DOMINANT", currentRawRR: 1, currentNetRR: 0.8, refinedRawRR: 1.1, refinedNetRR: 0.9, rrImprovement: 0.1, netRrImprovement: 0.1, wouldPassStaticRR: false, wouldPassNetRR: false, qualityScore: 40 },
     "2026-06-11T12:15:00.000Z",
@@ -168,8 +209,27 @@ test("summary computes averages and counts", () => {
   assert.equal(s.exactAvgNetRR, 1.8);
   assert.equal(s.exactVsHeuristicAvgDelta, 0.46);
   assert.equal(s.usesExactObFvgZonesCount, 1);
+  assert.equal(s.fillResolutionInputSamples, 1);
+  assert.equal(s.fillResolutionInputMissing, 0);
+  assert.equal(s.fillResolutionGeometryReadyCount, 1);
   assert.equal(s.latestSnapshot?.classification, "COST_DRAG_DOMINANT");
   assert.equal(s.sampleWarning, true);
+});
+
+test("summary counts missing fill-resolution input without rejecting exact snapshots", () => {
+  const withInput = buildSmcMtfShadowSnapshot(MTF_RESULT, "2026-06-11T12:00:00.000Z", EXACT_ZONE, {
+    direction: "SHORT",
+    entry: 104,
+    invalidation: 106,
+    target: 100,
+    timeframe: "15M",
+  });
+  const withoutInput = buildSmcMtfShadowSnapshot(MTF_RESULT, "2026-06-11T12:15:00.000Z", EXACT_ZONE);
+  const s = summarizeMtfObFvgShadowSnapshots([{ smcMtfShadowSnapshot: withInput }, { smcMtfShadowSnapshot: withoutInput }]);
+  assert.equal(s.exactZoneSamples, 2);
+  assert.equal(s.fillResolutionInputSamples, 1);
+  assert.equal(s.fillResolutionInputMissing, 1);
+  assert.equal(s.fillResolutionGeometryReadyCount, 1);
 });
 
 test("old snapshot records without exactZone still parse", () => {

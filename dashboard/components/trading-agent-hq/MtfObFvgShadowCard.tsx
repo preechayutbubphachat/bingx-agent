@@ -337,6 +337,9 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
           <Row label="aggregate worst status" value={d5.dominantExactStatus ?? dominantCountLabel(d5.exactDataStatusCounts)} />
           <Row label="aggregate worst readiness" value={d5.dominantExactReadiness ?? dominantCountLabel(d5.exactReadinessCounts)} />
           <Row label="fill status" value={d5.fillResolution.status} />
+          <Row label="fill geometry ready" value={String(d5.fillResolutionGeometryReadyCount)} />
+          <Row label="fill input samples" value={String(d5.fillResolutionInputSamples)} />
+          <Row label="fill geometry missing" value={String(d5.fillResolutionInputMissing)} tone={d5.fillResolutionInputMissing > 0 ? "amber" : "neutral"} />
           <Row label="TARGET_TOO_CLOSE count" value={String(d5.conflictBreakdown.TARGET_TOO_CLOSE)} />
           <Row label="COST_TOO_HIGH count" value={String(d5.conflictBreakdown.COST_TOO_HIGH)} />
           <Row label="CONFLICTING_MTF count" value={String(d5.conflictBreakdown.CONFLICTING_MTF)} />

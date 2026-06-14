@@ -163,6 +163,9 @@ export interface TrendEvidenceDecisionSummaryVM {
     exactDataStatusCounts: Record<string, number>;
     exactReadinessCounts: Record<string, number>;
     usesExactObFvgZonesCount: number;
+    fillResolutionInputSamples: number;
+    fillResolutionInputMissing: number;
+    fillResolutionGeometryReadyCount: number;
     dominantExactStatus: string | null;
     dominantExactReadiness: string | null;
     fillResolution: {

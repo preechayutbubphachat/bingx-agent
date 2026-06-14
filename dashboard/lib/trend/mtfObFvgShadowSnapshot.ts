@@ -59,6 +59,7 @@ export interface SmcMtfExactZoneSnapshot {
   wouldHaveFilledPending: true;
   warnings: string[];
   fillResolutionInput?: FillResolutionInputSnapshot;
+  setupContext?: SetupContextSnapshot;
 }
 
 export interface FillResolutionInputSnapshot {
@@ -72,12 +73,29 @@ export interface FillResolutionInputSnapshot {
   source: "D5_1_FILL_RESOLUTION_INPUT_V1";
 }
 
+export interface SetupContextSnapshot {
+  schemaVersion: 1;
+  source: "D5_2_SETUP_CONTEXT_V1";
+  capturedAt: string;
+  canonicalRegime: string | null;
+  canonicalDirection: "BULLISH" | "BEARISH" | "NEUTRAL" | null;
+  priceVsGrid: string | null;
+  dynamicGridStatus: string | null;
+}
+
 export interface FillResolutionInputParams {
   direction?: "LONG" | "SHORT" | null;
   entry?: number | null;
   invalidation?: number | null;
   target?: number | null;
   timeframe?: string | null;
+}
+
+export interface SetupContextParams {
+  canonicalRegime?: string | null;
+  canonicalDirection?: string | null;
+  priceVsGrid?: string | null;
+  dynamicGridStatus?: string | null;
 }
 
 export interface MtfObFvgShadowSnapshotSummary {
@@ -199,15 +217,34 @@ function buildFillResolutionInput(input: FillResolutionInputParams | null | unde
   };
 }
 
+function cleanCanonicalDirection(v: unknown): "BULLISH" | "BEARISH" | "NEUTRAL" | null {
+  return v === "BULLISH" || v === "BEARISH" || v === "NEUTRAL" ? v : null;
+}
+
+function buildSetupContext(input: SetupContextParams | null | undefined, capturedAt: string): SetupContextSnapshot | undefined {
+  if (!input) return undefined;
+  return {
+    schemaVersion: 1,
+    source: "D5_2_SETUP_CONTEXT_V1",
+    capturedAt: cleanIso(capturedAt),
+    canonicalRegime: cleanString(input.canonicalRegime),
+    canonicalDirection: cleanCanonicalDirection(input.canonicalDirection),
+    priceVsGrid: cleanString(input.priceVsGrid),
+    dynamicGridStatus: cleanString(input.dynamicGridStatus),
+  };
+}
+
 function buildExactZoneSnapshot(
   exactZone: ExactZoneShadowOutput | null | undefined,
   capturedAt: string,
   fillResolutionInput?: FillResolutionInputParams | null,
+  setupContext?: SetupContextParams | null,
 ): SmcMtfExactZoneSnapshot | undefined {
   if (!exactZone?.usesExactObFvgZones || !exactZone.mergedZoneCandidate || exactZone.mergedZoneCandidate.source !== "MTF_OB_FVG_ZONE_MERGER_V1") {
     return undefined;
   }
   const fillInput = buildFillResolutionInput(fillResolutionInput, capturedAt);
+  const context = buildSetupContext(setupContext, capturedAt);
   const warnings = cleanNotes(exactZone.warnings);
   if (!fillInput && !warnings.includes("fill_resolution_input_missing")) {
     warnings.push("fill_resolution_input_missing");
@@ -225,6 +262,7 @@ function buildExactZoneSnapshot(
     wouldHaveFilledPending: true,
     warnings,
     ...(fillInput ? { fillResolutionInput: fillInput } : {}),
+    ...(context ? { setupContext: context } : {}),
   };
 }
 
@@ -233,11 +271,17 @@ export function buildSmcMtfShadowSnapshot(
   capturedAt: string,
   exactZone?: ExactZoneShadowOutput | null,
   fillResolutionInput?: FillResolutionInputParams | null,
+  setupContext?: SetupContextParams | null,
 ): SmcMtfShadowSnapshot {
   const dataStatus = cleanString(result.dataStatus, "INSUFFICIENT_DATA") ?? "INSUFFICIENT_DATA";
   const classification = cleanString(result.classification, "NO_DATA") ?? "NO_DATA";
   const notes = cleanNotes(result.notes);
-  const exactZoneSnapshot = buildExactZoneSnapshot(exactZone, capturedAt, fillResolutionInput);
+  const exactZoneSnapshot = buildExactZoneSnapshot(
+    exactZone,
+    capturedAt,
+    fillResolutionInput,
+    setupContext,
+  );
   if (dataStatus === "HEURISTIC_ESTIMATE_ONLY" && !notes.includes("heuristic geometry estimate only")) {
     notes.push("heuristic geometry estimate only");
   }
@@ -296,11 +340,29 @@ function parseFillResolutionInputSnapshot(raw: unknown): FillResolutionInputSnap
   };
 }
 
+function parseSetupContextSnapshot(raw: unknown): SetupContextSnapshot | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  if (o.schemaVersion !== 1 || o.source !== "D5_2_SETUP_CONTEXT_V1") return undefined;
+  const capturedAt = cleanString(o.capturedAt);
+  if (!capturedAt) return undefined;
+  return {
+    schemaVersion: 1,
+    source: "D5_2_SETUP_CONTEXT_V1",
+    capturedAt: cleanIso(capturedAt),
+    canonicalRegime: cleanString(o.canonicalRegime),
+    canonicalDirection: cleanCanonicalDirection(o.canonicalDirection),
+    priceVsGrid: cleanString(o.priceVsGrid),
+    dynamicGridStatus: cleanString(o.dynamicGridStatus),
+  };
+}
+
 function parseExactZoneSnapshot(raw: unknown): SmcMtfExactZoneSnapshot | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const o = raw as Record<string, unknown>;
   if (o.schemaVersion !== 1 || o.usesExactObFvgZones !== true || !validExactZoneDataStatus(o.exactZoneDataStatus)) return undefined;
   const fillResolutionInput = parseFillResolutionInputSnapshot(o.fillResolutionInput);
+  const setupContext = parseSetupContextSnapshot(o.setupContext);
   return {
     schemaVersion: 1,
     usesExactObFvgZones: true,
@@ -314,6 +376,7 @@ function parseExactZoneSnapshot(raw: unknown): SmcMtfExactZoneSnapshot | undefin
     wouldHaveFilledPending: true,
     warnings: cleanNotes(o.warnings),
     ...(fillResolutionInput ? { fillResolutionInput } : {}),
+    ...(setupContext ? { setupContext } : {}),
   };
 }
 

@@ -197,6 +197,7 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
   const indicators = (regimeEvidence.indicators ?? {}) as Record<string, unknown>;
   const indicatorValue = (name: string) => num(((indicators[name] as Record<string, unknown> | undefined) ?? {}).value);
   const canonicalMarketRegime = (d.canonicalMarketRegime ?? {}) as Record<string, unknown>;
+  const dynamicGrid = (d.dynamicGrid ?? {}) as Record<string, unknown>;
   const entryZone = (trendStrategy.entryZone ?? trendZone.pullbackZone ?? null) as [number, number] | null;
   const direction = (preflight.direction ?? trendStrategy.direction ?? null) as MtfDirection | null;
   const entry = num(preflight.entry) ?? mid(entryZone);
@@ -282,6 +283,11 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
       invalidation: stop,
       target,
       timeframe: "15M",
+    }, {
+      canonicalRegime: typeof canonicalMarketRegime.regime === "string" ? canonicalMarketRegime.regime : null,
+      canonicalDirection: typeof canonicalMarketRegime.direction === "string" ? canonicalMarketRegime.direction : null,
+      priceVsGrid: typeof d.priceVsGrid === "string" ? d.priceVsGrid : null,
+      dynamicGridStatus: typeof dynamicGrid.status === "string" ? dynamicGrid.status : null,
     }),
   };
 }

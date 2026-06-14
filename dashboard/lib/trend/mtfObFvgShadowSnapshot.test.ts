@@ -131,12 +131,15 @@ test("MTF snapshot is sanitized, shadow-only, and deterministic", () => {
 });
 
 test("MTF snapshot stores optional exact-zone block only for real exact detector output", () => {
-  const s = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE, {
-    direction: "SHORT",
+  const input = {
+    direction: "SHORT" as const,
     entry: 104,
     invalidation: 106,
     target: 100,
     timeframe: "15M",
+  };
+  const s = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE, {
+    ...input,
   });
   assert.equal(s.usesExactObFvgZones, true);
   assert.equal(s.exactZone?.schemaVersion, 1);
@@ -144,6 +147,48 @@ test("MTF snapshot stores optional exact-zone block only for real exact detector
   assert.equal(s.exactZone?.exactZoneDataStatus, "MTF_EXACT_ZONE_ALIGNED");
   assert.equal(s.exactZone?.exactNetRR, 1.8);
   assert.equal(s.exactZone?.wouldHaveFilledPending, true);
+  assert.deepEqual(s.exactZone?.fillResolutionInput, {
+    schemaVersion: 1,
+    ...input,
+    capturedAt: NOW,
+    source: "D5_1_FILL_RESOLUTION_INPUT_V1",
+  });
+  assert.equal(s.exactZone?.warnings.includes("fill_resolution_input_missing"), false);
+
+  const noExact = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, { ...EXACT_ZONE, usesExactObFvgZones: false });
+  assert.equal(noExact.usesExactObFvgZones, false);
+  assert.equal(noExact.exactZone, undefined);
+});
+
+test("MTF exact-zone snapshot captures read-only setup context without duplicating geometry", () => {
+  const s = buildSmcMtfShadowSnapshot(
+    MTF_RESULT,
+    NOW,
+    EXACT_ZONE,
+    {
+      direction: "SHORT",
+      entry: 104,
+      invalidation: 106,
+      target: 100,
+      timeframe: "15M",
+    },
+    {
+      canonicalRegime: "DOWNTREND",
+      canonicalDirection: "BEARISH",
+      priceVsGrid: "BELOW_GRID",
+      dynamicGridStatus: "PAUSE_EXPOSURE_LIMIT",
+    },
+  );
+
+  assert.deepEqual(s.exactZone?.setupContext, {
+    schemaVersion: 1,
+    source: "D5_2_SETUP_CONTEXT_V1",
+    capturedAt: NOW,
+    canonicalRegime: "DOWNTREND",
+    canonicalDirection: "BEARISH",
+    priceVsGrid: "BELOW_GRID",
+    dynamicGridStatus: "PAUSE_EXPOSURE_LIMIT",
+  });
   assert.deepEqual(s.exactZone?.fillResolutionInput, {
     schemaVersion: 1,
     direction: "SHORT",
@@ -154,11 +199,76 @@ test("MTF snapshot stores optional exact-zone block only for real exact detector
     capturedAt: NOW,
     source: "D5_1_FILL_RESOLUTION_INPUT_V1",
   });
-  assert.equal(s.exactZone?.warnings.includes("fill_resolution_input_missing"), false);
+});
 
-  const noExact = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, { ...EXACT_ZONE, usesExactObFvgZones: false });
-  assert.equal(noExact.usesExactObFvgZones, false);
-  assert.equal(noExact.exactZone, undefined);
+test("MTF exact-zone setup context preserves missing context as nulls", () => {
+  const s = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE, null, {
+    canonicalRegime: null,
+    canonicalDirection: null,
+    priceVsGrid: null,
+    dynamicGridStatus: null,
+  });
+
+  assert.deepEqual(s.exactZone?.setupContext, {
+    schemaVersion: 1,
+    source: "D5_2_SETUP_CONTEXT_V1",
+    capturedAt: NOW,
+    canonicalRegime: null,
+    canonicalDirection: null,
+    priceVsGrid: null,
+    dynamicGridStatus: null,
+  });
+});
+
+test("MTF exact-zone setup context round-trips through summary parser", () => {
+  const snapshot = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE, null, {
+    canonicalRegime: "RANGE",
+    canonicalDirection: "NEUTRAL",
+    priceVsGrid: "INSIDE_GRID",
+    dynamicGridStatus: "ACTIVE",
+  });
+  const s = summarizeMtfObFvgShadowSnapshots([{ smcMtfShadowSnapshot: snapshot }]);
+
+  assert.deepEqual(s.latestSnapshot?.exactZone?.setupContext, {
+    schemaVersion: 1,
+    source: "D5_2_SETUP_CONTEXT_V1",
+    capturedAt: NOW,
+    canonicalRegime: "RANGE",
+    canonicalDirection: "NEUTRAL",
+    priceVsGrid: "INSIDE_GRID",
+    dynamicGridStatus: "ACTIVE",
+  });
+});
+
+test("MTF exact-zone setup context rejects wrong source or schema without throwing", () => {
+  const wrongSource = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE, null, {
+    canonicalRegime: "RANGE",
+    canonicalDirection: "NEUTRAL",
+    priceVsGrid: "INSIDE_GRID",
+    dynamicGridStatus: "ACTIVE",
+  });
+  const wrongSchema = JSON.parse(JSON.stringify(wrongSource));
+  wrongSource.exactZone!.setupContext = { ...wrongSource.exactZone!.setupContext!, source: "wrong" as never };
+  wrongSchema.exactZone.setupContext.schemaVersion = 2;
+
+  const s = summarizeMtfObFvgShadowSnapshots([{ smcMtfShadowSnapshot: wrongSource }, { smcMtfShadowSnapshot: wrongSchema }]);
+
+  assert.equal(s.totalShadowSamples, 2);
+  assert.equal(s.latestSnapshot?.exactZone?.setupContext, undefined);
+});
+
+test("old exact-zone records without setup context still parse", () => {
+  const oldRecord = buildSmcMtfShadowSnapshot(MTF_RESULT, NOW, EXACT_ZONE, {
+    direction: "SHORT",
+    entry: 104,
+    invalidation: 106,
+    target: 100,
+    timeframe: "15M",
+  });
+  const s = summarizeMtfObFvgShadowSnapshots([{ smcMtfShadowSnapshot: oldRecord }]);
+
+  assert.equal(s.latestSnapshot?.exactZone?.setupContext, undefined);
+  assert.equal(s.latestSnapshot?.exactZone?.fillResolutionInput?.entry, 104);
 });
 
 test("MTF snapshot omits fill-resolution input and records warning when geometry is missing", () => {

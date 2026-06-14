@@ -26,6 +26,11 @@ import {
   type RrSnapshot,
   type SmcMtfShadowSnapshot,
 } from "./mtfObFvgShadowSnapshot.ts";
+import {
+  emptyShadowOutcomeSummary,
+  summarizeShadowOutcomes,
+  type ShadowOutcomeSummary,
+} from "./shadowOutcomeResolver.ts";
 
 export const TREND_EVIDENCE_DECISION_LOG_SCHEMA_VERSION = 1;
 export const TREND_EVIDENCE_DECISION_LOG_FILE_NAME = "trend_paper_evidence_decisions.jsonl";
@@ -92,6 +97,8 @@ export interface TrendEvidenceDecisionSummary {
   mtfObFvgShadowSummary: MtfObFvgShadowSnapshotSummary;
   /** T-3H-6-d5 read-only exact-zone vs heuristic comparison. Never read by runner/decision logic. */
   exactZoneComparisonSummary: ExactZoneComparisonSummary;
+  /** D5.2-b read-only counterfactual reachability evidence. Never read by runner/decision logic. */
+  shadowOutcomeSummary: ShadowOutcomeSummary;
 }
 
 export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummary {
@@ -111,6 +118,7 @@ export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummar
     malformedLines: 0,
     mtfObFvgShadowSummary: emptyMtfObFvgShadowSnapshotSummary(),
     exactZoneComparisonSummary: emptyExactZoneComparisonSummary(),
+    shadowOutcomeSummary: emptyShadowOutcomeSummary(),
   };
 }
 
@@ -341,6 +349,9 @@ export async function readTrendEvidenceDecisionLogSummary(
     malformedLines: malformed,
     mtfObFvgShadowSummary: summarizeMtfObFvgShadowSnapshots(records),
     exactZoneComparisonSummary: summarizeExactZoneComparison(records, {
+      candlesByTimeframe: options.candlesByTimeframe,
+    }),
+    shadowOutcomeSummary: summarizeShadowOutcomes(records, {
       candlesByTimeframe: options.candlesByTimeframe,
     }),
   };

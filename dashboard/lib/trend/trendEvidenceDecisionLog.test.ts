@@ -173,6 +173,9 @@ test("snapshot record is appended and summarized", async () => {
     assert.equal(s.mtfObFvgShadowSummary.classificationCounts.REFINEMENT_IMPROVES_RR, 1);
     assert.equal(s.mtfObFvgShadowSummary.dataStatusCounts.HEURISTIC_ESTIMATE_ONLY, 1);
     assert.equal(s.mtfObFvgShadowSummary.sampleWarning, true);
+    assert.equal(s.shadowOutcomeSummary.source, "SHADOW_OUTCOME_SUMMARY_V1");
+    assert.equal(s.shadowOutcomeSummary.shadowOutcomes.totalSetups, 1);
+    assert.equal(s.shadowOutcomeSummary.shadowOutcomes.noGeometry, 1);
   });
 });
 

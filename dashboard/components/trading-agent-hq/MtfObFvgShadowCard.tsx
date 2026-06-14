@@ -164,6 +164,9 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
   const direction = (pf.direction ?? ts.direction) as MtfDirection | null;
   const history = paper.trendEvidenceDecisionSummary.mtfObFvgShadowSummary;
   const d5 = paper.trendEvidenceDecisionSummary.exactZoneComparisonSummary;
+  const fillResolutionUniverse = d5.fillResolutionGeometryReadyCount;
+  const pendingNoGeometry = d5.fillResolutionInputMissing;
+  const pendingAwaitingCandles = Math.max(0, fillResolutionUniverse - d5.fillResolution.totalResolvable);
   const review = reviewMtfObFvgShadowSummary(history);
   const exactState = exactRuntimeState(history);
 
@@ -337,8 +340,12 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
           <Row label="aggregate worst status" value={d5.dominantExactStatus ?? dominantCountLabel(d5.exactDataStatusCounts)} />
           <Row label="aggregate worst readiness" value={d5.dominantExactReadiness ?? dominantCountLabel(d5.exactReadinessCounts)} />
           <Row label="fill status" value={d5.fillResolution.status} />
+          <Row label="fill-resolution universe" value={String(fillResolutionUniverse)} tone={fillResolutionUniverse > 0 ? "green" : "neutral"} />
           <Row label="fill geometry ready" value={String(d5.fillResolutionGeometryReadyCount)} />
           <Row label="fill input samples" value={String(d5.fillResolutionInputSamples)} />
+          <Row label="core pending" value={String(d5.fillResolution.pending)} tone={d5.fillResolution.pending > 0 ? "amber" : "neutral"} />
+          <Row label="No geometry - not eligible for fill-resolution" value={String(pendingNoGeometry)} tone={pendingNoGeometry > 0 ? "amber" : "neutral"} />
+          <Row label="Geometry-ready, awaiting future candles" value={String(pendingAwaitingCandles)} tone={pendingAwaitingCandles > 0 ? "amber" : "neutral"} />
           <Row label="fill geometry missing" value={String(d5.fillResolutionInputMissing)} tone={d5.fillResolutionInputMissing > 0 ? "amber" : "neutral"} />
           <Row label="TARGET_TOO_CLOSE count" value={String(d5.conflictBreakdown.TARGET_TOO_CLOSE)} />
           <Row label="COST_TOO_HIGH count" value={String(d5.conflictBreakdown.COST_TOO_HIGH)} />
@@ -348,6 +355,9 @@ export default function MtfObFvgShadowCard({ paper }: { paper: PaperVM }) {
         </div>
         <p className="mt-1.5 text-[10px] font-bold text-emerald-950">
           RR metrics are candidate-scoped. Aggregate status/readiness summarize worst-of-all detected zones.
+        </p>
+        <p className="mt-1 text-[10px] font-bold text-sky-900">
+          Core pending includes both categories; review geometry-ready denominator before reading fill-resolution.
         </p>
         <p className="mt-1 text-[10px] font-bold text-amber-900">
           {d5.conflictLabelNote ?? "EXACT_ZONE_CONFLICT may aggregate target-too-close, cost-too-high, or true MTF conflict. Check readiness breakdown."}

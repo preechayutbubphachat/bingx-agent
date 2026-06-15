@@ -31,6 +31,11 @@ import {
   summarizeShadowOutcomes,
   type ShadowOutcomeSummary,
 } from "./shadowOutcomeResolver.ts";
+import {
+  emptyShadowOutcomeQualityGate,
+  evaluateShadowOutcomeQualityGate,
+  type ShadowOutcomeQualityGate,
+} from "./shadowOutcomeQualityGate.ts";
 
 export const TREND_EVIDENCE_DECISION_LOG_SCHEMA_VERSION = 1;
 export const TREND_EVIDENCE_DECISION_LOG_FILE_NAME = "trend_paper_evidence_decisions.jsonl";
@@ -99,6 +104,8 @@ export interface TrendEvidenceDecisionSummary {
   exactZoneComparisonSummary: ExactZoneComparisonSummary;
   /** D5.2-b read-only counterfactual reachability evidence. Never read by runner/decision logic. */
   shadowOutcomeSummary: ShadowOutcomeSummary;
+  /** D5.2-d read-only sample/context quality gate. Never read by runner/decision logic. */
+  shadowOutcomeQualityGate: ShadowOutcomeQualityGate;
 }
 
 export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummary {
@@ -119,6 +126,7 @@ export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummar
     mtfObFvgShadowSummary: emptyMtfObFvgShadowSnapshotSummary(),
     exactZoneComparisonSummary: emptyExactZoneComparisonSummary(),
     shadowOutcomeSummary: emptyShadowOutcomeSummary(),
+    shadowOutcomeQualityGate: emptyShadowOutcomeQualityGate(),
   };
 }
 
@@ -333,6 +341,10 @@ export async function readTrendEvidenceDecisionLogSummary(
     missedCycles: Math.max(0, expectedCycles - observedCycles),
   };
 
+  const shadowOutcomeSummary = summarizeShadowOutcomes(records, {
+    candlesByTimeframe: options.candlesByTimeframe,
+  });
+
   return {
     available: true,
     totalRecords: records.length,
@@ -351,9 +363,8 @@ export async function readTrendEvidenceDecisionLogSummary(
     exactZoneComparisonSummary: summarizeExactZoneComparison(records, {
       candlesByTimeframe: options.candlesByTimeframe,
     }),
-    shadowOutcomeSummary: summarizeShadowOutcomes(records, {
-      candlesByTimeframe: options.candlesByTimeframe,
-    }),
+    shadowOutcomeSummary,
+    shadowOutcomeQualityGate: evaluateShadowOutcomeQualityGate(shadowOutcomeSummary),
   };
 }
 

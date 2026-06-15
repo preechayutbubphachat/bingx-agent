@@ -535,6 +535,49 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
   const exactComparisonRaw = obj(raw.exactZoneComparisonSummary);
   const fillResolutionRaw = obj(exactComparisonRaw.fillResolution);
   const conflictBreakdownRaw = obj(exactComparisonRaw.conflictBreakdown);
+
+  // D5.2-c: read-only shadow outcome summary passthrough (counterfactual reachability; not real trades)
+  type ShadowVM = NonNullable<PaperVM["trendEvidenceDecisionSummary"]["shadowOutcomeSummary"]>;
+  type ShadowBucketVM = ShadowVM["shadowOutcomes"];
+  const mapShadowBucket = (b: AnyObj): ShadowBucketVM => ({
+    totalSetups: num(b.totalSetups, 0),
+    geometryReady: num(b.geometryReady, 0),
+    noGeometry: num(b.noGeometry, 0),
+    pending: num(b.pending, 0),
+    insufficientFutureCandles: num(b.insufficientFutureCandles, 0),
+    entryNotReached: num(b.entryNotReached, 0),
+    invalidationFirst: num(b.invalidationFirst, 0),
+    entryTouched: num(b.entryTouched, 0),
+    entryTouchRate: numOrNull(b.entryTouchRate),
+    entryNotReachedRate: numOrNull(b.entryNotReachedRate),
+    invalidationFirstRate: numOrNull(b.invalidationFirstRate),
+    targetAfterEntryTouchRate: numOrNull(b.targetAfterEntryTouchRate),
+    invalidationAfterEntryTouchRate: numOrNull(b.invalidationAfterEntryTouchRate),
+    timeoutAfterEntryTouchRate: numOrNull(b.timeoutAfterEntryTouchRate),
+  });
+  const mapShadowSplit = (v: unknown): Record<string, ShadowBucketVM> => {
+    const out: Record<string, ShadowBucketVM> = {};
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [k, val] of Object.entries(v as Record<string, unknown>)) out[k] = mapShadowBucket(obj(val));
+    }
+    return out;
+  };
+  const shadowRaw = obj(raw.shadowOutcomeSummary);
+  const shadowSettingsRaw = obj(shadowRaw.settings);
+  const shadowOutcomeSummary: PaperVM["trendEvidenceDecisionSummary"]["shadowOutcomeSummary"] =
+    raw.shadowOutcomeSummary != null && Object.keys(shadowRaw).length > 0
+      ? {
+          shadowOutcomes: mapShadowBucket(obj(shadowRaw.shadowOutcomes)),
+          splitByCanonicalRegime: mapShadowSplit(shadowRaw.splitByCanonicalRegime),
+          splitByPriceVsGrid: mapShadowSplit(shadowRaw.splitByPriceVsGrid),
+          splitByDynamicGridStatus: mapShadowSplit(shadowRaw.splitByDynamicGridStatus),
+          settings: {
+            entryLookahead: num(shadowSettingsRaw.entryLookahead, 12),
+            exitLookahead: num(shadowSettingsRaw.exitLookahead, 48),
+          },
+        }
+      : null;
+
   const latestRaw = obj(mtfRaw.latestSnapshot);
   const hasLatest = mtfRaw.latestSnapshot != null && Object.keys(latestRaw).length > 0;
   const mtfSummary: PaperVM["trendEvidenceDecisionSummary"]["mtfObFvgShadowSummary"] = {
@@ -634,6 +677,7 @@ function mapTrendEvidenceDecisionSummary(raw: AnyObj): PaperVM["trendEvidenceDec
       readiness: str(exactComparisonRaw.readiness, "NO_DATA"),
       source: str(exactComparisonRaw.source, "EXACT_ZONE_COMPARISON_SUMMARY_V1"),
     },
+    shadowOutcomeSummary,
     mtfObFvgShadowSummary: mtfSummary,
   };
 }

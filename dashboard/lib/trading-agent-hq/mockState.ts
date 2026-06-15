@@ -399,6 +399,8 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
       staleCycleEstimate: null,
       lastRejectReasons: [],
       sampleWarning: true,
+      // D5.2-c: no shadow outcome summary in mock (exercises the fallback path)
+      shadowOutcomeSummary: null,
       exactZoneComparisonSummary: {
         schemaVersion: 1,
         sampleTier: "NO_DATA",

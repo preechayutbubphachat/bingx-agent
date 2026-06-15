@@ -138,6 +138,31 @@ export interface RegimeTransitionDiagnosticVM {
   warning: string;
 }
 
+// D5.2-c: read-only shadow outcome (counterfactual reachability) evidence — not real trades.
+export interface ShadowOutcomeBucketVM {
+  totalSetups: number;
+  geometryReady: number;
+  noGeometry: number;
+  pending: number;
+  insufficientFutureCandles: number;
+  entryNotReached: number;
+  invalidationFirst: number;
+  entryTouched: number;
+  entryTouchRate: number | null;
+  entryNotReachedRate: number | null;
+  invalidationFirstRate: number | null;
+  targetAfterEntryTouchRate: number | null;
+  invalidationAfterEntryTouchRate: number | null;
+  timeoutAfterEntryTouchRate: number | null;
+}
+export interface ShadowOutcomeSummaryVM {
+  shadowOutcomes: ShadowOutcomeBucketVM;
+  splitByCanonicalRegime: Record<string, ShadowOutcomeBucketVM>;
+  splitByPriceVsGrid: Record<string, ShadowOutcomeBucketVM>;
+  splitByDynamicGridStatus: Record<string, ShadowOutcomeBucketVM>;
+  settings: { entryLookahead: number; exitLookahead: number };
+}
+
 export interface TrendEvidenceDecisionSummaryVM {
   available: boolean;
   totalRecords: number;
@@ -191,6 +216,8 @@ export interface TrendEvidenceDecisionSummaryVM {
     readiness: string;
     source: string;
   };
+  // D5.2-c: read-only shadow outcome evidence (null until resolver summary present)
+  shadowOutcomeSummary: ShadowOutcomeSummaryVM | null;
   mtfObFvgShadowSummary: {
     available: boolean;
     totalShadowSamples: number;

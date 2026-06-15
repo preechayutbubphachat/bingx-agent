@@ -319,6 +319,10 @@ test("old paper diagnostics payload remains valid with R1 Pack B defaults", () =
   assert.equal(d.noTradeReasonAnalysis.source, "NO_TRADE_REASON_ANALYZER_V1");
   assert.equal(d.noTradeReasonAnalysis.activationAllowed, false);
   assert.equal(d.noTradeReasonAnalysis.reviewOnly, true);
+  assert.equal(d.reviewReadinessScore.source, "REVIEW_READINESS_SCORE_V1");
+  assert.equal(d.reviewReadinessScore.scoreType, "REVIEW_READINESS_NOT_ACTIVATION");
+  assert.equal(d.reviewReadinessScore.activationAllowed, false);
+  assert.equal(d.reviewReadinessScore.reviewOnly, true);
   assert.equal(d.eventRiskContext.status, "NO_DATA");
   assert.equal(d.eventRiskContext.paperActivationAllowed, false);
   assert.equal(d.eventRiskContext.liveActivationAllowed, false);

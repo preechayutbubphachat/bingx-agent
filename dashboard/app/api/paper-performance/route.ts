@@ -32,6 +32,7 @@ import { NextResponse } from "next/server";
 import { computePaperPerformance } from "@/lib/paperPerformance";
 import { readPaperJournal } from "@/lib/readPaperJournal";
 import { buildPaperLoopDiagnostics, enrichCostGateWithGridSpacing } from "@/lib/paper/paperLoopDiagnostics";
+import { evaluateReviewReadinessScore } from "@/lib/paper/reviewReadinessScore";
 import { readRuntimeMonitorCounters } from "@/lib/paper/runtimeMonitorCounters";
 import { readLatest } from "@/lib/readLatest";
 import { buildRegimeEvidence } from "@/lib/paper/regimeEvidence";
@@ -158,11 +159,13 @@ export async function GET() {
       });
       paperLoopDiagnostics = buildPaperLoopDiagnostics(summary, runtimeCounters, {
         closedCycles: report.edgeDiagnostics?.closedCycles ?? 0,
+        edgeDiagnostics: report.edgeDiagnostics ?? null,
         costGate: {
           pass: report.costGate?.pass ?? null,
           gridSpacingPct: report.costGate?.gridSpacingPct ?? null,
           requiredMinSpacingPct: report.costGate?.requiredMinSpacingPct ?? null,
         },
+        paperDataQuality: report.paperDataQuality ?? null,
         regimeEvidence,
         canonicalMarketRegime,
         latestCanonicalMarketRegimeDiagnostic: latest?.decision?.diagnostics?.canonicalMarketRegime ?? null,
@@ -229,6 +232,16 @@ export async function GET() {
         feePct: envNumber(process.env.TREND_PAPER_FEE_PCT, 0.05),
         slippagePct: envNumber(process.env.TREND_PAPER_SLIPPAGE_PCT, 0.02),
       };
+      const diagnosticsRecord = paperLoopDiagnostics as unknown as Record<string, unknown>;
+      diagnosticsRecord.reviewReadinessScore = evaluateReviewReadinessScore({
+        edgeDiagnostics: report.edgeDiagnostics ?? null,
+        costGate,
+        paperDataQuality: report.paperDataQuality ?? null,
+        paperLoopDiagnostics: diagnosticsRecord,
+        trendPaperEvidenceRunner: diagnosticsRecord.trendPaperEvidenceRunner ?? null,
+        trendEvidenceDecisionSummary: diagnosticsRecord.trendEvidenceDecisionSummary ?? null,
+        noTradeReasonAnalysis: paperLoopDiagnostics.noTradeReasonAnalysis,
+      });
     } catch {
       paperLoopDiagnostics = null;
     }

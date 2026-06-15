@@ -68,6 +68,10 @@ import {
   evaluateNoTradeReasonAnalysis,
   type NoTradeReasonAnalysis,
 } from "./noTradeReasonAnalyzer.ts";
+import {
+  evaluateReviewReadinessScore,
+  type ReviewReadinessScore,
+} from "./reviewReadinessScore.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
@@ -93,6 +97,7 @@ export interface PaperLoopDiagnostics {
   lastNoTradeReason: string | null;
   noTradeReasonCounts: Record<string, number>;
   noTradeReasonAnalysis: NoTradeReasonAnalysis;
+  reviewReadinessScore: ReviewReadinessScore;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -198,6 +203,10 @@ export interface PaperLoopDiagnosticsContext {
   trendPaperArmSession?: TrendPaperArmSession | null;
   noTradeDiagnostics?: unknown;
   noTradeReasons?: unknown;
+  edgeDiagnostics?: unknown;
+  paperDataQuality?: unknown;
+  trendEvidenceDecisionSummary?: unknown;
+  trendPaperEvidenceRunner?: unknown;
 }
 
 export type CostGateGridSpacingSource =
@@ -903,6 +912,17 @@ export function buildPaperLoopDiagnostics(
     paperActivationAllowed: false,
     liveActivationAllowed: false,
   });
+  const reviewReadinessScore = evaluateReviewReadinessScore({
+    edgeDiagnostics: context.edgeDiagnostics ?? { closedCycles },
+    costGate: context.costGate,
+    paperDataQuality: context.paperDataQuality,
+    sellFillCount: summary.sellFillCount,
+    trendEdgeReview,
+    trendStrategy,
+    trendPaperEvidenceRunner: context.trendPaperEvidenceRunner,
+    trendEvidenceDecisionSummary: context.trendEvidenceDecisionSummary,
+    noTradeReasonAnalysis,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -925,6 +945,7 @@ export function buildPaperLoopDiagnostics(
     lastNoTradeReason,
     noTradeReasonCounts,
     noTradeReasonAnalysis,
+    reviewReadinessScore,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

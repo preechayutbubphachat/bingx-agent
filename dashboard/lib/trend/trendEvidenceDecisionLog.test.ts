@@ -126,6 +126,9 @@ test("old log records without snapshots still parse and return empty shadow summ
     assert.equal(s.shadowOutcomeQualityGate.readiness, "REVIEW_NOT_ACTIVATION");
     assert.equal(s.shadowOutcomeQualityGate.activationAllowed, false);
     assert.equal(s.shadowOutcomeQualityGate.reviewOnly, true);
+    assert.equal(s.shadowEvidenceCoverage.status, "NOT_READY");
+    assert.equal(s.shadowEvidenceCoverage.activationAllowed, false);
+    assert.equal(s.shadowEvidenceCoverage.reviewOnly, true);
   });
 });
 
@@ -183,6 +186,9 @@ test("snapshot record is appended and summarized", async () => {
     assert.equal(s.shadowOutcomeQualityGate.source, "SHADOW_OUTCOME_QUALITY_GATE_V1");
     assert.equal(s.shadowOutcomeQualityGate.status, "EARLY_SAMPLE");
     assert.equal(s.shadowOutcomeQualityGate.activationAllowed, false);
+    assert.equal(s.shadowEvidenceCoverage.source, "SHADOW_EVIDENCE_COVERAGE_V1");
+    assert.equal(s.shadowEvidenceCoverage.status, "NOT_READY");
+    assert.equal(s.shadowEvidenceCoverage.requirementsTotal, 7);
   });
 });
 

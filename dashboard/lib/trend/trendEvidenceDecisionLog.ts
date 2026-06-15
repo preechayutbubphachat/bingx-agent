@@ -36,6 +36,11 @@ import {
   evaluateShadowOutcomeQualityGate,
   type ShadowOutcomeQualityGate,
 } from "./shadowOutcomeQualityGate.ts";
+import {
+  emptyShadowEvidenceCoverageTracker,
+  evaluateShadowEvidenceCoverage,
+  type ShadowEvidenceCoverageTracker,
+} from "./shadowEvidenceCoverageTracker.ts";
 
 export const TREND_EVIDENCE_DECISION_LOG_SCHEMA_VERSION = 1;
 export const TREND_EVIDENCE_DECISION_LOG_FILE_NAME = "trend_paper_evidence_decisions.jsonl";
@@ -106,6 +111,8 @@ export interface TrendEvidenceDecisionSummary {
   shadowOutcomeSummary: ShadowOutcomeSummary;
   /** D5.2-d read-only sample/context quality gate. Never read by runner/decision logic. */
   shadowOutcomeQualityGate: ShadowOutcomeQualityGate;
+  /** D5.3 read-only evidence coverage tracker. Never read by runner/decision logic. */
+  shadowEvidenceCoverage: ShadowEvidenceCoverageTracker;
 }
 
 export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummary {
@@ -127,6 +134,7 @@ export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummar
     exactZoneComparisonSummary: emptyExactZoneComparisonSummary(),
     shadowOutcomeSummary: emptyShadowOutcomeSummary(),
     shadowOutcomeQualityGate: emptyShadowOutcomeQualityGate(),
+    shadowEvidenceCoverage: emptyShadowEvidenceCoverageTracker(),
   };
 }
 
@@ -344,6 +352,7 @@ export async function readTrendEvidenceDecisionLogSummary(
   const shadowOutcomeSummary = summarizeShadowOutcomes(records, {
     candlesByTimeframe: options.candlesByTimeframe,
   });
+  const shadowOutcomeQualityGate = evaluateShadowOutcomeQualityGate(shadowOutcomeSummary);
 
   return {
     available: true,
@@ -364,7 +373,8 @@ export async function readTrendEvidenceDecisionLogSummary(
       candlesByTimeframe: options.candlesByTimeframe,
     }),
     shadowOutcomeSummary,
-    shadowOutcomeQualityGate: evaluateShadowOutcomeQualityGate(shadowOutcomeSummary),
+    shadowOutcomeQualityGate,
+    shadowEvidenceCoverage: evaluateShadowEvidenceCoverage(shadowOutcomeQualityGate),
   };
 }
 

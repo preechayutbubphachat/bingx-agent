@@ -68,6 +68,7 @@ import RejectionAnalysisCard from "./RejectionAnalysisCard";
 import RrDrilldownCard from "./RrDrilldownCard";
 import MtfObFvgShadowCard from "./MtfObFvgShadowCard";
 import ShadowOutcomeSummaryCard from "./ShadowOutcomeSummaryCard";
+import ReviewReadinessNextStepCard from "./ReviewReadinessNextStepCard";
 import TradingCafeBottomPanels from "./TradingCafeBottomPanels";
 
 const STATUS_FILTERS: ("all" | TileStatusCategory)[] = ["all", "working", "waiting", "notready"];
@@ -407,6 +408,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
               </p>
             )}
           </section>
+
+          <ReviewReadinessNextStepCard paper={vm.paper} />
 
           {/* Expanded cards (UI-1 behavior preserved) */}
           {wrap("systemStatus", systemStatusNode)}

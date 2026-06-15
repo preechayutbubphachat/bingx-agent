@@ -38,6 +38,105 @@ function mapSafety(ph: AnyObj): SafetyVM {
   };
 }
 
+function mapReviewDimension(raw: AnyObj): PaperVM["reviewReadinessScore"]["dimensions"]["grid"] {
+  return {
+    status: str(raw.status, "NO_DATA"),
+    score: num(raw.score, 0),
+    weight: num(raw.weight, 0),
+    weightedScore: num(raw.weightedScore, 0),
+    drivers: strArray(raw.drivers),
+  };
+}
+
+function emptyReviewDimension(weight: number): PaperVM["reviewReadinessScore"]["dimensions"]["grid"] {
+  return {
+    status: "NO_DATA",
+    score: 0,
+    weight,
+    weightedScore: 0,
+    drivers: [],
+  };
+}
+
+function mapReviewReadinessScore(raw: AnyObj): PaperVM["reviewReadinessScore"] {
+  const dims = obj(raw.dimensions);
+  const hasData = Object.keys(raw).length > 0;
+  return {
+    available: hasData,
+    overallScore: numOrNull(raw.overallScore),
+    overallStatus: strOrNull(raw.overallStatus),
+    scoreType: strOrNull(raw.scoreType),
+    tag: strOrNull(raw.tag),
+    activationAllowed: boolOrNull(raw.activationAllowed),
+    reviewOnly: boolOrNull(raw.reviewOnly),
+    disclaimer: strOrNull(raw.disclaimer),
+    dimensions: {
+      grid: Object.keys(obj(dims.grid)).length ? mapReviewDimension(obj(dims.grid)) : emptyReviewDimension(35),
+      shadow: Object.keys(obj(dims.shadow)).length ? mapReviewDimension(obj(dims.shadow)) : emptyReviewDimension(35),
+      trend: Object.keys(obj(dims.trend)).length ? mapReviewDimension(obj(dims.trend)) : emptyReviewDimension(20),
+      noTradeExplanation: Object.keys(obj(dims.noTradeExplanation)).length
+        ? mapReviewDimension(obj(dims.noTradeExplanation))
+        : emptyReviewDimension(10),
+    },
+  };
+}
+
+function mapShadowEvidenceCoverage(raw: AnyObj): PaperVM["shadowEvidenceCoverage"] {
+  if (!Object.keys(raw).length) return null;
+  const requirements = Array.isArray(raw.requirements)
+    ? raw.requirements.map((item) => {
+        const r = obj(item);
+        return {
+          id: str(r.id, "UNKNOWN"),
+          met: bool(r.met),
+          current: num(r.current, 0),
+          target: num(r.target, 0),
+          remaining: num(r.remaining, 0),
+          unit: str(r.unit, "samples"),
+          note: str(r.note, ""),
+        };
+      })
+    : [];
+  const milestone = obj(raw.nextEvidenceMilestone);
+  return {
+    status: str(raw.status, "NO_DATA"),
+    coverageScore: num(raw.coverageScore, 0),
+    requirementsMet: num(raw.requirementsMet, 0),
+    requirementsTotal: num(raw.requirementsTotal, 0),
+    requirements,
+    nextEvidenceMilestone: Object.keys(milestone).length
+      ? {
+          id: str(milestone.id, "UNKNOWN"),
+          remaining: num(milestone.remaining, 0),
+          unit: str(milestone.unit, "samples"),
+          description: str(milestone.description, ""),
+        }
+      : null,
+  };
+}
+
+function mapNoTradeReasonAnalysis(raw: AnyObj): PaperVM["noTradeReasonAnalysis"] {
+  if (!Object.keys(raw).length) return null;
+  const primary = obj(raw.primaryReason);
+  return {
+    status: str(raw.status, "NO_DIAGNOSTICS"),
+    activationAllowed: bool(raw.activationAllowed),
+    reviewOnly: bool(raw.reviewOnly),
+    activationBlocked: bool(raw.activationBlocked),
+    gridBlocked: bool(raw.gridBlocked),
+    trendBlocked: bool(raw.trendBlocked),
+    diagnosticsGap: bool(raw.diagnosticsGap),
+    primaryReason: Object.keys(primary).length
+      ? {
+          code: str(primary.code, "UNKNOWN"),
+          category: str(primary.category, "UNKNOWN"),
+          label: str(primary.label, "Unknown blocker"),
+        }
+      : null,
+    tag: strOrNull(raw.tag),
+  };
+}
+
 function mapTrendZoneCandidate(raw: unknown): TrendZoneCandidateVM | null {
   if (!raw || typeof raw !== "object") return null;
   const t = raw as AnyObj;
@@ -98,6 +197,10 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const volBaselineDiagnostic = obj(loop.volBaselineDiagnostic);
   const eventRiskContext = obj(loop.eventRiskContext ?? perf.newsContextSummary);
   const regimeTransitionDiagnostic = obj(loop.regimeTransitionDiagnostic);
+  const reviewReadinessScore = obj(loop.reviewReadinessScore);
+  const decisionSummaryRaw = obj(loop.trendEvidenceDecisionSummary);
+  const shadowEvidenceCoverage = obj(decisionSummaryRaw.shadowEvidenceCoverage);
+  const noTradeReasonAnalysis = obj(loop.noTradeReasonAnalysis);
   const canonicalFreshness = obj(canonicalRegime.sourceFreshness);
   const canonicalCompleteness = obj(canonicalRegime.evidenceCompleteness);
   const dynamicGrid = obj(loop.dynamicGrid);
@@ -296,6 +399,9 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendPaperArmSession: mapTrendPaperArmSession(obj(loop.trendPaperArmSession)),
     trendPaperArmIntentBridge: mapTrendPaperArmIntentBridge(obj(loop.trendPaperArmIntentBridge)),
     trendPaperEvidenceRunner: mapTrendPaperEvidenceRunner(obj(loop.trendPaperEvidenceRunner)),
+    reviewReadinessScore: mapReviewReadinessScore(reviewReadinessScore),
+    shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
+    noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),
     // T-3H-6-b: non-secret display config (read-only)
     trendPaperConfigPublic: {

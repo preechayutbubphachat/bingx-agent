@@ -85,6 +85,9 @@ export interface PaperVM {
   trendPaperArmSession: TrendPaperArmSessionVM;
   trendPaperArmIntentBridge: TrendPaperArmIntentBridgeVM;
   trendPaperEvidenceRunner: TrendPaperEvidenceRunnerVM;
+  reviewReadinessScore: ReviewReadinessScoreVM;
+  shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
+  noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
   trendEvidenceDecisionSummary: TrendEvidenceDecisionSummaryVM;
   // T-3H-6-b: non-secret display config for RR drilldown (read-only exposure; env is still the source)
@@ -114,6 +117,62 @@ export interface CostGateBreakdownVM {
   status: "NO_DATA" | "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
   spacingBufferRatio: number | null;
   feeGrindRisk: "NO_DATA" | "HEALTHY_BUFFER" | "THIN_BUFFER" | "FEE_GRIND_RISK" | "COST_GATE_FAIL";
+}
+
+export interface ReviewReadinessDimensionVM {
+  status: string;
+  score: number;
+  weight: number;
+  weightedScore: number;
+  drivers: string[];
+}
+
+export interface ShadowEvidenceCoverageRequirementVM {
+  id: string;
+  met: boolean;
+  current: number;
+  target: number;
+  remaining: number;
+  unit: string;
+  note: string;
+}
+
+export interface ShadowEvidenceCoverageVM {
+  status: string;
+  coverageScore: number;
+  requirementsMet: number;
+  requirementsTotal: number;
+  requirements: ShadowEvidenceCoverageRequirementVM[];
+  nextEvidenceMilestone: {
+    id: string;
+    remaining: number;
+    unit: string;
+    description: string;
+  } | null;
+}
+
+export interface NoTradeReasonAnalysisVM {
+  status: string;
+  activationAllowed: boolean;
+  reviewOnly: boolean;
+  activationBlocked: boolean;
+  gridBlocked: boolean;
+  trendBlocked: boolean;
+  diagnosticsGap: boolean;
+  primaryReason: { code: string; category: string; label: string } | null;
+  tag: string | null;
+}
+
+export interface ReviewReadinessScoreVM {
+  available: boolean;
+  overallScore: number | null;
+  overallStatus: string | null;
+  scoreType: string | null;
+  tag: string | null;
+  activationAllowed: boolean | null;
+  reviewOnly: boolean | null;
+  disclaimer: string | null;
+  dimensions: Record<"grid" | "shadow" | "trend" | "noTradeExplanation", ReviewReadinessDimensionVM>;
 }
 
 // T-3H-6-a — aggregated view of the append-only decision log. Pure display data.

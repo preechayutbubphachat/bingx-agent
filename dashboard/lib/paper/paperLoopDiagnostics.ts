@@ -64,6 +64,10 @@ import {
   type TrendPaperArmIntentBridgeResult,
 } from "../trend/trendPaperArmIntentBridge.ts";
 import { buildRegimeEvidence, type RegimeEvidence } from "./regimeEvidence.ts";
+import {
+  evaluateNoTradeReasonAnalysis,
+  type NoTradeReasonAnalysis,
+} from "./noTradeReasonAnalyzer.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
@@ -88,6 +92,7 @@ export interface PaperLoopDiagnostics {
   paperLoopState: string;
   lastNoTradeReason: string | null;
   noTradeReasonCounts: Record<string, number>;
+  noTradeReasonAnalysis: NoTradeReasonAnalysis;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -191,6 +196,8 @@ export interface PaperLoopDiagnosticsContext {
   trendPaperJournalSnapshot?: TrendPaperJournalSnapshot | null;
   trendPaperExecutionConfig?: TrendPaperExecutionConfig | null;
   trendPaperArmSession?: TrendPaperArmSession | null;
+  noTradeDiagnostics?: unknown;
+  noTradeReasons?: unknown;
 }
 
 export type CostGateGridSpacingSource =
@@ -851,6 +858,52 @@ export function buildPaperLoopDiagnostics(
     edgeReview: trendEdgeReview,
   });
 
+  const dynamicGridDiagnostics = {
+    enabled: dg != null,
+    status: dg?.status ?? "NO_TRADE",
+    reason: dg?.reason ?? "no current price in journal",
+    dynamicGridLower: dg?.dynamicGridLower ?? null,
+    dynamicGridUpper: dg?.dynamicGridUpper ?? null,
+    dynamicGridMid: dg?.dynamicGridMid ?? null,
+    gridWidthPct: dg?.gridWidthPct ?? null,
+    spacingPct: dg?.spacingPct ?? null,
+    gridCount: dg?.gridCount ?? 10,
+    confidence: dg?.confidence ?? "low",
+    cooldownRequired: dg?.cooldownRequired ?? true,
+    candidate,
+  };
+  const runtimeMonitor = {
+    ...counters,
+    sampleBuyFillCount: summary.buyFillCount,
+    sampleSellFillCount: summary.sellFillCount,
+    buyCountStable,
+    noTradeIncreasing,
+    regridCandidateIncreasing,
+    activationAllowed,
+    priceVsGrid,
+    paperLoopState,
+    monitorStatus,
+    monitorSummary,
+  };
+  const noTradeReasonAnalysis = evaluateNoTradeReasonAnalysis({
+    noTradeDiagnostics: context.noTradeDiagnostics,
+    noTradeReasons: context.noTradeReasons ?? Object.keys(noTradeReasonCounts),
+    runtimeMonitor,
+    dynamicGrid: dynamicGridDiagnostics,
+    regridReadiness,
+    priceVsGrid,
+    paperLoopState,
+    trendStrategy,
+    trendManualPaperArmGate,
+    trendManualPaperArmGateRaw: trendManualPaperArmGate,
+    trendManualPaperArmGateEffective,
+    trendPaperExecutionPreflight,
+    trendPaperExecutionEngine,
+    activationAllowed,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+  });
+
   return {
     sampleBuyFillCount: summary.buyFillCount,
     sampleSellFillCount: summary.sellFillCount,
@@ -871,33 +924,9 @@ export function buildPaperLoopDiagnostics(
     paperLoopState,
     lastNoTradeReason,
     noTradeReasonCounts,
-    dynamicGrid: {
-      enabled: dg != null,
-      status: dg?.status ?? "NO_TRADE",
-      reason: dg?.reason ?? "no current price in journal",
-      dynamicGridLower: dg?.dynamicGridLower ?? null,
-      dynamicGridUpper: dg?.dynamicGridUpper ?? null,
-      dynamicGridMid: dg?.dynamicGridMid ?? null,
-      gridWidthPct: dg?.gridWidthPct ?? null,
-      spacingPct: dg?.spacingPct ?? null,
-      gridCount: dg?.gridCount ?? 10,
-      confidence: dg?.confidence ?? "low",
-      cooldownRequired: dg?.cooldownRequired ?? true,
-      candidate,
-    },
-    runtimeMonitor: {
-      ...counters,
-      sampleBuyFillCount: summary.buyFillCount,
-      sampleSellFillCount: summary.sellFillCount,
-      buyCountStable,
-      noTradeIncreasing,
-      regridCandidateIncreasing,
-      activationAllowed,
-      priceVsGrid,
-      paperLoopState,
-      monitorStatus,
-      monitorSummary,
-    },
+    noTradeReasonAnalysis,
+    dynamicGrid: dynamicGridDiagnostics,
+    runtimeMonitor,
     regridReadiness,
     paperEpoch,
     regimeEvidence,

@@ -316,12 +316,52 @@ test("OBS-D regime transition diagnostic is static NOT_CONFIGURED", () => {
 test("old paper diagnostics payload remains valid with R1 Pack B defaults", () => {
   const d = buildPaperLoopDiagnostics(summary({ recentEvents: [] }));
 
+  assert.equal(d.noTradeReasonAnalysis.source, "NO_TRADE_REASON_ANALYZER_V1");
+  assert.equal(d.noTradeReasonAnalysis.activationAllowed, false);
+  assert.equal(d.noTradeReasonAnalysis.reviewOnly, true);
   assert.equal(d.eventRiskContext.status, "NO_DATA");
   assert.equal(d.eventRiskContext.paperActivationAllowed, false);
   assert.equal(d.eventRiskContext.liveActivationAllowed, false);
   assert.equal(d.regimeTransitionDiagnostic.status, "NOT_CONFIGURED");
   assert.equal(d.regimeTransitionDiagnostic.hasHistoryStore, false);
   assert.equal(d.regimeTransitionDiagnostic.hysteresisActive, false);
+});
+
+test("D5.4 no-trade reason analysis surfaces diagnostics gap and runtime counters", () => {
+  const d = buildPaperLoopDiagnostics(
+    summary({
+      buyFillCount: 13,
+      sellFillCount: 0,
+      lastPaperEventAt: "2026-06-14T12:00:00.000Z",
+      recentEvents: [
+        ev({ gridLower: 72480, gridUpper: 78053, currentPrice: 63598.5, noTradeReason: "data_missing" }),
+      ],
+    }),
+    {
+      cumulativeBuyFillCount: 1460,
+      cumulativeSellFillCount: 0,
+      paperNoTradeCount: 3253,
+      regridCandidateCount: 3206,
+      latestFillAt: null,
+      latestNoTradeAt: "2026-06-14T12:00:00.000Z",
+      latestRegridCandidateAt: "2026-06-14T12:00:00.000Z",
+    },
+    {
+      noTradeDiagnostics: {
+        status: "missing",
+        hasNoTradeLogs: false,
+      },
+      noTradeReasons: ["data_missing"],
+    }
+  );
+
+  assert.equal(d.noTradeReasonAnalysis.status, "BOTH_PATHS_BLOCKED");
+  assert.equal(d.noTradeReasonAnalysis.primaryReason?.code, "GRID_EXPOSURE_GUARD_PAUSE");
+  assert.equal(d.noTradeReasonAnalysis.diagnosticsGap, true);
+  assert.equal(d.noTradeReasonAnalysis.counters.paperNoTradeCount, 3253);
+  assert.equal(d.noTradeReasonAnalysis.counters.regridCandidateCount, 3206);
+  assert.equal(d.noTradeReasonAnalysis.activationAllowed, false);
+  assert.equal(d.noTradeReasonAnalysis.reviewOnly, true);
 });
 
 test("runtime monitor PASS when activation is blocked and safety journals advance after fills", () => {

@@ -175,6 +175,8 @@ export async function GET() {
         trendPaperJournalSnapshot,
         trendPaperExecutionConfig,
         trendPaperArmSession: trendPaperArmSessionSnapshot?.session ?? null,
+        noTradeDiagnostics: report.noTradeDiagnostics ?? null,
+        noTradeReasons: report.noTradeReasons ?? null,
       });
       costGate = enrichCostGateWithGridSpacing(report.costGate, paperLoopDiagnostics);
       (paperLoopDiagnostics as unknown as Record<string, unknown>).newsContextSummary = safeNewsContextSummary;

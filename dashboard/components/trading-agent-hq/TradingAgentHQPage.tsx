@@ -384,7 +384,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             />
           </div>
           {/* Agent & System Status */}
-          <section className={`${normalizedPanelClass("compact")} agent-hq-status-wall p-3`}>
+          <section className={`${normalizedPanelClass("compact")} agent-hq-status-wall overflow-hidden p-3 [contain:layout_paint]`}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-[14px] font-black text-cyan-100">
                 <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-[14px]" aria-hidden="true">▦</span>
@@ -415,7 +415,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             {collapsedTiles.length ? (
               <CollapsedCardGrid tiles={collapsedTiles} onExpand={toggleCard} />
             ) : (
-              <p className="rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-4 text-center text-[11px] font-bold text-slate-500">
+              <p className="rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-center text-[11px] font-bold text-slate-400">
                 ไม่มีการ์ดที่ย่อในมุมมองนี้ — การ์ดที่ขยายแสดงอยู่ด้านล่าง
               </p>
             )}

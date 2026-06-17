@@ -251,10 +251,22 @@ body {
 
 .agent-hq-status-wall {
   border-color: rgba(34, 211, 238, 0.24);
+  isolation: isolate;
+  overflow-anchor: none;
 }
 
 .agent-hq-status-wall button {
   min-width: 0;
+}
+
+.agent-hq-collapsed-grid {
+  align-content: start;
+  grid-auto-rows: 116px;
+  scrollbar-gutter: stable;
+}
+
+.agent-hq-collapsed-grid > button {
+  transform: none !important;
 }
 
 .agent-hq-analysis-rail dl > div,
@@ -262,6 +274,14 @@ body {
 .agent-hq-analysis-rail [class*="rounded-lg"][class*="px-2"] {
   min-height: 34px;
   border-color: rgba(125, 249, 255, 0.22) !important;
+}
+
+.agent-hq-analysis-rail [class*="text-slate-500"] {
+  color: #94a3b8 !important;
+}
+
+.agent-hq-analysis-rail [class*="text-[10px]"] {
+  line-height: 1.45 !important;
 }
 
 .agent-hq-analysis-rail [class*="rounded-full"] {

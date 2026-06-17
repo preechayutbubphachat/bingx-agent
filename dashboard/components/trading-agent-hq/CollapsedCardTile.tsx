@@ -2,7 +2,7 @@
 
 // dashboard/components/trading-agent-hq/CollapsedCardTile.tsx
 // Phase UI-1.1 — a collapsed card rendered as a compact, clickable dashboard chip/tile.
-// SAFETY: presentation only. No fetch, no token, no run/live/exchange controls.
+// SAFETY: presentation only. No runtime side effects or control surfaces.
 
 import type { CardSnapshot, CardUpdateSeverity } from "@/lib/trading-agent-hq/cardUpdateSignatures";
 import { SEVERITY_BADGE_TH } from "@/lib/trading-agent-hq/cardUpdateSignatures";
@@ -80,7 +80,7 @@ export default function CollapsedCardTile({ tile, onExpand }: Props) {
       aria-expanded="false"
       aria-label={`ขยายการ์ด ${title}`}
       title={`${title} — กดเพื่อขยาย`}
-      className={`${statusTileClass()} shadow-[0_0_24px_rgba(34,211,238,0.05)] transition hover:-translate-y-0.5 ${tileSurface(severity, emphasized)}`}
+      className={`${statusTileClass()} shadow-[0_0_24px_rgba(34,211,238,0.05)] transition hover:border-cyan-300/50 ${tileSurface(severity, emphasized)}`}
     >
       <div className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
       {/* UI-2.2 mockup-style header: icon chip + title, severity dot/badge on the right */}

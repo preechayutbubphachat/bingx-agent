@@ -350,8 +350,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       sidebar={<TradingCafeSidebar activeId="dashboard" />}
       topbar={<TradingCafeTopBar live={live} lastUpdate={vm.meta.lastUpdate} safety={vm.safety} onRefresh={refresh} />}
     >
-      <div className="grid min-h-0 grid-cols-1 gap-4 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-w-0 flex-col gap-4 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:pr-2 scrollbar-thin">
+      <div className="grid min-h-0 grid-cols-1 gap-4 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="flex min-w-0 flex-col gap-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-2 lg:pb-6 scrollbar-thin">
           {/* Strong, always-visible safety banner */}
           <SafetyStatusStrip vm={vm} state={state} error={error} live={live} onRefresh={refresh} />
 
@@ -384,7 +384,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             />
           </div>
           {/* Agent & System Status */}
-          <section className={`${normalizedPanelClass("standard")} agent-hq-status-wall p-3`}>
+          <section className={`${normalizedPanelClass("compact")} agent-hq-status-wall p-3`}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-[14px] font-black text-cyan-100">
                 <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-[14px]" aria-hidden="true">▦</span>

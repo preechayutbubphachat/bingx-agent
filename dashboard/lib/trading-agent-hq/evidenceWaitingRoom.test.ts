@@ -5,6 +5,8 @@ import assert from "node:assert/strict";
 import {
   buildEvidenceWaitingRoomModel,
   evidenceRequirementLabel,
+  evidenceTooltip,
+  reviewProgressTone,
   reviewReadinessStage,
   reviewStatusLabelTh,
 } from "./evidenceWaitingRoom.ts";
@@ -99,6 +101,13 @@ test("model exposes missing requirements, current blocker, and safety locks", ()
   const model = buildEvidenceWaitingRoomModel(paper(score(23)));
   assert.equal(model.scoreText, "23/100");
   assert.equal(model.stage.label, "เก็บข้อมูลต่อ");
+  assert.equal(
+    model.compactSummary,
+    "ตอนนี้อยู่โหมดเก็บข้อมูลต่อ · สิ่งที่ต้องรออันดับแรก: ราคาแตะ Entry · ยังไม่ใช่สัญญาณเปิดเทรด",
+  );
+  assert.equal(model.progress.label, "เก็บข้อมูลต่อ");
+  assert.equal(model.progress.percent, 23);
+  assert.equal(model.tone, "not-ready");
   assert.deepEqual(model.missingRequirements.map((r) => r.text), [
     "ตลาด RANGE: ขาด 6 samples",
     "ราคาแตะ Entry: ขาด 3 samples",
@@ -107,6 +116,42 @@ test("model exposes missing requirements, current blocker, and safety locks", ()
   assert.equal(model.blocker.details.priceVsGrid, "BELOW_GRID");
   assert.ok(model.safetyLocks.includes("activationAllowed=false"));
   assert.ok(model.safetyLocks.includes("Order placement = OFF"));
+});
+
+test("compact summary and tone follow review thresholds without implying activation", () => {
+  const partial = buildEvidenceWaitingRoomModel(paper(score(45, { overallStatus: "PARTIAL_REVIEW" })));
+  assert.equal(partial.compactSummary, "เริ่มมีข้อมูลให้รีวิวบางส่วน · ยังต้องรอหลักฐานเพิ่ม · ยังไม่ใช่ Activation");
+  assert.equal(partial.progress.label, "เริ่มรีวิวบางส่วน");
+  assert.equal(partial.tone, "partial-review");
+
+  const ready = buildEvidenceWaitingRoomModel(
+    paper(score(72, { overallStatus: "READY_FOR_REVIEW", dimensions: { grid: dim(12), shadow: dim(8), trend: dim(0), noTradeExplanation: dim(60) } })),
+  );
+  assert.equal(ready.compactSummary, "พร้อมให้มนุษย์รีวิวหลักฐาน · ยังไม่ใช่สัญญาณเปิดเทรด · ต้องรอ Operator Review");
+  assert.equal(ready.progress.label, "พร้อมให้คนรีวิว");
+  assert.equal(ready.tone, "ready-review");
+  assert.equal(reviewProgressTone("READY_FOR_REVIEW"), "ready-review");
+});
+
+test("compact summary falls back safely when next milestone is missing", () => {
+  const model = buildEvidenceWaitingRoomModel({
+    ...paper(score(23)),
+    shadowEvidenceCoverage: {
+      ...paper(score(23)).shadowEvidenceCoverage!,
+      nextEvidenceMilestone: null,
+    },
+  });
+  assert.equal(model.compactSummary, "ตอนนี้อยู่โหมดเก็บข้อมูลต่อ · รอ evidence เพิ่ม · ยังไม่ใช่สัญญาณเปิดเทรด");
+});
+
+test("technical terms expose Thai tooltip copy", () => {
+  assert.equal(
+    evidenceTooltip("Review Readiness"),
+    "คะแนนความพร้อมสำหรับให้มนุษย์รีวิวหลักฐาน ไม่ใช่คะแนนสำหรับเปิดเทรด",
+  );
+  assert.equal(evidenceTooltip("Grid"), "ระบบกริด ต้องมีรอบ BUY→SELL ปิดจริงก่อนถึงจะวัด edge ได้");
+  assert.equal(evidenceTooltip("Activation"), "การอนุญาตให้ระบบเริ่มทำงานขั้นถัดไป ต้องผ่าน approval แยก ไม่ได้มาจากคะแนนนี้");
+  assert.equal(evidenceTooltip("unknown-term"), null);
 });
 
 test("model has explicit fallback copy for missing review, coverage, and blocker data", () => {

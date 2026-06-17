@@ -6,9 +6,14 @@ export type EvidenceWaitingRoomStage = {
   resultLine: string;
 };
 
+export type EvidenceWaitingRoomTone = "not-ready" | "partial-review" | "ready-review" | "blocked" | "safety-lock";
+
 export type EvidenceWaitingRoomModel = {
   scoreText: string;
   statusText: string;
+  compactSummary: string;
+  tone: EvidenceWaitingRoomTone;
+  progress: { percent: number; label: string };
   stage: EvidenceWaitingRoomStage;
   progressSteps: { label: string; status: "current" | "locked" | "future" }[];
   missingRequirements: { id: string; label: string; text: string }[];
@@ -39,6 +44,29 @@ const PROGRESS_STEPS = [
   "Live Approval / Real trading",
 ];
 
+const TOOLTIP_TEXT: Record<string, string> = {
+  "Review Readiness": "คะแนนความพร้อมสำหรับให้มนุษย์รีวิวหลักฐาน ไม่ใช่คะแนนสำหรับเปิดเทรด",
+  Grid: "ระบบกริด ต้องมีรอบ BUY→SELL ปิดจริงก่อนถึงจะวัด edge ได้",
+  Shadow: "ข้อมูลจำลอง/ข้อมูลเงา ใช้ประเมิน setup โดยไม่ส่งคำสั่งจริง",
+  Trend: "ฝั่งกลยุทธ์ตามเทรนด์ ต้องมี closed trades แยกจาก grid",
+  "No-trade": "เหตุผลที่ระบบไม่เปิดไม้ในรอบนี้ ใช้ตรวจว่าไม่เทรดเพราะอะไร",
+  RANGE: "สภาวะตลาดแกว่งในกรอบ เหมาะกับการประเมิน grid มากกว่าเทรนด์แรง",
+  "Entry-touch": "จำนวนครั้งที่ราคาวิ่งมาแตะโซนเข้า ถ้าน้อยเกินไปยังสรุปผล target/invalidation ไม่ได้",
+  "UNKNOWN context": "ข้อมูลที่ยังไม่มีบริบทตลาดครบ ต้องลดสัดส่วนนี้ก่อน review",
+  "Price context": "บริบทของราคากับกริด เช่น BELOW_GRID, INSIDE_GRID, ABOVE_GRID",
+  "Dynamic Grid context": "สถานะของ dynamic grid เช่น PAUSE_EXPOSURE_LIMIT หรือ READY",
+  "Grid Exposure Guard": "ตัวป้องกันไม่ให้กริดเปิดไม้เพิ่มตอนมี BUY exposure ฝั่งเดียวและยังไม่มี SELL ปิดรอบ",
+  Activation: "การอนุญาตให้ระบบเริ่มทำงานขั้นถัดไป ต้องผ่าน approval แยก ไม่ได้มาจากคะแนนนี้",
+  Live: "การเทรดเงินจริง ยังปิดอยู่และต้องมี manual approval แยก",
+  Order: "คำสั่งซื้อขายจริงหรือ paper order ใหม่ การ์ดนี้ไม่มีสิทธิ์ส่ง order",
+  "M-0B": "ด่านปลดล็อก production readiness ยัง BLOCKED จนกว่า evidence ครบ",
+  "Phase 2-B": "ขั้น paper activation/regrid review ยัง BLOCKED จนกว่า operator approve",
+};
+
+export function evidenceTooltip(term: string): string | null {
+  return TOOLTIP_TEXT[term] ?? null;
+}
+
 export function reviewStatusLabelTh(status: string | null | undefined): string {
   if (status === "NOT_READY") return "ยังไม่พร้อม";
   if (status === "PARTIAL_REVIEW") return "พร้อมรีวิวบางส่วน";
@@ -56,13 +84,14 @@ export function dimensionStatusLabelTh(status: string | null | undefined): strin
 }
 
 export function evidenceRequirementLabel(id: string): string {
-  if (id === "range_subset") return "ตลาด RANGE";
-  if (id === "entry_touch") return "ราคาแตะ Entry";
-  if (id === "price_context_diversity") return "Price context";
-  if (id === "dynamic_grid_diversity") return "Dynamic Grid context";
-  if (id === "unknown_context_dilution") return "ลด UNKNOWN context";
-  if (id === "context_ready_setups") return "Context-ready setups";
-  if (id === "context_ready_resolved") return "Context-ready resolved";
+  const normalized = id.toLowerCase();
+  if (normalized === "range_subset") return "ตลาด RANGE";
+  if (normalized === "entry_touch") return "ราคาแตะ Entry";
+  if (normalized === "price_context_diversity") return "เพิ่ม Price Context ให้หลากหลายขึ้น";
+  if (normalized === "dynamic_grid_diversity") return "Dynamic Grid context";
+  if (normalized === "unknown_context_dilution") return "ลด UNKNOWN context";
+  if (normalized === "context_ready_setups") return "Context-ready setups";
+  if (normalized === "context_ready_resolved") return "Context-ready resolved";
   return id;
 }
 
@@ -74,6 +103,46 @@ function unitLabel(unit: string): string {
 
 function safeNumber(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function clampScore(value: number | null): number {
+  if (value == null) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+export function reviewProgressTone(status: string | null | undefined, score?: number | null): EvidenceWaitingRoomTone {
+  if (status === "READY_FOR_REVIEW") return "ready-review";
+  if (status === "PARTIAL_REVIEW") return "partial-review";
+  const overallScore = safeNumber(score ?? null);
+  if (overallScore != null && overallScore >= 70) return "ready-review";
+  if (overallScore != null && overallScore >= 40) return "partial-review";
+  return "not-ready";
+}
+
+function progressLabel(score: number): string {
+  if (score >= 70) return "พร้อมให้คนรีวิว";
+  if (score >= 40) return "เริ่มรีวิวบางส่วน";
+  return "เก็บข้อมูลต่อ";
+}
+
+function compactSummary(
+  score: PaperVM["reviewReadinessScore"],
+  milestone: PaperVM["shadowEvidenceCoverage"] extends infer Coverage
+    ? Coverage extends { nextEvidenceMilestone: infer Milestone }
+      ? Milestone
+      : never
+    : never,
+): string {
+  const overallScore = safeNumber(score.overallScore);
+  if (overallScore != null && overallScore >= 70) {
+    return "พร้อมให้มนุษย์รีวิวหลักฐาน · ยังไม่ใช่สัญญาณเปิดเทรด · ต้องรอ Operator Review";
+  }
+  if (overallScore != null && overallScore >= 40) {
+    return "เริ่มมีข้อมูลให้รีวิวบางส่วน · ยังต้องรอหลักฐานเพิ่ม · ยังไม่ใช่ Activation";
+  }
+  const milestoneId = milestone && typeof milestone === "object" && "id" in milestone ? String(milestone.id) : null;
+  const waitLabel = milestoneId ? `สิ่งที่ต้องรออันดับแรก: ${evidenceRequirementLabel(milestoneId)}` : "รอ evidence เพิ่ม";
+  return `ตอนนี้อยู่โหมดเก็บข้อมูลต่อ · ${waitLabel} · ยังไม่ใช่สัญญาณเปิดเทรด`;
 }
 
 export function reviewReadinessStage(score: PaperVM["reviewReadinessScore"]): EvidenceWaitingRoomStage {
@@ -149,10 +218,14 @@ export function buildEvidenceWaitingRoomModel(paper: PaperVM): EvidenceWaitingRo
   const missing = paper.shadowEvidenceCoverage?.requirements.filter((req) => !req.met) ?? [];
   const primary = paper.noTradeReasonAnalysis?.primaryReason ?? null;
   const milestone = paper.shadowEvidenceCoverage?.nextEvidenceMilestone ?? null;
+  const progressPercent = clampScore(safeNumber(score.overallScore));
 
   return {
     scoreText: score.available && safeNumber(score.overallScore) != null ? `${score.overallScore}/100` : "ยังไม่มีข้อมูล Review Readiness",
     statusText: reviewStatusLabelTh(score.overallStatus),
+    compactSummary: compactSummary(score, milestone),
+    tone: reviewProgressTone(score.overallStatus, score.overallScore),
+    progress: { percent: progressPercent, label: progressLabel(progressPercent) },
     stage,
     progressSteps: progressSteps(stage),
     missingRequirements: missing.map((req) => ({

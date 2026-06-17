@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/viewModel";
 import { buildAgentProgressions } from "@/lib/trading-agent-hq/progression";
+import { buildMissionControlSummary } from "@/lib/trading-agent-hq/missionControl";
 import { useTradingAgentHQ } from "@/lib/trading-agent-hq/useTradingAgentHQ";
 import { useAgentAnimations } from "@/lib/trading-agent-hq/useAgentAnimations";
 import {
@@ -109,8 +110,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
   const [lastSeen, setLastSeen] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<AgentHqViewFilter>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | TileStatusCategory>("all");
+  const [previousSnapshots, setPreviousSnapshots] = useState<Record<string, CardSnapshot>>({});
   const hydratedRef = useRef(false);
-  const prevSnapshots = useRef<Record<string, CardSnapshot>>({});
 
   // Build read-only snapshots once per VM change.
   const snapshots = useMemo(() => {
@@ -160,7 +161,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
   // Track previous snapshots for transition-based severity.
   useEffect(() => {
-    prevSnapshots.current = snapshots;
+    setPreviousSnapshots(snapshots);
   }, [snapshots]);
 
   const animKeys = useAgentAnimations(vm.agents);
@@ -183,8 +184,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
   );
 
   const liveSeverity = useCallback(
-    (id: string): CardUpdateSeverity => computeUpdateSeverity(snapshots[id], prevSnapshots.current[id]),
-    [snapshots],
+    (id: string): CardUpdateSeverity => computeUpdateSeverity(snapshots[id], previousSnapshots[id]),
+    [snapshots, previousSnapshots],
   );
 
   const cardHasUpdates = useCallback(
@@ -253,20 +254,31 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
   // KPI row — derived from existing read-only VM; null-safe, never invents market values.
   const kpiItems = useMemo<KpiItem[]>(() => {
-    const cmr = vm.paper.canonicalMarketRegime;
-    const sess = vm.paper.trendPaperArmSession;
-    const er = vm.paper.trendPaperEvidenceRunner;
-    const alertCount = (er.lastRejectReasons?.length ?? 0) + (er.stopReason ? 1 : 0);
-    const agentTotal = Object.keys(vm.agents).length;
-    return [
-      { id: "regime", label: "Market Regime", icon: "🌤️", tone: "teal", value: cmr.regime ?? "UNKNOWN", sub: `ทิศทาง ${cmr.direction ?? "—"}` },
-      { id: "agents", label: "Agents Online", icon: "🤖", tone: "green", value: `${vm.topHud.agentsActive}/${agentTotal}`, sub: "กำลังทำงาน" },
-      { id: "paper", label: "Paper Readiness", icon: "📝", tone: "info", value: `${vm.paper.closedCycles} รอบ`, sub: er.sampleStatus ?? "รอข้อมูล" },
-      { id: "sessions", label: "Active Sessions", icon: "🕒", tone: sess.active ? "amber" : "neutral", value: sess.active ? "1 ใช้งาน" : "0", sub: sess.status ?? "INACTIVE" },
-      { id: "alerts", label: "Alerts", icon: "🔔", tone: alertCount > 0 ? "red" : "green", value: String(alertCount), sub: er.stopReason ? "มี STOP" : "ปกติ" },
-      { id: "health", label: "System Health", icon: "❤️", tone: "green", value: "Paper-only", sub: vm.safety.phase },
-    ];
-  }, [vm.paper, vm.agents, vm.topHud.agentsActive, vm.safety.phase]);
+    const summary = buildMissionControlSummary(vm, "--:--:--");
+    const iconById: Record<string, string> = {
+      mission: "◈",
+      review: "◎",
+      agents: "✦",
+      alerts: "△",
+      paperMode: "▣",
+    };
+    const toneByMission: Record<string, KpiItem["tone"]> = {
+      active: "green",
+      review: "teal",
+      info: "info",
+      waiting: "amber",
+      blocked: "red",
+      neutral: "neutral",
+    };
+    return summary.kpis.map((item) => ({
+      id: item.id,
+      label: item.label,
+      value: item.value,
+      sub: item.sub,
+      icon: iconById[item.id] ?? "◇",
+      tone: toneByMission[item.tone] ?? "neutral",
+    }));
+  }, [vm]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -311,19 +323,19 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
   const goDebug = () => router.push("/public");
 
   const systemStatusNode = (
-    <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[#5b4432] shadow-sm">
+    <section className="rounded-2xl border border-amber-300/30 bg-amber-400/10 p-3 text-amber-100 shadow-[0_0_26px_rgba(245,158,11,0.08)]">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-black text-amber-900">สถานะระบบ (อ่านง่าย)</span>
-        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">ไม่ใช่ Fail</span>
-        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-800">M-0B: ถูกบล็อก</span>
+        <span className="rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black text-amber-100">สถานะระบบ / System Status</span>
+        <span className="rounded-full border border-emerald-300/40 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-black text-emerald-200">ไม่ใช่ Fail</span>
+        <span className="rounded-full border border-rose-300/40 bg-rose-400/10 px-2 py-0.5 text-[10px] font-black text-rose-200">M-0B: ถูกบล็อก</span>
       </div>
-      <p className="mt-2 text-[13px] font-bold leading-relaxed text-[#3f2f22]">
+      <p className="mt-2 text-[13px] font-bold leading-relaxed text-amber-50">
         {vm.paper.closedCycles === 0
           ? `ระบบ Paper ทำงานแล้วและมี fills แล้ว (${vm.paper.totalOrderFilled} ครั้ง) แต่ยังไม่มีรอบ BUY→SELL ที่ปิดครบ ดังนั้น M-0B ยังถูกบล็อกตามปกติ — ยังไม่ใช่ Fail และยังไม่พร้อมเปิดเงินจริง`
           : `ระบบ Paper ทำงานและเริ่มมีรอบปิดครบ (${vm.paper.closedCycles} รอบ) — ยังต้องสะสมตัวอย่างให้พอและผ่าน operator review ก่อน M-0B จะปลดบล็อก`}
       </p>
-      <p className="mt-1 text-[12px] leading-relaxed text-[#6d5745]">
-        <span className="font-black text-[#2f241b]">ขั้นตอนถัดไป: </span>
+      <p className="mt-1 text-[12px] leading-relaxed text-amber-100/80">
+        <span className="font-black text-amber-50">ขั้นตอนถัดไป: </span>
         ปล่อย paper loop รันต่อ และตรวจ raw fills ว่ามี BUY/SELL ครบหรือยัง เป้าหมายถัดไปคือ <span className="font-black">closedCycles &gt; 0</span> ·
         เกตต้นทุน: {vm.paper.costGateStatus === "PASS" ? "ผ่าน (ต้นทุน ไม่ใช่ edge)" : vm.paper.costGateStatus} ·
         เงินจริง/คำสั่งจริงต้องปิดไว้เสมอจนกว่าจะอนุมัติ
@@ -340,7 +352,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       <SafetyStatusStrip vm={vm} state={state} error={error} live={live} onRefresh={refresh} />
 
       {/* KPI summary row */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         {kpiItems.map((item) => (
           <TradingCafeKpiCard key={item.id} item={item} />
         ))}
@@ -372,11 +384,11 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-4">
           {/* Agent & System Status */}
-          <section className="rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
+          <section className="rounded-2xl border border-cyan-400/20 bg-slate-950/70 p-3 shadow-[0_0_32px_rgba(34,211,238,0.08)]">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-[14px] font-black text-[#2b2118]">
-                <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#f3e8d6] text-[14px]" aria-hidden="true">🗂️</span>
-                Agent &amp; System Status
+              <h2 className="flex items-center gap-2 text-[14px] font-black text-cyan-100">
+                <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-[14px]" aria-hidden="true">▦</span>
+                Agent &amp; System Status Wall
               </h2>
               <div className="flex flex-wrap gap-1.5">
                 {STATUS_FILTERS.map((sf) => {
@@ -390,8 +402,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
                       onClick={() => setStatusFilter(sf)}
                       className={`rounded-full border px-2.5 py-1 text-[11px] font-black transition ${
                         active
-                          ? "border-[#1f9d92] bg-[#1f9d92] text-white"
-                          : "border-[#e5d5bf] bg-[#fffaf1] text-[#7a6a59] hover:bg-[#f3e8d6]"
+                          ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.16)]"
+                          : "border-slate-700 bg-slate-900/80 text-slate-400 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-100"
                       }`}
                     >
                       {label}
@@ -403,7 +415,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             {collapsedTiles.length ? (
               <CollapsedCardGrid tiles={collapsedTiles} onExpand={toggleCard} />
             ) : (
-              <p className="rounded-lg border border-[#e5d5bf] bg-white/60 px-3 py-4 text-center text-[11px] font-bold text-[#9a8a72]">
+              <p className="rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-4 text-center text-[11px] font-bold text-slate-500">
                 ไม่มีการ์ดที่ย่อในมุมมองนี้ — การ์ดที่ขยายแสดงอยู่ด้านล่าง
               </p>
             )}
@@ -439,20 +451,21 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           {wrap("trendEdgeReview", <TrendEdgeReviewCard paper={vm.paper} />)}
 
           {/* Command Floor — Cafe Floor remains the pinned, always-visible anchor */}
-          <section className="relative min-w-0 rounded-xl border border-[#e5d5bf] bg-[#fff7ea] p-3 shadow-sm">
+          <section className="relative min-w-0 overflow-hidden rounded-2xl border border-fuchsia-400/25 bg-slate-950/70 p-3 shadow-[0_0_40px_rgba(217,70,239,0.12)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-300/70 to-transparent" />
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#3a2c1c] text-[17px] text-[#f4e9d4]" aria-hidden="true">☕</span>
+                <span className="grid h-9 w-9 place-items-center rounded-xl border border-fuchsia-300/50 bg-fuchsia-400/10 text-[17px] text-fuchsia-100" aria-hidden="true">◇</span>
                 <div>
-                  <h2 className="text-[15px] font-black text-[#2b2118]">Trading Cafe HQ – Command Floor</h2>
-                  <p className="text-[11px] text-[#7a6a59]">คลิกที่ Agent เพื่อดูรายละเอียด · ดับเบิลคลิกเพื่อเปิดแดชบอร์ดคลาสสิก</p>
+                  <h2 className="text-[15px] font-black text-white">Trading Cafe HQ / Visual Command Floor</h2>
+                  <p className="text-[11px] text-slate-400">คลิกที่ Agent เพื่อดูรายละเอียด · visual layer เท่านั้น ไม่ส่งคำสั่ง</p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-[#e5d5bf] bg-[#fffaf1] px-2 py-1 text-[10px] font-black text-[#7a6a59]">โหมดจำลอง</span>
-                <span className="rounded-full border border-[#e5d5bf] bg-[#fffaf1] px-2 py-1 text-[10px] font-black text-[#7a6a59]">Command View</span>
-                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-800">📌 ปักหมุด · แสดงตลอด</span>
-                <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">
+                <span className="rounded-full border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-[10px] font-black text-cyan-100">โหมดจำลอง</span>
+                <span className="rounded-full border border-fuchsia-300/40 bg-fuchsia-400/10 px-2 py-1 text-[10px] font-black text-fuchsia-100">Command View</span>
+                <span className="rounded-full border border-emerald-300/40 bg-emerald-400/10 px-2 py-1 text-[10px] font-black text-emerald-200">Pinned · แสดงตลอด</span>
+                <span className="rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-1 text-[10px] font-black text-amber-200">
                   closedCycles={vm.paper.closedCycles} | {edgeStatusLabel(vm.paper.edgeStatus)}
                 </span>
               </div>
@@ -460,7 +473,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_340px]">
               <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />
-              <div className="min-w-0 rounded-lg border border-[#e5d5bf] bg-[#fff4df] p-2">
+              <div className="min-w-0 rounded-xl border border-cyan-400/20 bg-slate-900/80 p-2">
                 <SceneCanvas
                   vm={vm}
                   animKeys={animKeys}
@@ -495,7 +508,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         </div>
 
         {/* Right Risk Manager rail (sticky on xl, stacks below on smaller screens) */}
-        <div className="flex flex-col gap-3 xl:sticky xl:top-[84px] xl:self-start">
+        <div className="flex flex-col gap-3 xl:sticky xl:top-[84px] xl:self-start [&>section]:border-cyan-400/20 [&>section]:bg-slate-950/70 [&>section]:text-slate-100 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100">
           {/* UI-2.1 Task C: read-only runner heartbeat (existing VM fields only) */}
           <EvidencePilotHealthCard paper={vm.paper} />
           {/* T-3H-6-a: read-only rejection frequency summary (observe only) */}
@@ -510,7 +523,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         </div>
       </div>
 
-      <p className="px-1 text-[11px] text-[#9a8a72]">
+      <p className="px-1 text-[11px] text-slate-500">
         TradingAgentHQ เป็นเลเยอร์แสดงผลแบบอ่านอย่างเดียว — ไม่ส่งคำสั่งเทรด ไม่อนุมัติความเสี่ยง ไม่เปิดเงินจริง และไม่เขียนไฟล์ runtime
         ข้อมูล{live ? "ดึงจาก endpoint ปลอดภัย (public-safe)" : "เป็นข้อมูลจำลอง (mock/fallback)"} · ไฟล์ source of truth จริงอยู่นอก UI นี้
       </p>

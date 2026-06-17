@@ -56,13 +56,13 @@ export default function CollapsibleCard({ cardId, title, severity, pinned = fals
         <div className="flex items-center gap-2">
           <span className={`inline-block h-2 w-2 rounded-full ${dotClass(severity)}`} aria-hidden="true" />
           {icon ? <span className="text-[12px]" aria-hidden="true">{icon}</span> : null}
-          <span className="text-[11px] font-black text-[#cbb799]">{title}</span>
+          <span className="text-[11px] font-black text-cyan-100">{title}</span>
         </div>
         <button
           type="button"
           onClick={() => onToggle(cardId)}
           aria-expanded="true"
-          className="rounded-md border border-[#6d5640] bg-[#2c2017] px-2 py-0.5 text-[10px] font-black text-[#e8d8bd] hover:bg-[#3a2c20]"
+          className="rounded-md border border-cyan-400/30 bg-slate-950/80 px-2 py-0.5 text-[10px] font-black text-cyan-100 hover:bg-cyan-400/10"
         >
           ย่อการ์ดนี้
         </button>

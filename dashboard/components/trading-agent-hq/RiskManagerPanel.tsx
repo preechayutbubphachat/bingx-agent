@@ -20,7 +20,7 @@ function SafetyFlag({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
       className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${
-        ok ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-red-300 bg-red-50 text-red-800"
+        ok ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-200" : "border-rose-300/40 bg-rose-400/10 text-rose-200"
       }`}
     >
       {ok ? "✓ " : "• "}
@@ -30,10 +30,10 @@ function SafetyFlag({ ok, label }: { ok: boolean; label: string }) {
 }
 
 function Row({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "red" | "amber" }) {
-  const valCls = tone === "red" ? "text-[#b23a33]" : tone === "amber" ? "text-[#a9701a]" : "text-[#2b2118]";
+  const valCls = tone === "red" ? "text-rose-200" : tone === "amber" ? "text-amber-200" : "text-slate-100";
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-[#e5d5bf] bg-[#fffaf1] px-2.5 py-1.5">
-      <span className="text-[11px] font-bold text-[#7a6a59]">{label}</span>
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2.5 py-1.5">
+      <span className="text-[11px] font-bold text-slate-500">{label}</span>
       <span className={`text-[12px] font-black ${valCls}`}>{value}</span>
     </div>
   );
@@ -54,10 +54,10 @@ export default function RiskManagerPanel({ paper, safety, log }: Props) {
   const barColor = escapes ? "bg-[#e75b52]" : stopped ? "bg-[#f0a737]" : "bg-[#4caf74]";
   const levelBadge =
     riskTone === "red"
-      ? "border-red-300 bg-red-50 text-red-800"
+      ? "border-rose-300/40 bg-rose-400/10 text-rose-200"
       : riskTone === "amber"
-        ? "border-amber-300 bg-amber-50 text-amber-900"
-        : "border-emerald-300 bg-emerald-50 text-emerald-800";
+        ? "border-amber-300/40 bg-amber-400/10 text-amber-200"
+        : "border-emerald-300/40 bg-emerald-400/10 text-emerald-200";
 
   const openPos = r.openTrendPosition ?? (engine.openTrendPaperPosition ? { direction: engine.openTrendPaperPosition.direction } : null);
   const alerts: string[] = [];
@@ -68,11 +68,11 @@ export default function RiskManagerPanel({ paper, safety, log }: Props) {
   const feed = log.slice(0, 6);
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
+    <section className="flex flex-col gap-3 rounded-2xl border border-cyan-400/20 bg-slate-950/70 p-3 shadow-[0_0_30px_rgba(34,211,238,0.08)]">
       {/* UI-2.2: icon chip + status dot header (mockup-style) */}
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex min-w-0 items-center gap-2 text-[14px] font-black text-[#2b2118]">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#3a2c1c] text-[14px]" aria-hidden="true">🛡️</span>
+        <h2 className="flex min-w-0 items-center gap-2 text-[14px] font-black text-cyan-100">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-[14px]" aria-hidden="true">◇</span>
           <span className="truncate">Risk Manager</span>
         </h2>
         <span className="flex shrink-0 items-center gap-1.5">
@@ -82,11 +82,11 @@ export default function RiskManagerPanel({ paper, safety, log }: Props) {
       </div>
 
       <div>
-        <div className="mb-1 flex items-center justify-between text-[10px] font-bold text-[#7a6a59]">
+        <div className="mb-1 flex items-center justify-between text-[10px] font-bold text-slate-500">
           <span>ระดับความเสี่ยงรวม</span>
           <span>{escapes ? "ALERT" : `${barPct}%`}</span>
         </div>
-        <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#efe2cd]">
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${barPct}%` }} />
         </div>
       </div>
@@ -110,40 +110,40 @@ export default function RiskManagerPanel({ paper, safety, log }: Props) {
       </div>
 
       <div>
-        <div className="mb-1 text-[11px] font-black text-[#2b2118]">การแจ้งเตือน</div>
+        <div className="mb-1 text-[11px] font-black text-cyan-100">การแจ้งเตือน</div>
         {alerts.length ? (
           <ul className="flex flex-col gap-1">
             {alerts.map((a, i) => (
               <li
                 key={i}
-                className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-950"
+                className="rounded-md border border-amber-300/40 bg-amber-400/10 px-2 py-1 text-[10px] font-bold text-amber-100"
               >
                 {a}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800">
+          <p className="rounded-md border border-emerald-300/40 bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-200">
             ไม่มีการแจ้งเตือน · ระบบ paper ปลอดภัย
           </p>
         )}
       </div>
 
       <div>
-        <div className="mb-1 text-[11px] font-black text-[#2b2118]">Activity Feed</div>
+        <div className="mb-1 text-[11px] font-black text-cyan-100">Activity Feed</div>
         {feed.length ? (
           <ul className="flex flex-col gap-1">
             {feed.map((e, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-[10px] text-[#5b4432]">
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1f9d92]" />
+              <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-400">
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-300" />
                 <span className="truncate">
-                  <span className="font-bold text-[#7a6a59]">{e.ts}</span> · {e.text}
+                  <span className="font-bold text-cyan-300">{e.ts}</span> · {e.text}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-[10px] text-[#9a8a72]">ยังไม่มีกิจกรรม</p>
+          <p className="text-[10px] text-slate-500">ยังไม่มีกิจกรรม</p>
         )}
       </div>
     </section>

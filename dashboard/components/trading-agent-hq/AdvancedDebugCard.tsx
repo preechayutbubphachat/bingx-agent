@@ -13,33 +13,33 @@ export default function AdvancedDebugCard({
   debug: boolean;
 }) {
   return (
-    <section className="rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-3 text-xs shadow-sm">
-      <h2 className="text-xs font-black uppercase tracking-wide text-[#5b4432]">ดีบักขั้นสูง</h2>
-      <div className="mt-2 space-y-1.5 text-[#5b4432]">
-        <div className="flex justify-between gap-3 border-b border-[#3a2c21]/10 pb-1">
+    <section className="rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-3 text-xs shadow-[0_0_26px_rgba(34,211,238,0.06)]">
+      <h2 className="text-xs font-black uppercase tracking-[0.14em] text-cyan-100">ดีบักขั้นสูง</h2>
+      <div className="mt-2 space-y-1.5 text-slate-300">
+        <div className="flex justify-between gap-3 border-b border-cyan-400/10 pb-1">
           <span>แหล่งข้อมูล</span>
-          <span className="font-bold">{vm.meta.source}</span>
+          <span className="font-bold text-slate-100">{vm.meta.source}</span>
         </div>
-        <div className="flex justify-between gap-3 border-b border-[#3a2c21]/10 pb-1">
+        <div className="flex justify-between gap-3 border-b border-cyan-400/10 pb-1">
           <span>ความสดข้อมูล</span>
-          <span className="font-bold">{vm.meta.isStale ? "เก่า" : "ล่าสุด"}</span>
+          <span className="font-bold text-slate-100">{vm.meta.isStale ? "เก่า" : "ล่าสุด"}</span>
         </div>
-        <div className="flex justify-between gap-3 border-b border-[#3a2c21]/10 pb-1">
+        <div className="flex justify-between gap-3 border-b border-cyan-400/10 pb-1">
           <span>ประหยัดพลังงาน</span>
-          <span className="font-bold">{lowPower ? "เปิด" : "ปิด"}</span>
+          <span className="font-bold text-slate-100">{lowPower ? "เปิด" : "ปิด"}</span>
         </div>
-        <div className="flex justify-between gap-3 border-b border-[#3a2c21]/10 pb-1">
+        <div className="flex justify-between gap-3 border-b border-cyan-400/10 pb-1">
           <span>ดีบักโอเวอร์เลย์</span>
-          <span className="font-bold">{debug ? "เปิด" : "ปิด"}</span>
+          <span className="font-bold text-slate-100">{debug ? "เปิด" : "ปิด"}</span>
         </div>
-        <div className="flex justify-between gap-3 border-b border-[#3a2c21]/10 pb-1">
+        <div className="flex justify-between gap-3 border-b border-cyan-400/10 pb-1">
           <span>โหมดอ่านอย่างเดียว</span>
-          <span className="font-bold">ใช่</span>
+          <span className="font-bold text-emerald-200">ใช่</span>
         </div>
       </div>
       <Link
         href="/public"
-        className="mt-3 block rounded-lg bg-[#2f241b] px-3 py-2 text-center text-xs font-bold text-[#f8ead3] hover:bg-[#473527]"
+        className="mt-3 block rounded-lg border border-cyan-300/40 bg-cyan-400/10 px-3 py-2 text-center text-xs font-bold text-cyan-100 hover:bg-cyan-400/20"
       >
         แดชบอร์ดคลาสสิก
       </Link>

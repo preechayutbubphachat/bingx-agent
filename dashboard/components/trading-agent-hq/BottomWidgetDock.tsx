@@ -14,23 +14,28 @@ import {
 } from "@/lib/trading-agent-hq/progression";
 
 const TYPE_BADGE: Record<LogEntry["type"], string> = {
-  FILL_RESULT: "bg-emerald-100 text-emerald-800",
-  ALERT: "bg-amber-100 text-amber-800",
-  DECISION: "bg-sky-100 text-sky-800",
-  SYSTEM: "bg-stone-100 text-stone-700",
+  FILL_RESULT: "border border-emerald-300/40 bg-emerald-400/10 text-emerald-200",
+  ALERT: "border border-amber-300/40 bg-amber-400/10 text-amber-200",
+  DECISION: "border border-cyan-300/40 bg-cyan-400/10 text-cyan-200",
+  SYSTEM: "border border-slate-600 bg-slate-800 text-slate-300",
 };
 
 function Widget({
   title,
+  icon,
   children,
 }: {
   title: string;
+  icon?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="flex min-h-[236px] min-w-0 max-w-full flex-col overflow-hidden rounded-lg border border-[#3a2c21]/10 bg-[#fffaf1] p-3 shadow-sm">
-      <h2 className="mb-2 shrink-0 truncate text-xs font-black uppercase tracking-wide text-[#5b4432]">{title}</h2>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">{children}</div>
+    <section className="flex h-[310px] min-w-0 max-w-full flex-col overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-3 shadow-[0_0_30px_rgba(34,211,238,0.07)]">
+      <h2 className="mb-2 flex shrink-0 items-center gap-1.5 truncate text-xs font-black uppercase tracking-[0.12em] text-cyan-100">
+        {icon && <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-sm text-cyan-100" aria-hidden>{icon}</span>}
+        <span className="truncate">{title}</span>
+      </h2>
+      <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">{children}</div>
     </section>
   );
 }
@@ -45,28 +50,28 @@ function MiniProgress({ label, status }: { label: string; status: "COST_PASS" | 
   }[status];
   const cls =
     status === "COST_PASS"
-      ? "bg-emerald-100 text-emerald-800"
+      ? "border border-emerald-300/40 bg-emerald-400/10 text-emerald-200"
       : status === "DATA_GAP"
-        ? "bg-amber-100 text-amber-800"
+        ? "border border-amber-300/40 bg-amber-400/10 text-amber-200"
         : status === "BLOCKED"
-          ? "bg-red-100 text-red-800"
+          ? "border border-rose-300/40 bg-rose-400/10 text-rose-200"
           : status === "INFO"
-            ? "bg-sky-100 text-sky-800"
-            : "bg-stone-100 text-stone-700";
+            ? "border border-cyan-300/40 bg-cyan-400/10 text-cyan-200"
+            : "border border-slate-600 bg-slate-800 text-slate-300";
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-[#3a2c21]/10 py-1.5 text-xs last:border-0">
-      <span className="min-w-0 break-words text-[#6d5745]">{label}</span>
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-cyan-400/10 py-1.5 text-xs last:border-0">
+      <span className="min-w-0 break-words text-slate-300">{label}</span>
       <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-black ${cls}`}>{statusLabel}</span>
     </div>
   );
 }
 
 function missionTone(status: MissionStatus) {
-  if (status === "DONE") return "bg-emerald-100 text-emerald-800";
-  if (status === "IN_PROGRESS") return "bg-sky-100 text-sky-800";
-  if (status === "DATA_GAP" || status === "WARNING") return "bg-amber-100 text-amber-800";
-  if (status === "NOT_APPROVED") return "bg-orange-100 text-orange-800";
-  return "bg-red-100 text-red-800";
+  if (status === "DONE") return "border border-emerald-300/40 bg-emerald-400/10 text-emerald-200";
+  if (status === "IN_PROGRESS") return "border border-cyan-300/40 bg-cyan-400/10 text-cyan-200";
+  if (status === "DATA_GAP" || status === "WARNING") return "border border-amber-300/40 bg-amber-400/10 text-amber-200";
+  if (status === "NOT_APPROVED") return "border border-orange-300/40 bg-orange-400/10 text-orange-200";
+  return "border border-rose-300/40 bg-rose-400/10 text-rose-200";
 }
 
 const MISSION_STATUS_TH: Record<MissionStatus, string> = {
@@ -88,10 +93,10 @@ const PROGRESSION_STATUS_TH: Record<string, string> = {
 };
 
 function badgeTone(tone: AgentBadge["tone"]) {
-  if (tone === "safe") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (tone === "info") return "border-sky-200 bg-sky-50 text-sky-800";
-  if (tone === "warning") return "border-amber-200 bg-amber-50 text-amber-900";
-  return "border-red-200 bg-red-50 text-red-800";
+  if (tone === "safe") return "border-emerald-300/40 bg-emerald-400/10 text-emerald-200";
+  if (tone === "info") return "border-cyan-300/40 bg-cyan-400/10 text-cyan-200";
+  if (tone === "warning") return "border-amber-300/40 bg-amber-400/10 text-amber-200";
+  return "border-rose-300/40 bg-rose-400/10 text-rose-200";
 }
 
 function AgentProgressRow({ item, onPick }: { item: AgentProgression; onPick: (id: AgentId) => void }) {
@@ -100,18 +105,18 @@ function AgentProgressRow({ item, onPick }: { item: AgentProgression; onPick: (i
     <button
       type="button"
       onClick={() => onPick(item.agentId)}
-      className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-md bg-white px-2 py-1.5 text-left text-xs hover:bg-[#fff3dd]"
+      className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5 text-left text-xs transition hover:border-cyan-300/40 hover:bg-cyan-400/10"
     >
       <div className="min-w-0">
-        <div className="truncate font-black text-[#2f241b]">{item.name}</div>
-        <div className="truncate text-[10px] text-[#8a735d]">{reason}</div>
-        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#ead6b9]">
-          <div className="h-full rounded-full bg-[#7d5d3c]" style={{ width: `${item.xpPct}%` }} />
+        <div className="truncate font-black text-slate-100">{item.name}</div>
+        <div className="truncate text-[10px] text-slate-500">{reason}</div>
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
+          <div className="h-full rounded-full bg-cyan-300" style={{ width: `${item.xpPct}%` }} />
         </div>
       </div>
       <div className="text-right">
-        <div className="rounded-full bg-[#2f241b] px-2 py-0.5 text-[10px] font-black text-[#f8ead3]">LV {item.level}</div>
-        <div className="mt-1 text-[10px] font-bold uppercase text-[#8a735d]">{PROGRESSION_STATUS_TH[item.status] ?? item.status}</div>
+        <div className="rounded-full border border-cyan-300/40 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-black text-cyan-100">LV {item.level}</div>
+        <div className="mt-1 text-[10px] font-bold uppercase text-slate-500">{PROGRESSION_STATUS_TH[item.status] ?? item.status}</div>
       </div>
     </button>
   );
@@ -119,12 +124,12 @@ function AgentProgressRow({ item, onPick }: { item: AgentProgression; onPick: (i
 
 function MissionDetail({ item }: { item: Mission }) {
   return (
-    <div className="rounded-md border border-[#3a2c21]/10 bg-[#fffaf1] px-2 py-1.5 text-[11px] text-[#5b4432]">
-      <div className="font-black text-[#2f241b]">{item.title}</div>
+    <div className="rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5 text-[11px] text-slate-300">
+      <div className="font-black text-slate-100">{item.title}</div>
       <div className="mt-1">มีแล้ว: {item.completeEvidence.length ? item.completeEvidence.join("; ") : "ยังไม่พอ"}</div>
       <div className="mt-1">ที่ยังขาด: {item.missingEvidence.length ? item.missingEvidence.join("; ") : "ไม่มีบันทึก"}</div>
       <div className="mt-1">ถัดไป: {item.nextSafeAction}</div>
-      <div className="mt-1 rounded bg-amber-50 px-2 py-1 font-bold text-amber-900">{item.safetyNote}</div>
+      <div className="mt-1 rounded border border-amber-300/40 bg-amber-400/10 px-2 py-1 font-bold text-amber-200">{item.safetyNote}</div>
     </div>
   );
 }
@@ -163,33 +168,33 @@ export default function BottomWidgetDock({
   const sampleStatus = vm.paper.sampleStatus === "SUFFICIENT" ? "INFO" : "DATA_GAP";
   const costStatus = vm.paper.costGateStatus === "PASS" ? "COST_PASS" : vm.paper.costGateStatus === "UNKNOWN" ? "PENDING" : "DATA_GAP";
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
-      <Widget title="ความคืบหน้า Agent">
+    <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-4 2xl:grid-cols-7">
+      <Widget icon="📊" title="ความคืบหน้า Agent">
         <div className="space-y-2">
           {agentProgressions.map((item) => (
             <AgentProgressRow key={item.agentId} item={item} onPick={onPick} />
           ))}
         </div>
-        <div className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-900">
+        <div className="mt-2 rounded-lg border border-amber-300/40 bg-amber-400/10 px-2 py-1.5 text-[10px] font-bold text-amber-100">
           XP = ระดับความสมบูรณ์ของหลักฐานเท่านั้น · XP ไม่ควบคุมการเทรด · เลเวลไม่ปลดล็อกเงินจริง · ต้องมีรอบปิดครบก่อนจึงประเมิน expectancy · Cost ผ่าน ≠ edge ผ่าน
         </div>
       </Widget>
 
-      <Widget title="ภารกิจที่กำลังทำ">
+      <Widget icon="🗒️" title="ภารกิจที่กำลังทำ">
         <div className="space-y-2">
           {activeMissions.map((item) => (
-            <div key={item.id} className="min-w-0 rounded-md bg-white px-2 py-1.5 text-xs text-[#4d3b2d]">
+            <div key={item.id} className="min-w-0 rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-300">
               <button type="button" onClick={() => setOpenMissionId(item.id)} className="block w-full text-left">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate font-black text-[#2f241b]">{item.title}</div>
-                    <div className="mt-0.5 text-[10px] text-[#8a735d]">{MISSION_CATEGORY_TH[item.category]}</div>
+                    <div className="truncate font-black text-slate-100">{item.title}</div>
+                    <div className="mt-0.5 text-[10px] text-slate-500">{MISSION_CATEGORY_TH[item.category]}</div>
                   </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${missionTone(item.status)}`}>{MISSION_STATUS_TH[item.status]}</span>
                 </div>
-                <div className="mt-1 text-[11px] leading-relaxed text-[#6d5745]">{item.detail}</div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#ead6b9]">
-                  <div className="h-full rounded-full bg-[#7d5d3c]" style={{ width: `${item.progressPct}%` }} />
+                <div className="mt-1 text-[11px] leading-relaxed text-slate-400">{item.detail}</div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-full rounded-full bg-cyan-300" style={{ width: `${item.progressPct}%` }} />
                 </div>
               </button>
             </div>
@@ -198,7 +203,7 @@ export default function BottomWidgetDock({
         </div>
       </Widget>
 
-      <Widget title="เหรียญ / รางวัล">
+      <Widget icon="🏅" title="เหรียญ / รางวัล">
         <div className="flex flex-wrap gap-1.5">
           {badges.map((item) => (
             <button
@@ -213,24 +218,24 @@ export default function BottomWidgetDock({
           ))}
         </div>
         {openBadge ? <div className="mt-2"><BadgeDetail item={openBadge} /></div> : null}
-        <div className="mt-3 space-y-1.5 text-[11px] text-[#6d5745]">
-          <div className="rounded-md bg-white px-2 py-1.5">Cost ผ่าน ≠ edge ผ่าน</div>
-          <div className="rounded-md bg-white px-2 py-1.5">นับ paper fills เท่านั้น ไม่ใช่กำไร</div>
-          <div className="rounded-md bg-white px-2 py-1.5">ต้องมีรอบปิดครบก่อนประเมิน expectancy</div>
-          <div className="rounded-md bg-white px-2 py-1.5">M-0B ยังถูกบล็อก</div>
+        <div className="mt-3 space-y-1.5 text-[11px] text-slate-300">
+          <div className="rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5">Cost ผ่าน ≠ edge ผ่าน</div>
+          <div className="rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5">นับ paper fills เท่านั้น ไม่ใช่กำไร</div>
+          <div className="rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5">ต้องมีรอบปิดครบก่อนประเมิน expectancy</div>
+          <div className="rounded-lg border border-rose-300/40 bg-rose-400/10 px-2 py-1.5 text-rose-200">M-0B ยังถูกบล็อก</div>
         </div>
       </Widget>
 
-      <Widget title="เหตุการณ์ Paper ล่าสุด">
+      <Widget icon="🧾" title="เหตุการณ์ Paper ล่าสุด">
         <div className="space-y-2">
           {(fills.length ? fills : vm.bottomLog.slice(0, 3)).map((entry, index) => (
             <button
               key={`${entry.ts}-${index}`}
               type="button"
               onClick={() => entry.agentId && onPick(entry.agentId)}
-              className="block w-full rounded-md bg-white px-2 py-1.5 text-left text-xs text-[#5b4432] hover:bg-[#fff3dd]"
+              className="block w-full rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5 text-left text-xs text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10"
             >
-              <span className="block text-[10px] text-[#9b8269]">{entry.ts}</span>
+              <span className="block text-[10px] text-slate-500">{entry.ts}</span>
               <span className={`mr-2 rounded px-1.5 py-0.5 text-[10px] font-bold ${TYPE_BADGE[entry.type]}`}>{entry.type}</span>
               {entry.text}
             </button>
@@ -238,12 +243,12 @@ export default function BottomWidgetDock({
         </div>
       </Widget>
 
-      <Widget title="บันทึกการตัดสินใจ">
+      <Widget icon="🧭" title="บันทึกการตัดสินใจ">
         <div className="space-y-2">
           {(decisions.length ? decisions : [{ ts: "-", type: "DECISION" as const, text: "ยังไม่มีเหตุการณ์ตัดสินใจใน log ปลอดภัยล่าสุด" }]).map(
             (entry, index) => (
-              <div key={`${entry.ts}-${index}`} className="rounded-md bg-white px-2 py-1.5 text-xs text-[#5b4432]">
-                <span className="block text-[10px] text-[#9b8269]">{entry.ts}</span>
+              <div key={`${entry.ts}-${index}`} className="rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-300">
+                <span className="block text-[10px] text-slate-500">{entry.ts}</span>
                 {entry.text}
               </div>
             ),
@@ -251,7 +256,7 @@ export default function BottomWidgetDock({
         </div>
       </Widget>
 
-      <Widget title="ความคืบหน้าหลักฐาน">
+      <Widget icon="📈" title="ความคืบหน้าหลักฐาน">
         <MiniProgress label={`จำนวน fills paper: ${vm.paper.totalOrderFilled} (นับ fills เท่านั้น ไม่ใช่กำไร)`} status={vm.paper.totalOrderFilled > 0 ? "INFO" : "PENDING"} />
         <MiniProgress label={`รอบที่ปิดครบ: ${vm.paper.closedCycles} / ${vm.paper.closedCycles === 0 ? "ยังไม่มีข้อมูลรอบปิด" : "มีหลักฐาน"}`} status={closedCycleStatus} />
         <MiniProgress label="ขนาดตัวอย่าง" status={sampleStatus} />
@@ -260,11 +265,11 @@ export default function BottomWidgetDock({
         <MiniProgress label="เกต M-0B" status="BLOCKED" />
       </Widget>
 
-      <Widget title="การแจ้งเตือน">
+      <Widget icon="🔔" title="การแจ้งเตือน">
         <div className="space-y-2">
           {(alerts.length ? alerts : [{ ts: "-", type: "ALERT" as const, text: "M-0B ยังถูกบล็อกจนกว่าหลักฐานจะผ่าน" }]).map(
             (entry, index) => (
-              <div key={`${entry.ts}-${index}`} className="rounded-md bg-white px-2 py-1.5 text-xs text-[#5b4432]">
+              <div key={`${entry.ts}-${index}`} className="rounded-lg border border-cyan-400/20 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-300">
                 <span className={`mr-2 rounded px-1.5 py-0.5 text-[10px] font-bold ${TYPE_BADGE[entry.type]}`}>{entry.type}</span>
                 {entry.text}
               </div>

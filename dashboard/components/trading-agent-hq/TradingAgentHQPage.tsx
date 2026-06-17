@@ -423,32 +423,32 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
           <ReviewReadinessNextStepCard paper={vm.paper} />
 
-          {/* Expanded cards (UI-1 behavior preserved) */}
-          {wrap("systemStatus", systemStatusNode)}
-          <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
+          {/* Expanded cards (UI-1 behavior preserved), arranged desktop-first as a dense command grid. */}
+          <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2 [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300 [&_section]:border-cyan-400/20 [&_section]:bg-slate-950/70 [&_section]:text-slate-100">
+            {wrap("systemStatus", systemStatusNode)}
             {wrap("dynamicRegridStatus", <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />)}
             {wrap(
               "runtimeMonitor",
               <RuntimeMonitorCard paper={vm.paper} safety={vm.safety} pollMessages={runtimePollMessages} />,
             )}
+            {wrap("regridPhase2AReadiness", <RegridPhase2AReadinessCard paper={vm.paper} />)}
+            {wrap("canonicalMarketRegime", <CanonicalMarketRegimeCard paper={vm.paper} />)}
+            {wrap("canonicalRegimeGate", <CanonicalRegimeGateCard paper={vm.paper} />)}
+            {wrap("regimeEvidence", <RegimeEvidenceCard paper={vm.paper} />)}
+            {wrap("indicatorGate", <IndicatorGateShadowCard paper={vm.paper} />)}
+            {wrap("trendRegimeConfirmation", <TrendRegimeConfirmationCard paper={vm.paper} />)}
+            {wrap("trendZoneCandidate", <TrendZoneCandidateCard paper={vm.paper} />)}
+            {wrap("trendStrategyShadow", <TrendStrategyShadowCard paper={vm.paper} />)}
+            {wrap("trendTransitionMonitor", <TrendTransitionMonitorCard paper={vm.paper} />)}
+            {wrap("trendManualPaperArmGate", <TrendManualPaperArmGateCard paper={vm.paper} />)}
+            {wrap("trendPaperArmSession", <TrendPaperArmSessionCard paper={vm.paper} />)}
+            {wrap("trendPaperArmIntentBridge", <TrendPaperArmIntentBridgeCard paper={vm.paper} />)}
+            {wrap("trendPaperDryRunConsole", <TrendPaperDryRunConsoleCard paper={vm.paper} />)}
+            {wrap("trendPaperEvidenceRunner", <TrendPaperEvidenceRunnerCard paper={vm.paper} />)}
+            {wrap("trendPaperExecutionPreflight", <TrendPaperExecutionPreflightCard paper={vm.paper} />)}
+            {wrap("trendPaperExecutionEngine", <TrendPaperExecutionEngineCard paper={vm.paper} />)}
+            {wrap("trendEdgeReview", <TrendEdgeReviewCard paper={vm.paper} />)}
           </div>
-          {wrap("regridPhase2AReadiness", <RegridPhase2AReadinessCard paper={vm.paper} />)}
-          {wrap("canonicalMarketRegime", <CanonicalMarketRegimeCard paper={vm.paper} />)}
-          {wrap("canonicalRegimeGate", <CanonicalRegimeGateCard paper={vm.paper} />)}
-          {wrap("regimeEvidence", <RegimeEvidenceCard paper={vm.paper} />)}
-          {wrap("indicatorGate", <IndicatorGateShadowCard paper={vm.paper} />)}
-          {wrap("trendRegimeConfirmation", <TrendRegimeConfirmationCard paper={vm.paper} />)}
-          {wrap("trendZoneCandidate", <TrendZoneCandidateCard paper={vm.paper} />)}
-          {wrap("trendStrategyShadow", <TrendStrategyShadowCard paper={vm.paper} />)}
-          {wrap("trendTransitionMonitor", <TrendTransitionMonitorCard paper={vm.paper} />)}
-          {wrap("trendManualPaperArmGate", <TrendManualPaperArmGateCard paper={vm.paper} />)}
-          {wrap("trendPaperArmSession", <TrendPaperArmSessionCard paper={vm.paper} />)}
-          {wrap("trendPaperArmIntentBridge", <TrendPaperArmIntentBridgeCard paper={vm.paper} />)}
-          {wrap("trendPaperDryRunConsole", <TrendPaperDryRunConsoleCard paper={vm.paper} />)}
-          {wrap("trendPaperEvidenceRunner", <TrendPaperEvidenceRunnerCard paper={vm.paper} />)}
-          {wrap("trendPaperExecutionPreflight", <TrendPaperExecutionPreflightCard paper={vm.paper} />)}
-          {wrap("trendPaperExecutionEngine", <TrendPaperExecutionEngineCard paper={vm.paper} />)}
-          {wrap("trendEdgeReview", <TrendEdgeReviewCard paper={vm.paper} />)}
 
           {/* Command Floor — Cafe Floor remains the pinned, always-visible anchor */}
           <section className="relative min-w-0 overflow-hidden rounded-2xl border border-fuchsia-400/25 bg-slate-950/70 p-3 shadow-[0_0_40px_rgba(217,70,239,0.12)]">
@@ -508,7 +508,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         </div>
 
         {/* Right Risk Manager rail (sticky on xl, stacks below on smaller screens) */}
-        <div className="flex flex-col gap-3 xl:sticky xl:top-[84px] xl:self-start [&>section]:border-cyan-400/20 [&>section]:bg-slate-950/70 [&>section]:text-slate-100 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100">
+        <div className="flex flex-col gap-3 xl:sticky xl:top-[84px] xl:self-start [&>section]:overflow-hidden [&>section]:rounded-2xl [&>section]:border-cyan-400/20 [&>section]:bg-slate-950/80 [&>section]:text-slate-100 [&>section]:shadow-[0_0_30px_rgba(34,211,238,0.08)] [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300">
           {/* UI-2.1 Task C: read-only runner heartbeat (existing VM fields only) */}
           <EvidencePilotHealthCard paper={vm.paper} />
           {/* T-3H-6-a: read-only rejection frequency summary (observe only) */}

@@ -3,10 +3,10 @@
 import type { LogEntry, AgentId } from "@/lib/trading-agent-hq/viewModel";
 
 const TYPE_CLS: Record<LogEntry["type"], string> = {
-  FILL_RESULT: "bg-emerald-100 text-emerald-700",
-  ALERT: "bg-amber-100 text-amber-700",
-  DECISION: "bg-sky-100 text-sky-700",
-  SYSTEM: "bg-stone-100 text-stone-700",
+  FILL_RESULT: "border border-emerald-300/40 bg-emerald-400/10 text-emerald-200",
+  ALERT: "border border-amber-300/40 bg-amber-400/10 text-amber-200",
+  DECISION: "border border-cyan-300/40 bg-cyan-400/10 text-cyan-200",
+  SYSTEM: "border border-slate-600 bg-slate-800 text-slate-300",
 };
 
 export default function BottomLogBar({
@@ -19,24 +19,24 @@ export default function BottomLogBar({
   selected?: AgentId | null;
 }) {
   return (
-    <div className="rounded-lg border border-[#3a2c21]/10 bg-[#fff8ec] px-3 py-2 shadow-sm">
-      <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#6d5745]">บันทึกกิจกรรม</div>
-      <ul className="flex flex-col gap-1">
+    <div className="rounded-2xl border border-cyan-400/20 bg-slate-950/75 px-3 py-2 shadow-[0_0_26px_rgba(34,211,238,0.06)]">
+      <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-100">บันทึกกิจกรรม</div>
+      <ul className="scrollbar-thin flex max-h-[220px] flex-col gap-1 overflow-y-auto pr-1">
         {log.map((entry, index) => (
           <li
             key={`${entry.ts}-${index}`}
             className={`flex items-center gap-2 rounded px-1 text-xs ${
-              selected && entry.agentId === selected ? "bg-amber-50 ring-1 ring-amber-200" : ""
+              selected && entry.agentId === selected ? "bg-cyan-400/10 ring-1 ring-cyan-300/30" : ""
             }`}
           >
-            <span className="shrink-0 text-[10px] tabular-nums text-[#9b8269]">{entry.ts}</span>
+            <span className="shrink-0 text-[10px] tabular-nums text-slate-500">{entry.ts}</span>
             <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${TYPE_CLS[entry.type]}`}>{entry.type}</span>
             {entry.agentId ? (
-              <button type="button" onClick={() => onPick(entry.agentId as AgentId)} className="truncate text-left text-[#4d3b2d] hover:underline">
+              <button type="button" onClick={() => onPick(entry.agentId as AgentId)} className="truncate text-left text-slate-300 hover:text-cyan-100 hover:underline">
                 {entry.text}
               </button>
             ) : (
-              <span className="truncate text-[#4d3b2d]">{entry.text}</span>
+              <span className="truncate text-slate-300">{entry.text}</span>
             )}
           </li>
         ))}

@@ -4,11 +4,11 @@ import type { AgentId, TradingAgentHQViewModel } from "@/lib/trading-agent-hq/vi
 import { AGENT_PLACEMENTS } from "@/lib/trading-agent-hq/sceneConfig";
 
 const NAV_ITEMS = [
-  { key: "hq", label: "ภาพรวม", hint: "อ่านอย่างเดียว" },
-  { key: "agents", label: "ทีม Agent", hint: "ทีมประจำโต๊ะ" },
-  { key: "paper", label: "หลักฐาน Paper", hint: "หลักฐานเท่านั้น" },
-  { key: "events", label: "เหตุการณ์", hint: "บันทึกล่าสุด" },
-  { key: "memory", label: "ความจำ", hint: "บันทึกตรวจสอบ" },
+  { key: "hq", label: "ภาพรวม", hint: "อ่านอย่างเดียว", icon: "🏠" },
+  { key: "agents", label: "ทีม Agent", hint: "ทีมประจำโต๊ะ", icon: "👥" },
+  { key: "paper", label: "หลักฐาน Paper", hint: "หลักฐานเท่านั้น", icon: "📄" },
+  { key: "events", label: "เหตุการณ์", hint: "บันทึกล่าสุด", icon: "🔔" },
+  { key: "memory", label: "ความจำ", hint: "บันทึกตรวจสอบ", icon: "🧠" },
 ] as const;
 
 export default function CommandRail({
@@ -25,23 +25,26 @@ export default function CommandRail({
   ).length;
 
   return (
-    <aside className="flex flex-row gap-2 overflow-x-auto rounded-lg border border-[#3a2c21]/15 bg-[#fff8ec] p-2 shadow-sm xl:flex-col xl:overflow-visible">
-      <div className="hidden border-b border-[#3a2c21]/10 pb-2 text-center xl:block">
-        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-[#2f241b] text-sm font-black text-[#f8d37b]">
+    <aside className="flex flex-row gap-2 overflow-x-auto rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-2 shadow-[0_0_26px_rgba(34,211,238,0.06)] xl:flex-col xl:overflow-visible">
+      <div className="hidden border-b border-cyan-400/10 pb-2 text-center xl:block">
+        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-fuchsia-300/40 bg-fuchsia-400/10 text-sm font-black text-fuchsia-100">
           THQ
         </div>
-        <div className="mt-1 text-[10px] font-bold uppercase text-[#6d5745]">อ่านอย่างเดียว</div>
+        <div className="mt-1 text-[10px] font-bold uppercase text-slate-500">อ่านอย่างเดียว</div>
       </div>
 
       {NAV_ITEMS.map((item) => (
         <button
           key={item.key}
           type="button"
-          className="min-w-[74px] rounded-lg border border-[#3a2c21]/10 bg-white px-2 py-2 text-left transition hover:border-[#b8792b]/40 hover:bg-[#fff3dd] xl:min-w-0"
+          className="min-w-[74px] rounded-xl border border-cyan-400/20 bg-slate-900/80 px-2 py-2 text-left transition hover:border-cyan-300/40 hover:bg-cyan-400/10 xl:min-w-0"
           title={item.hint}
         >
-          <span className="block text-xs font-bold text-[#2f241b]">{item.label}</span>
-          <span className="block truncate text-[10px] text-[#8a735d]">{item.hint}</span>
+          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-100">
+            <span className="text-sm" aria-hidden>{item.icon}</span>
+            <span className="truncate">{item.label}</span>
+          </span>
+          <span className="block truncate text-[10px] text-slate-500">{item.hint}</span>
         </button>
       ))}
 
@@ -58,8 +61,8 @@ export default function CommandRail({
               onClick={() => onSelect(placement.id)}
               className={`h-9 w-9 shrink-0 rounded-lg border text-[10px] font-black transition ${
                 isSelected
-                  ? "border-[#2f241b] bg-[#2f241b] text-[#f8d37b]"
-                  : "border-[#3a2c21]/10 bg-white text-[#5a4636] hover:border-[#b8792b]/40"
+                  ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.18)]"
+                  : "border-cyan-400/20 bg-slate-900/80 text-slate-300 hover:border-cyan-300/40 hover:bg-cyan-400/10"
               }`}
               title={`${placement.label}: ${agent.status}`}
             >
@@ -73,8 +76,8 @@ export default function CommandRail({
         })}
       </div>
 
-      <div className="min-w-[94px] rounded-lg bg-[#2f241b] px-2 py-2 text-[#f7ead8] xl:min-w-0">
-        <div className="text-[10px] uppercase text-[#d8b66f]">ทีมที่ตื่น</div>
+      <div className="min-w-[94px] rounded-xl border border-emerald-300/40 bg-emerald-400/10 px-2 py-2 text-emerald-100 xl:min-w-0">
+        <div className="text-[10px] uppercase text-emerald-300">ทีมที่ตื่น</div>
         <div className="text-lg font-black">{activeAgents}/6</div>
       </div>
     </aside>

@@ -1,6 +1,6 @@
 import type { PaperVM } from "@/lib/trading-agent-hq/viewModel";
 import { buildEvidenceWaitingRoomModel, evidenceTooltip, type EvidenceWaitingRoomTone } from "@/lib/trading-agent-hq/evidenceWaitingRoom";
-import { cyberProgressTone, hudPanelClass, reviewOnlySafetyCopy } from "@/lib/trading-agent-hq/missionControlVisual";
+import { cyberProgressTone, hudPanelClass, normalizedPanelClass, reviewOnlySafetyCopy } from "@/lib/trading-agent-hq/missionControlVisual";
 
 function toneClasses(tone: EvidenceWaitingRoomTone): string {
   if (tone === "ready-review") return "border-emerald-300/40 bg-emerald-400/10 text-emerald-100";
@@ -93,9 +93,9 @@ export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM 
           <span className="rounded-full border border-violet-300/40 bg-violet-400/10 px-2 py-0.5 text-[10px] text-violet-100">{reviewOnlySafetyCopy()}</span>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-        <div className="min-w-0 space-y-3">
-          <div className="rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-3">
+      <div className="grid grid-cols-1 items-stretch gap-3 2xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className={`${normalizedPanelClass("standard")} flex flex-col p-3`}>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -132,7 +132,7 @@ export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM 
             </p>
           </div>
 
-          <div className="rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-3">
+          <div className={`${normalizedPanelClass("compact")} p-3`}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-[13px] font-black text-cyan-100">Project Progress Ladder</h3>
               <span className="text-[11px] font-black text-amber-200">{model.stage.resultLine}</span>
@@ -149,15 +149,15 @@ export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-3">
+          <div className="grid grid-cols-1 items-stretch gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className={`${normalizedPanelClass("compact")} p-3`}>
               <h3 className="text-[13px] font-black text-cyan-100">
                 <HelpLabel term="Entry-touch">ต้องรออะไรอีก</HelpLabel>
               </h3>
               <p className="mt-1 text-[11px] font-bold text-slate-400">
                 เมื่อรายการนี้ลดลง คะแนน Review Readiness จะค่อย ๆ ดีขึ้น
               </p>
-              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              <div className="mt-2 grid max-h-[156px] grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2 scrollbar-thin">
                 {model.missingRequirements.length > 0 ? (
                   model.missingRequirements.slice(0, 6).map((req) => (
                     <div key={req.id} className="rounded-lg border border-cyan-400/20 bg-slate-950/70 px-2.5 py-2 text-[11px] font-black text-slate-200" title={evidenceTooltip(requirementHelpTerm(req.id) ?? "") ?? undefined}>
@@ -172,7 +172,7 @@ export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM 
               </div>
             </div>
 
-            <div className="rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-3">
+            <div className={`${normalizedPanelClass("compact")} p-3`}>
               <h3 className="text-[13px] font-black text-cyan-100">คะแนนย่อย</h3>
               <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-1">
                 {model.dimensionChips.map((dim) => (
@@ -190,8 +190,8 @@ export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM 
           </div>
         </div>
 
-        <div className="min-w-0 space-y-3">
-          <div className="rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-3">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className={`${normalizedPanelClass("compact")} p-3`}>
             <h3 className="text-[13px] font-black text-cyan-100">
               <HelpLabel term="Grid Exposure Guard">ตัวบล็อกหลักตอนนี้</HelpLabel>
             </h3>
@@ -207,9 +207,9 @@ export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM 
             </div>
           </div>
 
-          <div className="rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-3">
+          <div className={`${normalizedPanelClass("compact")} p-3`}>
             <h3 className="text-[13px] font-black text-cyan-100">เกณฑ์ไปขั้นถัดไป</h3>
-            <div className="mt-2 space-y-1.5 text-[11px] font-bold text-slate-300">
+            <div className="mt-2 max-h-[168px] space-y-1.5 overflow-y-auto pr-1 text-[11px] font-bold text-slate-300 scrollbar-thin">
               <div className="rounded-lg border border-cyan-400/20 bg-slate-950/70 px-2.5 py-2">เริ่ม review เบื้องต้น: Review Score &gt;= 40</div>
               <div className="rounded-lg border border-cyan-400/20 bg-slate-950/70 px-2.5 py-2">พร้อมให้มนุษย์ review จริง: Review Score &gt;= 70 และ Grid/Shadow ต้องมีคะแนนมากกว่า 0</div>
               <div className="rounded-lg border border-cyan-400/20 bg-slate-950/70 px-2.5 py-2">เปิด Paper Activation / Phase 2-B: ต้องมี approval แยกต่างหาก</div>

@@ -67,3 +67,19 @@ export function analysisRailReadabilityClass(): string {
     "[&_p]:text-slate-200",
   ].join(" ");
 }
+
+export type NormalizedPanelSize = "compact" | "standard" | "tall";
+
+export function normalizedPanelClass(size: NormalizedPanelSize = "standard"): string {
+  const height =
+    size === "compact"
+      ? "min-h-[160px]"
+      : size === "tall"
+        ? "min-h-[360px]"
+        : "h-full min-h-[220px]";
+  return `${height} rounded-2xl border border-cyan-400/20 bg-slate-950/75 shadow-[0_0_30px_rgba(34,211,238,0.06)]`;
+}
+
+export function statusTileClass(): string {
+  return "relative flex h-full min-h-[108px] w-full flex-col gap-1.5 overflow-hidden rounded-2xl border px-2.5 py-2.5 text-left [&_.agent-hq-tile-title]:line-clamp-2";
+}

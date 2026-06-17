@@ -6,13 +6,14 @@
 
 import type { ReactNode } from "react";
 import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/viewModel";
+import { normalizedPanelClass } from "@/lib/trading-agent-hq/missionControlVisual";
 
 const NA = "ไม่มีข้อมูล";
 
 // UI-2.2: mockup-style panel header — icon chip + title, divider below, read-only hint.
 function Panel({ title, icon, children }: { title: string; icon: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-cyan-400/20 bg-slate-950/70 p-3 shadow-[0_0_30px_rgba(34,211,238,0.06)]">
+    <section className={`${normalizedPanelClass("compact")} flex flex-col p-3`}>
       <h3 className="flex items-center gap-2 text-[12px] font-black text-cyan-100">
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-[13px]" aria-hidden="true">
           {icon}
@@ -21,7 +22,7 @@ function Panel({ title, icon, children }: { title: string; icon: string; childre
         <span className="ml-auto shrink-0 text-[9px] font-bold text-slate-500">อ่านอย่างเดียว</span>
       </h3>
       <div className="mb-2 mt-2 border-t border-cyan-400/10" aria-hidden="true" />
-      {children}
+      <div className="min-h-0 flex-1">{children}</div>
     </section>
   );
 }
@@ -49,9 +50,9 @@ export default function TradingCafeBottomPanels({ vm }: { vm: TradingAgentHQView
   const logs = vm.bottomLog.slice(0, 6);
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
       <Panel title="Agent Overview" icon="🤖">
-        <ul className="flex flex-col gap-1">
+        <ul className="flex max-h-[132px] flex-col gap-1 overflow-y-auto pr-1 scrollbar-thin">
           {agents.map((a) => (
             <li key={a.id} className="flex items-center gap-2 text-[11px]">
               <span className={`h-2 w-2 shrink-0 rounded-full ${statusDot(a.status)}`} />
@@ -85,7 +86,7 @@ export default function TradingCafeBottomPanels({ vm }: { vm: TradingAgentHQView
 
       <Panel title="Recent Logs" icon="📜">
         {logs.length ? (
-          <ul className="flex flex-col gap-1">
+          <ul className="flex max-h-[132px] flex-col gap-1 overflow-y-auto pr-1 scrollbar-thin">
             {logs.map((e, i) => (
               <li key={i} className="truncate text-[10px] text-slate-400">
                 <span className="font-bold text-cyan-300">{e.ts}</span> · <span className="font-bold text-slate-200">{e.type}</span> · {e.text}
@@ -119,8 +120,8 @@ export default function TradingCafeBottomPanels({ vm }: { vm: TradingAgentHQView
       </Panel>
 
       <Panel title="Notes & Plan" icon="🗒️">
-        <ul className="flex flex-col gap-1 text-[11px] text-slate-300">
-          <li>• ปล่อย paper loop + evidence runner รันต่อ (ทุก 15 นาที, paper-only)</li>
+        <ul className="flex max-h-[132px] flex-col gap-1 overflow-y-auto pr-1 text-[11px] text-slate-300 scrollbar-thin">
+          <li>• ปล่อย paper loop + evidence collector รันต่อ (ทุก 15 นาที, paper-only)</li>
           <li>• เป้าหมายถัดไป: closed trades ครบ {r.targetClosedTrades} เพื่อรีวิว edge</li>
           <li>• เงินจริง/คำสั่ง exchange ปิดอยู่จนกว่าจะอนุมัติด้วยมือ</li>
         </ul>

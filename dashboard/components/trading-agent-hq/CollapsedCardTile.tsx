@@ -6,6 +6,7 @@
 
 import type { CardSnapshot, CardUpdateSeverity } from "@/lib/trading-agent-hq/cardUpdateSignatures";
 import { SEVERITY_BADGE_TH } from "@/lib/trading-agent-hq/cardUpdateSignatures";
+import { statusTileClass } from "@/lib/trading-agent-hq/missionControlVisual";
 
 export type CollapsedTile = {
   id: string;
@@ -79,7 +80,7 @@ export default function CollapsedCardTile({ tile, onExpand }: Props) {
       aria-expanded="false"
       aria-label={`ขยายการ์ด ${title}`}
       title={`${title} — กดเพื่อขยาย`}
-      className={`relative flex h-full min-h-[96px] w-full flex-col gap-1 overflow-hidden rounded-2xl border px-2.5 py-2 text-left shadow-[0_0_24px_rgba(34,211,238,0.05)] transition hover:-translate-y-0.5 ${tileSurface(severity, emphasized)}`}
+      className={`${statusTileClass()} shadow-[0_0_24px_rgba(34,211,238,0.05)] transition hover:-translate-y-0.5 ${tileSurface(severity, emphasized)}`}
     >
       <div className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
       {/* UI-2.2 mockup-style header: icon chip + title, severity dot/badge on the right */}
@@ -93,7 +94,7 @@ export default function CollapsedCardTile({ tile, onExpand }: Props) {
               {icon}
             </span>
           ) : null}
-          <span className="truncate text-[12px] font-black leading-tight text-slate-100">{title}</span>
+          <span className="agent-hq-tile-title text-[12px] font-black leading-tight text-slate-100">{title}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {emphasized ? (
@@ -104,7 +105,7 @@ export default function CollapsedCardTile({ tile, onExpand }: Props) {
           <span className={`inline-block h-2 w-2 rounded-full ${dotClass(severity)}`} aria-hidden="true" />
         </div>
       </div>
-      <div className="truncate text-[11px] font-bold text-cyan-100">{snapshot.status}</div>
+      <div className="mt-0.5 truncate text-[11px] font-bold text-cyan-100">{snapshot.status}</div>
       {snapshot.summary ? (
         <div className="truncate text-[10px] font-medium text-slate-400">{snapshot.summary}</div>
       ) : null}

@@ -26,7 +26,7 @@ export default function CollapsedCardGrid({ tiles, onExpand }: Props) {
           </span>
         ) : null}
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      <div className="grid max-h-[360px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 scrollbar-thin">
         {tiles.map((tile) => (
           <CollapsedCardTile key={tile.id} tile={tile} onExpand={onExpand} />
         ))}

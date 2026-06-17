@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/viewModel";
 import { buildAgentProgressions } from "@/lib/trading-agent-hq/progression";
 import { buildMissionControlSummary } from "@/lib/trading-agent-hq/missionControl";
-import { analysisRailReadabilityClass } from "@/lib/trading-agent-hq/missionControlVisual";
+import { analysisRailReadabilityClass, normalizedPanelClass } from "@/lib/trading-agent-hq/missionControlVisual";
 import { useTradingAgentHQ } from "@/lib/trading-agent-hq/useTradingAgentHQ";
 import { useAgentAnimations } from "@/lib/trading-agent-hq/useAgentAnimations";
 import {
@@ -384,7 +384,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             />
           </div>
           {/* Agent & System Status */}
-          <section className="rounded-2xl border border-cyan-400/20 bg-slate-950/70 p-3 shadow-[0_0_32px_rgba(34,211,238,0.08)]">
+          <section className={`${normalizedPanelClass("standard")} agent-hq-status-wall p-3`}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-[14px] font-black text-cyan-100">
                 <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-[14px]" aria-hidden="true">▦</span>
@@ -424,7 +424,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           <ReviewReadinessNextStepCard paper={vm.paper} />
 
           {/* Expanded cards (UI-1 behavior preserved), arranged desktop-first as a dense command grid. */}
-          <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2 [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300 [&_section]:border-cyan-400/20 [&_section]:bg-slate-950/70 [&_section]:text-slate-100">
+          <div className="grid grid-cols-1 items-stretch gap-3 2xl:grid-cols-2 [&>div]:h-full [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300 [&_section]:h-full [&_section]:border-cyan-400/20 [&_section]:bg-slate-950/70 [&_section]:text-slate-100">
             {wrap("systemStatus", systemStatusNode)}
             {wrap("dynamicRegridStatus", <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />)}
             {wrap(
@@ -472,9 +472,9 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_340px]">
+            <div className="grid grid-cols-1 items-stretch gap-3 xl:grid-cols-[86px_minmax(0,1fr)_340px]">
               <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />
-              <div className="min-w-0 rounded-2xl border border-cyan-400/25 bg-slate-900/85 p-2 shadow-[inset_0_0_26px_rgba(34,211,238,0.06)]">
+              <div className="min-w-0 overflow-hidden rounded-2xl border border-cyan-400/25 bg-slate-900/85 p-2 shadow-[inset_0_0_26px_rgba(34,211,238,0.06)] xl:max-h-[430px]">
                 <SceneCanvas
                   vm={vm}
                   animKeys={animKeys}
@@ -487,7 +487,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
                   onDouble={goDebug}
                 />
               </div>
-              <div className="hidden min-h-[260px] space-y-3 xl:block">
+              <div className="hidden min-h-[260px] max-h-[430px] space-y-3 overflow-y-auto pr-1 xl:block scrollbar-thin">
                 <RightInspector agent={selectedAgent} progression={selectedProgression} paper={vm.paper} onClose={() => setSelected(DEFAULT_AGENT_ID)} onDebug={goDebug} />
                 <AdvancedDebugCard vm={vm} lowPower={lowPower} debug={debug} />
               </div>

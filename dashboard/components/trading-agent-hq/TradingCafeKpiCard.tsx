@@ -47,7 +47,7 @@ export default function TradingCafeKpiCard({ item }: { item: KpiItem }) {
   const accent = toneAccent(item.tone ?? "neutral");
   const tone = item.tone ?? "neutral";
   return (
-    <div className={`${hudPanelClass(tone === "red" ? "rose" : tone === "amber" ? "amber" : tone === "green" ? "emerald" : tone === "teal" ? "cyan" : tone === "info" ? "violet" : "slate")} p-3 transition hover:-translate-y-0.5 hover:shadow-[0_0_40px_rgba(34,211,238,0.18)] ${accent.border}`}>
+    <div className={`${hudPanelClass(tone === "red" ? "rose" : tone === "amber" ? "amber" : tone === "green" ? "emerald" : tone === "teal" ? "cyan" : tone === "info" ? "violet" : "slate")} flex min-h-[132px] flex-col p-3 transition hover:-translate-y-0.5 hover:shadow-[0_0_40px_rgba(34,211,238,0.18)] ${accent.border}`}>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" />
       <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-cyan-400/10 blur-2xl" />
       {/* UI-2.2 mockup-style header: icon chip + label, status dot on the right */}
@@ -64,7 +64,7 @@ export default function TradingCafeKpiCard({ item }: { item: KpiItem }) {
         {item.value}
       </div>
       {item.sub ? <div className="mt-0.5 truncate text-[10px] font-bold text-slate-500">{item.sub}</div> : null}
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800/90">
+      <div className="mt-auto h-1.5 overflow-hidden rounded-full bg-slate-800/90">
         <div className={`h-full w-2/3 rounded-full bg-gradient-to-r ${barTone(tone)} shadow-[0_0_14px_currentColor]`} />
       </div>
     </div>

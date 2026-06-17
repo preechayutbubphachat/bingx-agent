@@ -5,7 +5,9 @@ import {
   analysisRailReadabilityClass,
   cyberProgressTone,
   hudPanelClass,
+  normalizedPanelClass,
   missionCardTone,
+  statusTileClass,
   threeColumnShellClass,
   reviewOnlySafetyCopy,
 } from "./missionControlVisual.ts";
@@ -36,4 +38,12 @@ test("D6.2 layout helpers enforce independent desktop column scrolling", () => {
   assert.match(threeColumnShellClass(), /lg:flex-row/);
   assert.match(analysisRailReadabilityClass(), /agent-hq-analysis-rail/);
   assert.match(analysisRailReadabilityClass(), /xl:overflow-y-auto/);
+});
+
+test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
+  assert.match(normalizedPanelClass("compact"), /min-h-\[160px\]/);
+  assert.match(normalizedPanelClass("standard"), /h-full/);
+  assert.match(normalizedPanelClass("tall"), /min-h-\[360px\]/);
+  assert.match(statusTileClass(), /min-h-\[108px\]/);
+  assert.match(statusTileClass(), /line-clamp-2/);
 });

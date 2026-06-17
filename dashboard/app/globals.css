@@ -238,3 +238,32 @@ body {
 .agent-hq-analysis-rail div {
   line-height: 1.45;
 }
+
+.agent-hq-tile-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.agent-hq-status-wall {
+  border-color: rgba(34, 211, 238, 0.24);
+}
+
+.agent-hq-status-wall button {
+  min-width: 0;
+}
+
+.agent-hq-analysis-rail dl > div,
+.agent-hq-analysis-rail ul > li,
+.agent-hq-analysis-rail [class*="rounded-lg"][class*="px-2"] {
+  min-height: 34px;
+}
+
+.agent-hq-analysis-rail [class*="rounded-full"] {
+  line-height: 1.25;
+}
+
+.agent-hq-analysis-rail [class*="text-[9px]"] {
+  font-size: 10px !important;
+}

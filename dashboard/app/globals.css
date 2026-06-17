@@ -151,3 +151,90 @@ body {
     animation: none !important;
   }
 }
+
+/* D6.2: right analysis rail readability, scoped to Agent HQ only. */
+.agent-hq-analysis-rail > section {
+  border-color: rgba(34, 211, 238, 0.24) !important;
+  background: rgba(2, 8, 23, 0.92) !important;
+  color: #e2e8f0 !important;
+}
+
+.agent-hq-analysis-rail [class*="bg-[#fffaf1]"],
+.agent-hq-analysis-rail [class*="bg-[#fffdf8]"],
+.agent-hq-analysis-rail [class*="bg-white"],
+.agent-hq-analysis-rail [class*="bg-amber-50"],
+.agent-hq-analysis-rail [class*="bg-red-50"],
+.agent-hq-analysis-rail [class*="bg-sky-50"],
+.agent-hq-analysis-rail [class*="bg-violet-50"],
+.agent-hq-analysis-rail [class*="bg-emerald-50"] {
+  border-color: rgba(125, 249, 255, 0.22) !important;
+  background: rgba(15, 23, 42, 0.86) !important;
+  color: #dbeafe !important;
+}
+
+.agent-hq-analysis-rail [class*="bg-amber-100"] {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fde68a !important;
+}
+
+.agent-hq-analysis-rail [class*="bg-red-100"] {
+  background: rgba(244, 63, 94, 0.16) !important;
+  color: #fecdd3 !important;
+}
+
+.agent-hq-analysis-rail [class*="bg-emerald-100"] {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #bbf7d0 !important;
+}
+
+.agent-hq-analysis-rail [class*="bg-teal-100"],
+.agent-hq-analysis-rail [class*="bg-sky-100"],
+.agent-hq-analysis-rail [class*="bg-violet-100"] {
+  background: rgba(34, 211, 238, 0.14) !important;
+  color: #cffafe !important;
+}
+
+.agent-hq-analysis-rail [class*="text-[#2b2118]"],
+.agent-hq-analysis-rail [class*="text-[#3f2f22]"],
+.agent-hq-analysis-rail [class*="text-[#5b4432]"] {
+  color: #f8fafc !important;
+}
+
+.agent-hq-analysis-rail [class*="text-[#7a6a59]"],
+.agent-hq-analysis-rail [class*="text-[#6e5b49]"],
+.agent-hq-analysis-rail [class*="text-[#9a8a72]"],
+.agent-hq-analysis-rail [class*="text-[#b3a285]"] {
+  color: #cbd5e1 !important;
+}
+
+.agent-hq-analysis-rail [class*="text-amber-900"],
+.agent-hq-analysis-rail [class*="text-amber-950"] {
+  color: #fde68a !important;
+}
+
+.agent-hq-analysis-rail [class*="text-red-800"] {
+  color: #fecdd3 !important;
+}
+
+.agent-hq-analysis-rail [class*="text-emerald-800"],
+.agent-hq-analysis-rail [class*="text-emerald-900"],
+.agent-hq-analysis-rail [class*="text-emerald-950"] {
+  color: #bbf7d0 !important;
+}
+
+.agent-hq-analysis-rail [class*="text-sky-900"],
+.agent-hq-analysis-rail [class*="text-violet-900"],
+.agent-hq-analysis-rail [class*="text-violet-950"] {
+  color: #c4b5fd !important;
+}
+
+.agent-hq-analysis-rail h2,
+.agent-hq-analysis-rail h3 {
+  letter-spacing: 0;
+}
+
+.agent-hq-analysis-rail span,
+.agent-hq-analysis-rail p,
+.agent-hq-analysis-rail div {
+  line-height: 1.45;
+}

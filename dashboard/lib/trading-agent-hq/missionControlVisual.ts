@@ -36,3 +36,34 @@ export function cyberProgressTone(score: number | null | undefined): string {
 export function reviewOnlySafetyCopy(): string {
   return "ใช้เพื่อรีวิวเท่านั้น · ไม่ใช่ Activation · ไม่ใช่ Live · ไม่ใช่ Order";
 }
+
+export function threeColumnShellClass(): string {
+  return "flex h-screen min-h-screen flex-col overflow-hidden bg-[#020817] text-[#d7f7ff] lg:flex-row";
+}
+
+export function analysisRailReadabilityClass(): string {
+  return [
+    "agent-hq-analysis-rail",
+    "min-h-0",
+    "flex",
+    "flex-col",
+    "gap-3",
+    "xl:h-full",
+    "xl:overflow-y-auto",
+    "xl:pr-1",
+    "xl:pl-1",
+    "scrollbar-thin",
+    "[&>section]:overflow-hidden",
+    "[&>section]:rounded-2xl",
+    "[&>section]:border-cyan-400/25",
+    "[&>section]:bg-slate-950/90",
+    "[&>section]:text-slate-100",
+    "[&>section]:shadow-[0_0_34px_rgba(34,211,238,0.1)]",
+    "[&_dd]:text-slate-100",
+    "[&_dt]:text-slate-300",
+    "[&_h2]:text-cyan-50",
+    "[&_h3]:text-cyan-100",
+    "[&_p]:leading-relaxed",
+    "[&_p]:text-slate-200",
+  ].join(" ");
+}

@@ -43,7 +43,7 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
 
 export default function TradingCafeSidebar({ activeId = "dashboard" }: { activeId?: string }) {
   return (
-    <aside className="relative hidden w-[264px] shrink-0 flex-col overflow-hidden border-r border-cyan-400/20 bg-[#030914]/95 px-3 py-4 text-slate-200 shadow-[8px_0_40px_rgba(0,255,255,0.08)] lg:flex">
+    <aside className="relative hidden h-screen w-[264px] shrink-0 flex-col overflow-hidden border-r border-cyan-400/20 bg-[#030914]/95 px-3 py-4 text-slate-200 shadow-[8px_0_40px_rgba(0,255,255,0.08)] lg:flex">
       <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-fuchsia-400/40 via-cyan-300/40 to-transparent" />
       <div className="pointer-events-none absolute -left-20 top-4 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
       <div className="relative mb-4 rounded-2xl border border-fuchsia-400/30 bg-slate-950/75 p-3 shadow-[0_0_30px_rgba(217,70,239,0.14)]">

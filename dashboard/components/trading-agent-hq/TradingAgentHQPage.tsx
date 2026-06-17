@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/viewModel";
 import { buildAgentProgressions } from "@/lib/trading-agent-hq/progression";
 import { buildMissionControlSummary } from "@/lib/trading-agent-hq/missionControl";
+import { analysisRailReadabilityClass } from "@/lib/trading-agent-hq/missionControlVisual";
 import { useTradingAgentHQ } from "@/lib/trading-agent-hq/useTradingAgentHQ";
 import { useAgentAnimations } from "@/lib/trading-agent-hq/useAgentAnimations";
 import {
@@ -349,41 +350,39 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       sidebar={<TradingCafeSidebar activeId="dashboard" />}
       topbar={<TradingCafeTopBar live={live} lastUpdate={vm.meta.lastUpdate} safety={vm.safety} onRefresh={refresh} />}
     >
-      {/* Strong, always-visible safety banner */}
-      <SafetyStatusStrip vm={vm} state={state} error={error} live={live} onRefresh={refresh} />
+      <div className="grid min-h-0 grid-cols-1 gap-4 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="flex min-w-0 flex-col gap-4 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:pr-2 scrollbar-thin">
+          {/* Strong, always-visible safety banner */}
+          <SafetyStatusStrip vm={vm} state={state} error={error} live={live} onRefresh={refresh} />
 
-      {/* KPI summary row */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-        {kpiItems.map((item) => (
-          <TradingCafeKpiCard key={item.id} item={item} />
-        ))}
-      </div>
+          {/* KPI summary row */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+            {kpiItems.map((item) => (
+              <TradingCafeKpiCard key={item.id} item={item} />
+            ))}
+          </div>
 
-      {/* View controls (collapse/expand/updated/reset) + render mode toggles */}
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <AgentHqCardControls
-          filter={filter}
-          updatedCount={updatedCount}
-          onCollapseAll={() => setCollapsed((c) => applyCollapseAll(c))}
-          onExpandAll={() => setCollapsed((c) => applyExpandAll(c))}
-          onToggleUpdatedFilter={() => setFilter((f) => (f === "updated" ? "all" : "updated"))}
-          onResetLayout={() => {
-            setCollapsed(applyResetLayout());
-            setFilter("all");
-            setStatusFilter("all");
-          }}
-        />
-        <ModeSwitch
-          lowPower={lowPower}
-          debug={debug}
-          onToggleLowPower={() => setLowPower((value) => !value)}
-          onToggleDebug={() => setDebug((value) => !value)}
-        />
-      </div>
-
-      {/* Two-column command center: main workspace + sticky Risk Manager rail */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex min-w-0 flex-col gap-4">
+          {/* View controls (collapse/expand/updated/reset) + render mode toggles */}
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <AgentHqCardControls
+              filter={filter}
+              updatedCount={updatedCount}
+              onCollapseAll={() => setCollapsed((c) => applyCollapseAll(c))}
+              onExpandAll={() => setCollapsed((c) => applyExpandAll(c))}
+              onToggleUpdatedFilter={() => setFilter((f) => (f === "updated" ? "all" : "updated"))}
+              onResetLayout={() => {
+                setCollapsed(applyResetLayout());
+                setFilter("all");
+                setStatusFilter("all");
+              }}
+            />
+            <ModeSwitch
+              lowPower={lowPower}
+              debug={debug}
+              onToggleLowPower={() => setLowPower((value) => !value)}
+              onToggleDebug={() => setDebug((value) => !value)}
+            />
+          </div>
           {/* Agent & System Status */}
           <section className="rounded-2xl border border-cyan-400/20 bg-slate-950/70 p-3 shadow-[0_0_32px_rgba(34,211,238,0.08)]">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -509,8 +508,13 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           <BottomLogBar log={vm.bottomLog} onPick={(id) => setSelected(id)} selected={effectiveSelected} />
         </div>
 
-        {/* Right Risk Manager rail (sticky on xl, stacks below on smaller screens) */}
-        <div className="flex flex-col gap-3 xl:sticky xl:top-[84px] xl:self-start [&>section]:overflow-hidden [&>section]:rounded-2xl [&>section]:border-cyan-400/20 [&>section]:bg-slate-950/85 [&>section]:text-slate-100 [&>section]:shadow-[0_0_30px_rgba(34,211,238,0.08)] [&_.bg-amber-50]:border [&_.bg-amber-50]:border-amber-300/40 [&_.bg-amber-50]:bg-amber-400/10 [&_.bg-red-50]:border [&_.bg-red-50]:border-rose-300/40 [&_.bg-red-50]:bg-rose-400/10 [&_.bg-sky-50]:border [&_.bg-sky-50]:border-cyan-300/40 [&_.bg-sky-50]:bg-cyan-400/10 [&_.bg-white]:border [&_.bg-white]:border-cyan-400/20 [&_.bg-white]:bg-slate-900/80 [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300">
+        {/* Right analysis rail: independent desktop scroller, stacks below on smaller screens. */}
+        <aside className={analysisRailReadabilityClass()} aria-label="แถบวิเคราะห์ / Analysis Rail">
+          <div className="sticky top-0 z-10 rounded-2xl border border-fuchsia-300/25 bg-slate-950/95 px-3 py-2 shadow-[0_12px_28px_rgba(2,8,23,0.78)] backdrop-blur">
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-fuchsia-200">Analysis Rail</div>
+            <h2 className="mt-0.5 text-[14px] font-black text-cyan-50">แถบวิเคราะห์ / Diagnostics Dock</h2>
+            <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-300">อ่านแยกจาก center canvas ได้ · Paper-only · ไม่ใช่ Activation/Live/Order</p>
+          </div>
           {/* UI-2.1 Task C: read-only health heartbeat (existing VM fields only) */}
           <EvidencePilotHealthCard paper={vm.paper} />
           {/* T-3H-6-a: read-only rejection frequency summary (observe only) */}
@@ -522,7 +526,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           {/* D5.2-c: read-only shadow outcome (counterfactual reachability) evidence — not real trades */}
           <ShadowOutcomeSummaryCard paper={vm.paper} />
           <RiskManagerPanel paper={vm.paper} safety={vm.safety} log={vm.bottomLog} />
-        </div>
+        </aside>
       </div>
 
       <p className="px-1 text-[11px] text-slate-500">

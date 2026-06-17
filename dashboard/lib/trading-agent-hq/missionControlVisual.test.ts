@@ -2,9 +2,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  analysisRailReadabilityClass,
   cyberProgressTone,
   hudPanelClass,
   missionCardTone,
+  threeColumnShellClass,
   reviewOnlySafetyCopy,
 } from "./missionControlVisual.ts";
 
@@ -26,4 +28,12 @@ test("cyber progress tone maps review scores without trading language", () => {
   assert.match(cyberProgressTone(45), /cyan/);
   assert.match(cyberProgressTone(12), /amber/);
   assert.match(cyberProgressTone(null), /slate/);
+});
+
+test("D6.2 layout helpers enforce independent desktop column scrolling", () => {
+  assert.match(threeColumnShellClass(), /h-screen/);
+  assert.match(threeColumnShellClass(), /overflow-hidden/);
+  assert.match(threeColumnShellClass(), /lg:flex-row/);
+  assert.match(analysisRailReadabilityClass(), /agent-hq-analysis-rail/);
+  assert.match(analysisRailReadabilityClass(), /xl:overflow-y-auto/);
 });

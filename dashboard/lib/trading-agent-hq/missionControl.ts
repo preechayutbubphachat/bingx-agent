@@ -46,24 +46,31 @@ export function buildMissionControlSummary(vm: TradingAgentHQViewModel, systemTi
     kpis: [
       {
         id: "mission",
-        label: "สถานะภารกิจ / Mission Status",
+        label: "สถานะตลาด / Market Status",
         value: vm.paper.canonicalMarketRegime.regime ?? "UNKNOWN",
         sub: vm.paper.canonicalMarketRegime.direction ?? "รอข้อมูลตลาด",
         tone: "info",
       },
       {
         id: "review",
-        label: "ความพร้อมรีวิว / Review Readiness",
+        label: "ความพร้อม Paper / Paper Readiness",
         value: review.available ? pct(review.overallScore) : "NO DATA",
         sub: review.overallStatus ?? "ยังไม่มีข้อมูล",
         tone: missionStatusTone(review.overallStatus),
       },
       {
         id: "agents",
-        label: "Agent ที่กำลังทำงาน / Active Agents",
+        label: "Agent ออนไลน์ / Active Agents",
         value: `${vm.topHud.agentsActive}/${agentTotal}`,
         sub: "Online in command center",
         tone: vm.topHud.agentsActive > 0 ? "active" : "waiting",
+      },
+      {
+        id: "sessions",
+        label: "Session ที่ทำงาน / Active Sessions",
+        value: vm.meta.source === "public-safe-api" ? "1" : "0",
+        sub: vm.meta.source === "public-safe-api" ? "Public-safe data session" : "Mock/fallback session",
+        tone: vm.meta.source === "public-safe-api" ? "active" : "waiting",
       },
       {
         id: "alerts",
@@ -74,7 +81,7 @@ export function buildMissionControlSummary(vm: TradingAgentHQViewModel, systemTi
       },
       {
         id: "paperMode",
-        label: "โหมดระบบ / System Mode",
+        label: "โหมดระบบ: Paper-only",
         value: "Paper-only",
         sub: vm.safety.phase,
         tone: "review",

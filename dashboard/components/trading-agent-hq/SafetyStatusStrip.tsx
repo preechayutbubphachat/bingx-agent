@@ -1,6 +1,7 @@
 "use client";
 
 import type { TradingAgentHQViewModel } from "@/lib/trading-agent-hq/viewModel";
+import { hudPanelClass, reviewOnlySafetyCopy } from "@/lib/trading-agent-hq/missionControlVisual";
 
 function Pill({ label, value, tone }: { label: string; value: string; tone: "safe" | "block" | "warn" }) {
   const cls =
@@ -37,12 +38,15 @@ export default function SafetyStatusStrip({
   const approvalTh = safety.exchangeManualApproval === "approved" ? "อนุมัติแล้ว" : "ยังไม่อนุมัติ";
 
   return (
-    <section className="rounded-2xl border border-violet-300/30 bg-violet-500/10 px-3 py-3 text-violet-50 shadow-[0_0_34px_rgba(139,92,246,0.1)]">
+    <section className={`${hudPanelClass("violet")} px-3 py-3 text-violet-50`}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-300/70 to-transparent" />
+      <div className="pointer-events-none absolute -left-12 -top-16 h-28 w-28 rounded-full bg-violet-400/20 blur-3xl" />
       <div className="flex flex-wrap items-center gap-2">
         <div className="w-full min-w-0 sm:mr-auto sm:w-auto sm:min-w-[220px]">
           {/* UI-2.1: demoted to h2 (page h1 lives in TradingCafeTopBar) + fixed "Caffe" typo. */}
           <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-violet-200">Safety Lock / ตัวล็อกความปลอดภัย</div>
-          <h2 className="text-xl font-black leading-tight text-white sm:text-2xl">Review-only Command Layer</h2>
+          <h2 className="text-lg font-black leading-tight text-white sm:text-xl">Review-only Mission Guard</h2>
+          <p className="mt-0.5 text-[11px] font-bold text-violet-100/80">{reviewOnlySafetyCopy()}</p>
         </div>
         <Pill label="เฟส" value={phaseTh} tone="block" />
         <Pill label="เงินจริง" value={safety.liveTradingEnabled ? "เปิด" : "ปิด"} tone={safety.liveTradingEnabled ? "block" : "safe"} />

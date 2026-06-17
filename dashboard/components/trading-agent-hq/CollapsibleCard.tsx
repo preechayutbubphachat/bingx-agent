@@ -30,9 +30,9 @@ function dotClass(sev: CardUpdateSeverity): string {
     case "warning":
       return "bg-amber-500";
     case "info":
-      return "bg-sky-500";
+      return "bg-cyan-400";
     default:
-      return "bg-[#c9b48f]";
+      return "bg-slate-500";
   }
 }
 
@@ -41,7 +41,7 @@ export default function CollapsibleCard({ cardId, title, severity, pinned = fals
   if (pinned) {
     return (
       <div className="relative">
-        <span className="absolute right-2 top-2 z-10 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
+        <span className="absolute right-2 top-2 z-10 rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black text-amber-100">
           ปักหมุด · แสดงตลอด
         </span>
         {children}

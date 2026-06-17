@@ -259,6 +259,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       mission: "◈",
       review: "◎",
       agents: "✦",
+      sessions: "◌",
       alerts: "△",
       paperMode: "▣",
     };
@@ -352,7 +353,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       <SafetyStatusStrip vm={vm} state={state} error={error} live={live} onRefresh={refresh} />
 
       {/* KPI summary row */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {kpiItems.map((item) => (
           <TradingCafeKpiCard key={item.id} item={item} />
         ))}
@@ -381,7 +382,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       </div>
 
       {/* Two-column command center: main workspace + sticky Risk Manager rail */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-4">
           {/* Agent & System Status */}
           <section className="rounded-2xl border border-cyan-400/20 bg-slate-950/70 p-3 shadow-[0_0_32px_rgba(34,211,238,0.08)]">
@@ -451,8 +452,9 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           </div>
 
           {/* Command Floor — Cafe Floor remains the pinned, always-visible anchor */}
-          <section className="relative min-w-0 overflow-hidden rounded-2xl border border-fuchsia-400/25 bg-slate-950/70 p-3 shadow-[0_0_40px_rgba(217,70,239,0.12)]">
+          <section className="relative min-w-0 overflow-hidden rounded-2xl border border-fuchsia-400/25 bg-slate-950/80 p-3 shadow-[0_0_46px_rgba(217,70,239,0.14)]">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-300/70 to-transparent" />
+            <div className="pointer-events-none absolute -right-12 top-8 h-40 w-40 rounded-full bg-fuchsia-400/10 blur-3xl" />
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <span className="grid h-9 w-9 place-items-center rounded-xl border border-fuchsia-300/50 bg-fuchsia-400/10 text-[17px] text-fuchsia-100" aria-hidden="true">◇</span>
@@ -473,7 +475,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
 
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-[86px_minmax(0,1fr)_340px]">
               <CommandRail vm={vm} selected={effectiveSelected} onSelect={(id) => setSelected(id)} />
-              <div className="min-w-0 rounded-xl border border-cyan-400/20 bg-slate-900/80 p-2">
+              <div className="min-w-0 rounded-2xl border border-cyan-400/25 bg-slate-900/85 p-2 shadow-[inset_0_0_26px_rgba(34,211,238,0.06)]">
                 <SceneCanvas
                   vm={vm}
                   animKeys={animKeys}
@@ -508,8 +510,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
         </div>
 
         {/* Right Risk Manager rail (sticky on xl, stacks below on smaller screens) */}
-        <div className="flex flex-col gap-3 xl:sticky xl:top-[84px] xl:self-start [&>section]:overflow-hidden [&>section]:rounded-2xl [&>section]:border-cyan-400/20 [&>section]:bg-slate-950/80 [&>section]:text-slate-100 [&>section]:shadow-[0_0_30px_rgba(34,211,238,0.08)] [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300">
-          {/* UI-2.1 Task C: read-only runner heartbeat (existing VM fields only) */}
+        <div className="flex flex-col gap-3 xl:sticky xl:top-[84px] xl:self-start [&>section]:overflow-hidden [&>section]:rounded-2xl [&>section]:border-cyan-400/20 [&>section]:bg-slate-950/85 [&>section]:text-slate-100 [&>section]:shadow-[0_0_30px_rgba(34,211,238,0.08)] [&_.bg-amber-50]:border [&_.bg-amber-50]:border-amber-300/40 [&_.bg-amber-50]:bg-amber-400/10 [&_.bg-red-50]:border [&_.bg-red-50]:border-rose-300/40 [&_.bg-red-50]:bg-rose-400/10 [&_.bg-sky-50]:border [&_.bg-sky-50]:border-cyan-300/40 [&_.bg-sky-50]:bg-cyan-400/10 [&_.bg-white]:border [&_.bg-white]:border-cyan-400/20 [&_.bg-white]:bg-slate-900/80 [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300">
+          {/* UI-2.1 Task C: read-only health heartbeat (existing VM fields only) */}
           <EvidencePilotHealthCard paper={vm.paper} />
           {/* T-3H-6-a: read-only rejection frequency summary (observe only) */}
           <RejectionAnalysisCard paper={vm.paper} />

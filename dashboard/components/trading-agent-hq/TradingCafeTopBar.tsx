@@ -38,16 +38,19 @@ export default function TradingCafeTopBar({ live, lastUpdate, safety, onRefresh 
   const liveDisabled = !safety.liveTradingEnabled && !safety.orderPlacementEnabled;
 
   return (
-    <header className="border-b border-cyan-400/20 bg-[#030914]/95 px-4 py-3 text-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur">
+    <header className="relative overflow-hidden border-b border-cyan-400/20 bg-[#030914]/95 px-4 py-3 text-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-fuchsia-400/50 via-cyan-300/70 to-transparent" />
+      <div className="pointer-events-none absolute left-[250px] top-0 h-full w-px bg-cyan-400/10" />
+      <div className="pointer-events-none absolute right-8 top-2 h-8 w-20 border-r border-t border-fuchsia-300/30" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-fuchsia-300">Mission Control & Trading Operations Dashboard</div>
           <h1 className="text-[20px] font-black leading-tight text-white sm:text-[24px]">ศูนย์ควบคุม Agent</h1>
         </div>
 
-        <div className="hidden min-w-[260px] max-w-[360px] flex-1 items-center rounded-xl border border-cyan-400/20 bg-slate-950/70 px-3 py-2 text-[11px] font-bold text-slate-500 xl:flex">
+        <div className="hidden min-w-[260px] max-w-[360px] flex-1 items-center rounded-xl border border-cyan-400/25 bg-slate-950/80 px-3 py-2 text-[11px] font-bold text-slate-500 shadow-[inset_0_0_18px_rgba(34,211,238,0.06)] xl:flex">
           <span className="mr-2 text-cyan-300">⌕</span>
-          Search agents, missions, docs...
+          Search visual only: agents, missions, docs...
           <span className="ml-auto rounded border border-slate-700 px-1.5 py-0.5 text-[9px] text-slate-400">CTRL K</span>
         </div>
 

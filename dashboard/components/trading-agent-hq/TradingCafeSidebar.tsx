@@ -43,8 +43,11 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
 
 export default function TradingCafeSidebar({ activeId = "dashboard" }: { activeId?: string }) {
   return (
-    <aside className="hidden w-[264px] shrink-0 flex-col border-r border-cyan-400/20 bg-[#030914]/95 px-3 py-4 text-slate-200 shadow-[8px_0_40px_rgba(0,255,255,0.08)] lg:flex">
-      <div className="mb-4 rounded-2xl border border-fuchsia-400/30 bg-slate-950/70 p-3 shadow-[0_0_30px_rgba(217,70,239,0.14)]">
+    <aside className="relative hidden w-[264px] shrink-0 flex-col overflow-hidden border-r border-cyan-400/20 bg-[#030914]/95 px-3 py-4 text-slate-200 shadow-[8px_0_40px_rgba(0,255,255,0.08)] lg:flex">
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-fuchsia-400/40 via-cyan-300/40 to-transparent" />
+      <div className="pointer-events-none absolute -left-20 top-4 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
+      <div className="relative mb-4 rounded-2xl border border-fuchsia-400/30 bg-slate-950/75 p-3 shadow-[0_0_30px_rgba(217,70,239,0.14)]">
+        <div className="pointer-events-none absolute right-2 top-2 h-5 w-8 border-r border-t border-fuchsia-300/40" />
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl border border-cyan-300/50 bg-cyan-400/10 text-cyan-200 shadow-[0_0_22px_rgba(34,211,238,0.32)]">⬢</span>
           <div className="min-w-0">
@@ -52,7 +55,7 @@ export default function TradingCafeSidebar({ activeId = "dashboard" }: { activeI
             <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-300">Command Center</div>
           </div>
         </div>
-        <div className="mt-3 rounded-lg border border-emerald-300/30 bg-emerald-400/10 px-2.5 py-2">
+        <div className="mt-3 rounded-lg border border-emerald-300/30 bg-emerald-400/10 px-2.5 py-2 shadow-[inset_0_0_14px_rgba(16,185,129,0.08)]">
           <div className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-200">Safety Mode</div>
           <div className="mt-0.5 text-[12px] font-black text-emerald-100">Paper-only · Live OFF</div>
         </div>
@@ -92,10 +95,12 @@ export default function TradingCafeSidebar({ activeId = "dashboard" }: { activeI
         ))}
       </nav>
 
-      <div className="mt-4 rounded-xl border border-cyan-400/20 bg-slate-950/70 p-3">
+      <div className="relative mt-4 rounded-xl border border-cyan-400/20 bg-slate-950/75 p-3 shadow-[inset_0_0_18px_rgba(34,211,238,0.05)]">
+        <div className="pointer-events-none absolute inset-x-3 top-0 h-px bg-cyan-300/40" />
         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">System Health</div>
         <div className="mt-1 text-[20px] font-black text-cyan-100">Review</div>
         <p className="mt-1 text-[10px] font-bold leading-relaxed text-slate-400">Dashboard เพื่อการรีวิวเท่านั้น · ไม่ส่งคำสั่งเทรด</p>
+        <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">Live OFF · Order OFF</p>
       </div>
     </aside>
   );

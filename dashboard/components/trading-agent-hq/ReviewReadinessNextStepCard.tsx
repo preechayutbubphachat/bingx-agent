@@ -1,5 +1,6 @@
 import type { PaperVM } from "@/lib/trading-agent-hq/viewModel";
 import { buildEvidenceWaitingRoomModel, evidenceTooltip, type EvidenceWaitingRoomTone } from "@/lib/trading-agent-hq/evidenceWaitingRoom";
+import { cyberProgressTone, hudPanelClass, reviewOnlySafetyCopy } from "@/lib/trading-agent-hq/missionControlVisual";
 
 function toneClasses(tone: EvidenceWaitingRoomTone): string {
   if (tone === "ready-review") return "border-emerald-300/40 bg-emerald-400/10 text-emerald-100";
@@ -7,12 +8,6 @@ function toneClasses(tone: EvidenceWaitingRoomTone): string {
   if (tone === "blocked") return "border-rose-300/40 bg-rose-400/10 text-rose-100";
   if (tone === "safety-lock") return "border-violet-300/40 bg-violet-400/10 text-violet-100";
   return "border-amber-300/40 bg-amber-400/10 text-amber-100";
-}
-
-function progressFillClass(tone: EvidenceWaitingRoomTone): string {
-  if (tone === "ready-review") return "bg-emerald-500";
-  if (tone === "partial-review") return "bg-cyan-500";
-  return "bg-amber-500";
 }
 
 function HelpLabel({ term, children }: { term: string; children?: string }) {
@@ -89,9 +84,14 @@ export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM 
   const model = buildEvidenceWaitingRoomModel(paper);
 
   return (
-    <section className="rounded-2xl border border-cyan-400/25 bg-slate-950/75 p-3 text-slate-100 shadow-[0_0_38px_rgba(34,211,238,0.1)]">
-      <div className={`mb-3 rounded-lg border px-3 py-2 text-[12px] font-black leading-relaxed ${toneClasses(model.tone)}`}>
-        {model.compactSummary}
+    <section className={`${hudPanelClass("cyan")} p-3 text-slate-100`}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
+      <div className="pointer-events-none absolute -right-12 top-8 h-32 w-32 rounded-full bg-cyan-400/10 blur-3xl" />
+      <div className={`relative mb-3 rounded-xl border px-3 py-2 text-[12px] font-black leading-relaxed shadow-[inset_0_0_18px_rgba(255,255,255,0.03)] ${toneClasses(model.tone)}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span>{model.compactSummary}</span>
+          <span className="rounded-full border border-violet-300/40 bg-violet-400/10 px-2 py-0.5 text-[10px] text-violet-100">{reviewOnlySafetyCopy()}</span>
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <div className="min-w-0 space-y-3">
@@ -122,8 +122,8 @@ export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM 
                 <span>{model.progress.label}</span>
                 <span>{model.progress.percent}% · Review only</span>
               </div>
-              <div className="mt-2 h-2 rounded-full bg-slate-800">
-                <div className={`h-2 rounded-full ${progressFillClass(model.tone)}`} style={{ width: `${model.progress.percent}%` }} />
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-800 shadow-[inset_0_0_12px_rgba(0,0,0,0.35)]">
+                <div className={`h-2.5 rounded-full ${cyberProgressTone(model.progress.percent)}`} style={{ width: `${model.progress.percent}%` }} />
               </div>
               <p className="mt-1 text-[10px] font-bold text-cyan-200/80">คะแนนนี้ไม่ใช่สัญญาณเปิดเทรด</p>
             </div>

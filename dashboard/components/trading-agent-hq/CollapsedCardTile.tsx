@@ -48,24 +48,24 @@ function dotClass(sev: CardUpdateSeverity): string {
     case "warning":
       return "bg-amber-500";
     case "info":
-      return "bg-sky-500";
+      return "bg-cyan-400";
     default:
-      return "bg-[#c9b48f]";
+      return "bg-slate-500";
   }
 }
 
 function badgeClass(sev: CardUpdateSeverity): string {
   switch (sev) {
     case "critical":
-      return "bg-red-200 text-red-900";
+      return "border border-rose-300/40 bg-rose-400/10 text-rose-100";
     case "success":
-      return "bg-emerald-200 text-emerald-900";
+      return "border border-emerald-300/40 bg-emerald-400/10 text-emerald-100";
     case "warning":
-      return "bg-amber-200 text-amber-900";
+      return "border border-amber-300/40 bg-amber-400/10 text-amber-100";
     case "info":
-      return "bg-sky-200 text-sky-900";
+      return "border border-cyan-300/40 bg-cyan-400/10 text-cyan-100";
     default:
-      return "bg-[#e6dac4] text-[#6d5640]";
+      return "border border-slate-600 bg-slate-900 text-slate-300";
   }
 }
 
@@ -79,8 +79,9 @@ export default function CollapsedCardTile({ tile, onExpand }: Props) {
       aria-expanded="false"
       aria-label={`ขยายการ์ด ${title}`}
       title={`${title} — กดเพื่อขยาย`}
-      className={`flex h-full min-h-[86px] w-full flex-col gap-1 rounded-2xl border px-2.5 py-2 text-left shadow-[0_0_24px_rgba(34,211,238,0.05)] transition ${tileSurface(severity, emphasized)}`}
+      className={`relative flex h-full min-h-[96px] w-full flex-col gap-1 overflow-hidden rounded-2xl border px-2.5 py-2 text-left shadow-[0_0_24px_rgba(34,211,238,0.05)] transition hover:-translate-y-0.5 ${tileSurface(severity, emphasized)}`}
     >
+      <div className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
       {/* UI-2.2 mockup-style header: icon chip + title, severity dot/badge on the right */}
       <div className="flex items-start justify-between gap-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
@@ -110,6 +111,9 @@ export default function CollapsedCardTile({ tile, onExpand }: Props) {
       <div className="mt-auto flex items-center justify-between text-[9px] text-slate-500">
         <span>กดเพื่อขยาย</span>
         {snapshot.lastRunAt ? <span className="truncate pl-1">{snapshot.lastRunAt}</span> : null}
+      </div>
+      <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-800">
+        <div className={`h-full rounded-full ${severity === "critical" ? "bg-rose-300" : severity === "warning" ? "bg-amber-300" : severity === "success" ? "bg-emerald-300" : "bg-cyan-300"}`} style={{ width: emphasized ? "76%" : "42%" }} />
       </div>
     </button>
   );

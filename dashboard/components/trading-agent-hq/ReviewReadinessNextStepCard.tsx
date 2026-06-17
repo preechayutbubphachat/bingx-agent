@@ -1,200 +1,172 @@
-import type { PaperVM, ReviewReadinessDimensionVM, ShadowEvidenceCoverageRequirementVM } from "@/lib/trading-agent-hq/viewModel";
+import type { PaperVM } from "@/lib/trading-agent-hq/viewModel";
+import { buildEvidenceWaitingRoomModel } from "@/lib/trading-agent-hq/evidenceWaitingRoom";
 
-function value(v: number | null | undefined, suffix = ""): string {
-  return typeof v === "number" && Number.isFinite(v) ? `${v}${suffix}` : "—";
-}
+function StepDot({ index, label, status }: { index: number; label: string; status: "current" | "locked" | "future" }) {
+  const tone =
+    status === "current"
+      ? "border-[#8a5b18] bg-[#fff1cf] text-[#4d3211]"
+      : status === "future"
+        ? "border-[#dcc9ad] bg-[#fffaf1] text-[#7a6a59]"
+        : "border-[#eadbc9] bg-white/65 text-[#a08d74]";
 
-function boolText(v: boolean | null | undefined): string {
-  if (v === true) return "true";
-  if (v === false) return "false";
-  return "unknown";
-}
-
-function statusLabel(status: string | null | undefined): string {
-  if (status === "NOT_READY") return "ยังไม่พร้อม";
-  if (status === "PARTIAL_REVIEW") return "พร้อมรีวิวบางส่วน";
-  if (status === "READY_FOR_REVIEW") return "พร้อมให้คนรีวิว";
-  if (status === "NO_DATA") return "ยังไม่มีข้อมูล";
-  return status ?? "ยังไม่มีข้อมูล";
-}
-
-function scoreTypeLabel(scoreType: string | null | undefined): string {
-  if (scoreType === "REVIEW_READINESS_NOT_ACTIVATION") return "ใช้เพื่อรีวิวเท่านั้น · ไม่ใช่สัญญาณเปิดเทรด";
-  return scoreType ?? "ใช้เพื่อรีวิวเท่านั้น · ไม่ใช่สัญญาณเปิดเทรด";
-}
-
-function dimensionStatusLabel(status: string): string {
-  if (status === "NO_REALIZED_EDGE_SAMPLE") return "ยังไม่มีรอบปิดจริง";
-  if (status === "LOW_QUALITY_NOT_READY") return "ข้อมูลยังคุณภาพต่ำ";
-  if (status === "NO_DATA_INVALIDATED") return "ยังไม่มีข้อมูล / แผนถูก invalidated";
-  if (status === "EXPLAINED_WITH_DIAGNOSTICS_GAP") return "อธิบายเหตุผลได้แล้ว แต่ diagnostics ยังไม่ครบ";
-  return status || "ยังไม่มีข้อมูล";
-}
-
-function requirementLabel(id: string): string {
-  if (id === "range_subset") return "ตลาด RANGE";
-  if (id === "entry_touch") return "ราคาแตะ Entry";
-  if (id === "price_context_diversity") return "Price context";
-  if (id === "dynamic_grid_diversity") return "Dynamic Grid context";
-  if (id === "unknown_context_dilution") return "ลด UNKNOWN context";
-  if (id === "context_ready_setups") return "Context-ready setups";
-  if (id === "context_ready_resolved") return "Context-ready resolved";
-  return id;
-}
-
-function unitLabel(unit: string): string {
-  if (unit === "samples") return "samples";
-  if (unit === "buckets") return "buckets";
-  if (unit === "context_ready_samples") return "context-ready samples";
-  return unit;
-}
-
-function milestoneTitle(id: string | null | undefined): string {
-  if (id === "PRICE_CONTEXT_DIVERSITY") return "เพิ่ม Price Context ให้หลากหลายขึ้น";
-  return id ?? "Milestone ถัดไปที่ระบบต้องเก็บเพิ่ม";
-}
-
-function milestoneDescription(id: string | null | undefined, fallback: string | undefined): string {
-  if (id === "PRICE_CONTEXT_DIVERSITY") return "ระบบต้องเห็น setup ในบริบทของราคาที่ต่างจากเดิม";
-  return fallback || "Milestone ถัดไปที่ระบบต้องเก็บเพิ่ม";
-}
-
-function blockerTitle(code: string | null | undefined): string {
-  if (code === "GRID_EXPOSURE_GUARD_PAUSE") return "Grid Exposure Guard Pause";
-  return code ?? "NO_BLOCKER_EXPOSED";
-}
-
-function blockerExplanation(code: string | null | undefined, fallback: string | undefined): string {
-  if (code === "GRID_EXPOSURE_GUARD_PAUSE") {
-    return "กริดถูกหยุด เพราะมี BUY exposure ฝั่งเดียว ยังไม่มี SELL มาปิดรอบ";
-  }
-  return `${fallback ?? code ?? "ไม่พบตัวบล็อกหลัก"} · ตรวจรายละเอียดใน no-trade analysis`;
-}
-
-function statusTone(status: string | null | undefined): string {
-  if (status === "READY_FOR_REVIEW") return "border-emerald-300 bg-emerald-50 text-emerald-900";
-  if (status === "PARTIAL_REVIEW") return "border-amber-300 bg-amber-50 text-amber-900";
-  if (status === "NOT_READY") return "border-rose-300 bg-rose-50 text-rose-900";
-  return "border-[#e5d5bf] bg-[#fffaf1] text-[#7a6a59]";
-}
-
-function DimChip({ label, dim }: { label: string; dim: ReviewReadinessDimensionVM }) {
   return (
-    <div className="min-w-[132px] flex-1 rounded-lg border border-[#e5d5bf] bg-[#fffdf8] px-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-black text-[#7a6a59]">{label}</span>
-        <span className="text-[13px] font-black text-[#2b2118]">{value(dim.score)}</span>
-      </div>
-      <div className="mt-1 truncate text-[10px] font-bold text-[#9a8a72]" title={dim.status}>
-        {dimensionStatusLabel(dim.status)}
+    <div className={`flex min-w-[132px] flex-1 items-start gap-2 rounded-lg border px-2.5 py-2 ${tone}`}>
+      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-current text-[10px] font-black">
+        {index + 1}
+      </span>
+      <div className="min-w-0">
+        <div className="text-[10px] font-black leading-tight">{label}</div>
+        <div className="mt-0.5 text-[9px] font-bold opacity-75">
+          {status === "current" ? "ตอนนี้" : status === "future" ? "ผ่านเป็นข้อมูลรีวิว" : "ล็อกไว้"}
+        </div>
       </div>
     </div>
   );
 }
 
-function RequirementRow({ req }: { req: ShadowEvidenceCoverageRequirementVM }) {
+function InfoChip({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-1.5 text-[11px]">
-      <span className="min-w-0 flex-1 truncate font-bold text-[#2b2118]" title={req.note || req.id}>
-        {requirementLabel(req.id)}
-      </span>
-      <span className="shrink-0 font-black text-[#8a5b18]">
-        ขาด {req.remaining} {unitLabel(req.unit)}
-      </span>
-    </div>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-black ${
+        strong ? "border-[#8a5b18] bg-[#fff1cf] text-[#4d3211]" : "border-[#eadbc9] bg-white/75 text-[#6d5745]"
+      }`}
+    >
+      <span className="text-[#9a8a72]">{label}:</span>
+      <span>{value}</span>
+    </span>
   );
 }
 
 export default function ReviewReadinessNextStepCard({ paper }: { paper: PaperVM }) {
-  const score = paper.reviewReadinessScore;
-  const coverage = paper.shadowEvidenceCoverage;
-  const noTrade = paper.noTradeReasonAnalysis;
-
-  if (!score.available) {
-    return (
-      <section className="rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-[14px] font-black text-[#2b2118]">ความพร้อมสำหรับรีวิว / ขั้นตอนถัดไป</h2>
-          <p className="text-[12px] font-bold text-[#7a6a59]">Review readiness data not available yet</p>
-          <p className="text-[11px] text-[#9a8a72]">คะแนนนี้ใช้บอกความพร้อมสำหรับการรีวิวเท่านั้น ไม่ใช่สัญญาณเปิดเทรด ไม่ใช่ Live และไม่ใช่การส่ง Order</p>
-        </div>
-      </section>
-    );
-  }
-
-  const missing = (coverage?.requirements ?? []).filter((req) => !req.met);
-  const milestone = coverage?.nextEvidenceMilestone ?? null;
-  const primary = noTrade?.primaryReason ?? null;
+  const model = buildEvidenceWaitingRoomModel(paper);
 
   return (
-    <section className="rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-stretch">
-        <div className="flex min-w-[220px] flex-col justify-between gap-3 rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[14px] font-black text-[#2b2118]">ความพร้อมสำหรับรีวิว / ขั้นตอนถัดไป</h2>
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${statusTone(score.overallStatus)}`}>
-                {statusLabel(score.overallStatus)}
-              </span>
+    <section className="rounded-xl border border-[#d8c2a5] bg-[#fff7ea] p-3 text-[#2b2118] shadow-sm">
+      <div className="grid grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+        <div className="min-w-0 space-y-3">
+          <div className="rounded-lg border border-[#d8c2a5] bg-[#fffdf8] p-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-[15px] font-black text-[#2b2118]">โหมดรอข้อมูลตลาด / Evidence Waiting Room</h2>
+                  <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-black text-rose-900">
+                    ไม่ใช่สัญญาณเปิดเทรด
+                  </span>
+                </div>
+                <p className="mt-1 text-[12px] font-bold leading-relaxed text-[#6d5745]">
+                  ระบบกำลังเก็บหลักฐานเพื่อให้มนุษย์รีวิว ไม่ใช่สัญญาณเปิดเทรด
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1.5 xl:justify-end">
+                <InfoChip label="Review Score" value={model.scoreText} strong />
+                <InfoChip label="Status" value={model.statusText} />
+                <InfoChip label="Stage" value={model.stage.label} />
+                <InfoChip label="Safety" value="ไม่ใช่ Activation" />
+                <InfoChip label="Live" value="ปิดอยู่" />
+                <InfoChip label="Order" value="ปิดอยู่" />
+              </div>
             </div>
-            <div className="mt-2 text-[32px] font-black leading-none text-[#2b2118]">{value(score.overallScore)} / 100</div>
-            <div className="mt-1 text-[10px] font-black tracking-wide text-[#7a6a59]">{scoreTypeLabel(score.scoreType)}</div>
-            <div className="mt-1 text-[10px] leading-relaxed text-[#9a8a72]">
-              ยิ่งคะแนนสูง ยิ่งพร้อมให้มนุษย์รีวิว แต่ไม่ใช่การอนุญาตให้เทรด
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-bold leading-relaxed text-amber-950">
+              ตอนนี้ยังไม่ต้องทำอะไรกับตลาด ให้รอข้อมูลผ่านเงื่อนไขด้านล่างก่อน
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-[13px] font-black text-[#2b2118]">Project Progress Ladder</h3>
+              <span className="text-[11px] font-black text-[#8a5b18]">{model.stage.resultLine}</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {model.progressSteps.map((step, index) => (
+                <StepDot key={step.label} index={index} label={step.label} status={step.status} />
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-1.5 text-[11px] font-bold text-[#7a6a59] md:grid-cols-3">
+              <div className="rounded-lg border border-[#eadbc9] bg-white/70 px-2.5 py-2">ผ่านขั้นนี้ไม่ได้แปลว่าเปิดเทรด</div>
+              <div className="rounded-lg border border-[#eadbc9] bg-white/70 px-2.5 py-2">ทุกขั้นหลังจากนี้ต้องมี operator review</div>
+              <div className="rounded-lg border border-[#eadbc9] bg-white/70 px-2.5 py-2">Live trading ต้องมี manual approval แยกต่างหาก</div>
             </div>
           </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-bold leading-relaxed text-amber-900">
-            คะแนนนี้ใช้บอกความพร้อมสำหรับการรีวิวเท่านั้น ไม่ใช่สัญญาณเปิดเทรด ไม่ใช่ Live และไม่ใช่การส่ง Order
+
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-3">
+              <h3 className="text-[13px] font-black text-[#2b2118]">ต้องรออะไรอีก</h3>
+              <p className="mt-1 text-[11px] font-bold text-[#7a6a59]">
+                เมื่อรายการนี้ลดลง คะแนน Review Readiness จะค่อย ๆ ดีขึ้น
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {model.missingRequirements.length > 0 ? (
+                  model.missingRequirements.slice(0, 6).map((req) => (
+                    <div key={req.id} className="rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-2 text-[11px] font-black text-[#6d5745]">
+                      {req.text}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-2 text-[11px] font-bold text-[#9a8a72] sm:col-span-2">
+                    {model.missingRequirementsFallback ?? "รายการหลักที่ขาดลดลงแล้ว ให้ดู milestone ถัดไป"}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-3">
+              <h3 className="text-[13px] font-black text-[#2b2118]">คะแนนย่อย</h3>
+              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-1">
+                {model.dimensionChips.map((dim) => (
+                  <div key={dim.label} className="flex items-center justify-between gap-2 rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-2">
+                    <span className="text-[11px] font-black text-[#2b2118]">{dim.label}: {dim.score}</span>
+                    <span className="min-w-0 truncate text-right text-[10px] font-bold text-[#7a6a59]" title={dim.status}>
+                      {dim.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-            <DimChip label="Grid / กริด" dim={score.dimensions.grid} />
-            <DimChip label="Shadow / ข้อมูลเงา" dim={score.dimensions.shadow} />
-            <DimChip label="Trend / เทรนด์" dim={score.dimensions.trend} />
-            <DimChip label="No-trade / เหตุผลไม่เปิดไม้" dim={score.dimensions.noTradeExplanation} />
+        <div className="min-w-0 space-y-3">
+          <div className="rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-3">
+            <h3 className="text-[13px] font-black text-[#2b2118]">ตัวบล็อกหลักตอนนี้</h3>
+            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <div className="text-[13px] font-black text-amber-950">{model.blocker.title}</div>
+              <p className="mt-1 text-[11px] font-bold leading-relaxed text-amber-900">{model.blocker.explanation}</p>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <InfoChip label="ราคา" value={model.blocker.details.priceVsGrid} />
+              <InfoChip label="Dynamic Grid" value={model.blocker.details.dynamicGridStatus} />
+              <InfoChip label="Regrid" value={model.blocker.details.regridReadinessStatus} />
+              <InfoChip label="Trend" value={model.blocker.details.trendStrategyStatus} />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.4fr_1fr_0.9fr]">
-            <div className="rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-2">
-              <div className="mb-1 text-[11px] font-black text-[#7a6a59]">ยังขาดอะไรถึงไปขั้นถัดไป</div>
-              {missing.length === 0 ? (
-                <div className="rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-2 text-[11px] font-bold text-[#7a6a59]">
-                  ยังไม่มีรายการหลักฐานที่ระบบเปิดเผยเพิ่มเติม
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  {missing.slice(0, 6).map((req) => (
-                    <RequirementRow key={req.id} req={req} />
-                  ))}
-                </div>
-              )}
+          <div className="rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-3">
+            <h3 className="text-[13px] font-black text-[#2b2118]">เกณฑ์ไปขั้นถัดไป</h3>
+            <div className="mt-2 space-y-1.5 text-[11px] font-bold text-[#6d5745]">
+              <div className="rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-2">เริ่ม review เบื้องต้น: Review Score &gt;= 40</div>
+              <div className="rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-2">พร้อมให้มนุษย์ review จริง: Review Score &gt;= 70 และ Grid/Shadow ต้องมีคะแนนมากกว่า 0</div>
+              <div className="rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-2">เปิด Paper Activation / Phase 2-B: ต้องมี approval แยกต่างหาก</div>
+              <div className="rounded-lg border border-[#eadbc9] bg-white/75 px-2.5 py-2">เปิดเงินจริง: ยังไม่เกี่ยวกับการ์ดนี้ ต้องผ่าน M-0B + Live Approval แยก</div>
             </div>
-
-            <div className="rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-2">
-              <div className="mb-1 text-[11px] font-black text-[#7a6a59]">Milestone ถัดไป</div>
-              <div className="text-[13px] font-black text-[#2b2118]">{milestoneTitle(milestone?.id)}</div>
-              <div className="mt-1 text-[11px] font-bold text-[#7a6a59]">
-                {milestone ? `ขาด ${milestone.remaining} ${unitLabel(milestone.unit)}` : "ยังไม่มี milestone เพิ่มเติม"}
-              </div>
-              <div className="mt-1 text-[10px] leading-relaxed text-[#9a8a72]">
-                {milestoneDescription(milestone?.id, milestone?.description)}
-              </div>
+            <div className="mt-2 rounded-lg border border-[#d8c2a5] bg-[#fff1cf] px-2.5 py-2 text-[11px] font-black text-[#4d3211]">
+              Next milestone: {model.nextMilestone}
             </div>
+          </div>
 
-            <div className="rounded-lg border border-[#e5d5bf] bg-[#fffdf8] p-2">
-              <div className="mb-1 text-[11px] font-black text-[#7a6a59]">ตัวบล็อกหลักตอนนี้</div>
-              <div className="text-[12px] font-black text-[#2b2118]">{blockerTitle(primary?.code)}</div>
-              <div className="mt-1 text-[10px] leading-relaxed text-[#7a6a59]">{blockerExplanation(primary?.code, primary?.label)}</div>
-              <div className="mt-2 flex flex-wrap gap-1">
-                <span className="rounded-full border border-[#e5d5bf] bg-white px-2 py-0.5 text-[10px] font-black text-[#7a6a59]">
-                  {score.activationAllowed === false ? "ยังไม่อนุญาตให้ Activate" : `activationAllowed=${boolText(score.activationAllowed)}`}
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-[13px] font-black text-rose-950">Safety Lock</h3>
+              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black text-rose-900">ไม่ใช่ Live / ไม่ใช่ Order</span>
+            </div>
+            <p className="mt-1 text-[11px] font-bold leading-relaxed text-rose-900">
+              ระบบนี้เป็น dashboard เพื่อการรีวิว ไม่ใช่ระบบส่งคำสั่ง
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {model.safetyLocks.map((lock) => (
+                <span key={lock} className="rounded-full border border-rose-200 bg-white px-2 py-0.5 text-[10px] font-black text-rose-900">
+                  {lock}
                 </span>
-                <span className="rounded-full border border-[#e5d5bf] bg-white px-2 py-0.5 text-[10px] font-black text-[#7a6a59]">
-                  {score.reviewOnly === true ? "ใช้เพื่อรีวิวเท่านั้น" : `reviewOnly=${boolText(score.reviewOnly)}`}
-                </span>
-              </div>
+              ))}
             </div>
           </div>
         </div>

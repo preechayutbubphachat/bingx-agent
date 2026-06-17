@@ -384,7 +384,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             />
           </div>
           {/* Agent & System Status */}
-          <section className={`${normalizedPanelClass("compact")} agent-hq-status-wall overflow-hidden p-3 [contain:layout_paint]`}>
+          <section className={`${normalizedPanelClass("compact")} agent-hq-status-wall p-3 [contain:layout]`}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-[14px] font-black text-cyan-100">
                 <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-[14px]" aria-hidden="true">▦</span>

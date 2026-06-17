@@ -45,8 +45,9 @@ test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
   assert.match(normalizedPanelClass("compact"), /min-h-\[160px\]/);
   assert.doesNotMatch(normalizedPanelClass("standard"), /h-full/);
   assert.match(normalizedPanelClass("tall"), /min-h-\[360px\]/);
-  assert.match(statusTileClass(), /h-\[116px\]/);
-  assert.match(statusTileClass(), /min-h-\[116px\]/);
+  assert.match(statusTileClass(), /min-h-\[158px\]/);
+  assert.doesNotMatch(statusTileClass(), /h-\[116px\]/);
+  assert.doesNotMatch(statusTileClass(), /min-h-\[116px\]/);
   assert.match(statusTileClass(), /contain:layout_paint/);
   assert.doesNotMatch(statusTileClass(), /h-full/);
   assert.match(statusTileClass(), /line-clamp-2/);

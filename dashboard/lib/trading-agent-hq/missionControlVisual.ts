@@ -86,5 +86,5 @@ export function normalizedPanelClass(size: NormalizedPanelSize = "standard"): st
 }
 
 export function statusTileClass(): string {
-  return "relative flex h-[116px] min-h-[116px] w-full flex-col gap-1.5 overflow-hidden rounded-2xl border px-2.5 py-2.5 text-left [contain:layout_paint] [&_.agent-hq-tile-title]:line-clamp-2";
+  return "relative flex min-h-[158px] w-full flex-col gap-1.5 overflow-hidden rounded-2xl border px-2.5 py-2.5 text-left [contain:layout_paint] [&_.agent-hq-tile-title]:line-clamp-2";
 }

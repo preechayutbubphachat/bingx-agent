@@ -3,7 +3,7 @@
 // dashboard/components/trading-agent-hq/CollapsedCardGrid.tsx
 // Phase UI-1.1 — responsive grid of collapsed cards shown as compact tiles
 // (replaces the old full-width collapsed rows). Sits above the expanded cards.
-// SAFETY: presentation only. No fetch, no token, no run/live/exchange controls.
+// SAFETY: presentation only. No runtime side effects or control surfaces.
 
 import CollapsedCardTile, { type CollapsedTile } from "./CollapsedCardTile";
 
@@ -26,7 +26,7 @@ export default function CollapsedCardGrid({ tiles, onExpand }: Props) {
           </span>
         ) : null}
       </div>
-      <div className="grid max-h-[360px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 scrollbar-thin">
+      <div className="grid max-h-[260px] grid-cols-1 gap-2 overflow-y-auto overflow-x-hidden pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:max-h-[300px] scrollbar-thin">
         {tiles.map((tile) => (
           <CollapsedCardTile key={tile.id} tile={tile} onExpand={onExpand} />
         ))}

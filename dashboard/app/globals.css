@@ -157,6 +157,8 @@ body {
   border-color: rgba(34, 211, 238, 0.24) !important;
   background: rgba(2, 8, 23, 0.92) !important;
   color: #e2e8f0 !important;
+  overflow: visible !important;
+  scrollbar-gutter: stable;
 }
 
 .agent-hq-analysis-rail [class*="bg-[#fffaf1]"],
@@ -237,6 +239,7 @@ body {
 .agent-hq-analysis-rail p,
 .agent-hq-analysis-rail div {
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .agent-hq-tile-title {
@@ -258,6 +261,7 @@ body {
 .agent-hq-analysis-rail ul > li,
 .agent-hq-analysis-rail [class*="rounded-lg"][class*="px-2"] {
   min-height: 34px;
+  border-color: rgba(125, 249, 255, 0.22) !important;
 }
 
 .agent-hq-analysis-rail [class*="rounded-full"] {

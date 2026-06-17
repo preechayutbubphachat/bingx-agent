@@ -350,8 +350,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
       sidebar={<TradingCafeSidebar activeId="dashboard" />}
       topbar={<TradingCafeTopBar live={live} lastUpdate={vm.meta.lastUpdate} safety={vm.safety} onRefresh={refresh} />}
     >
-      <div className="grid min-h-0 grid-cols-1 gap-4 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-w-0 flex-col gap-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-2 lg:pb-6 scrollbar-thin">
+      <div className="grid min-h-0 grid-cols-1 gap-4 lg:h-full lg:flex-1 lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="flex min-w-0 flex-col gap-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden lg:overscroll-contain lg:pr-2 lg:pb-6 scrollbar-thin">
           {/* Strong, always-visible safety banner */}
           <SafetyStatusStrip vm={vm} state={state} error={error} live={live} onRefresh={refresh} />
 
@@ -424,7 +424,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           <ReviewReadinessNextStepCard paper={vm.paper} />
 
           {/* Expanded cards (UI-1 behavior preserved), arranged desktop-first as a dense command grid. */}
-          <div className="grid grid-cols-1 items-stretch gap-3 2xl:grid-cols-2 [&>div]:h-full [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300 [&_section]:h-full [&_section]:border-cyan-400/20 [&_section]:bg-slate-950/70 [&_section]:text-slate-100">
+          <div className="grid grid-cols-1 items-start gap-3 2xl:grid-cols-2 [&_dd]:text-slate-100 [&_dt]:text-slate-500 [&_h2]:text-cyan-100 [&_h3]:text-cyan-100 [&_p]:text-slate-300 [&_section]:border-cyan-400/20 [&_section]:bg-slate-950/70 [&_section]:text-slate-100">
             {wrap("systemStatus", systemStatusNode)}
             {wrap("dynamicRegridStatus", <DynamicRegridStatusCard paper={vm.paper} safety={vm.safety} />)}
             {wrap(

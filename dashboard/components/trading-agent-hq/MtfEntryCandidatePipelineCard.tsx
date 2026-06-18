@@ -16,6 +16,10 @@ function pct(v: number | null | undefined): string {
   return typeof v === "number" && Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : NA;
 }
 
+function countText(v: number | null | undefined): string {
+  return typeof v === "number" && Number.isFinite(v) ? String(v) : NA;
+}
+
 function statusText(status: string): string {
   const labels: Record<string, string> = {
     NO_CANDIDATE: "ยังไม่มี candidate",
@@ -91,6 +95,7 @@ export default function MtfEntryCandidatePipelineCard({ paper }: { paper: PaperV
   const g = p.geometry;
   const c = p.currentPriceContext;
   const r = p.currentCandidateReevaluation;
+  const a = p.sampleAccounting;
   const priceFreshnessTone = c.freshnessStatus === "FRESH"
     ? "green"
     : c.freshnessStatus === "MISSING" || c.freshnessStatus === "UNKNOWN"
@@ -148,8 +153,10 @@ export default function MtfEntryCandidatePipelineCard({ paper }: { paper: PaperV
         <Row label="สถานะ candidate" value={statusText(p.status)} tone={toneFor(p.status)} />
         <Row label="HTF Bias" value={`${p.htfBias.status}${p.htfBias.confidence != null ? ` · ${p.htfBias.confidence}` : ""}`} />
         <Row label="Exact Zone quality" value={z.status} tone={toneFor(z.status)} />
-        <Row label="Samples" value={`${z.exactSamples} / ${z.requiredExactSamples}`} tone={z.samplesRemaining > 0 ? "amber" : "green"} />
-        <Row label="Samples remaining" value={z.samplesRemaining > 0 ? `ขาด exact samples อีก ${z.samplesRemaining}` : "ครบ sample ขั้นต่ำ"} tone={z.samplesRemaining > 0 ? "amber" : "green"} />
+        <Row label="Review samples (cumulative)" value={a.reviewSamplesUsed != null ? `${a.reviewSamplesUsed} / ${a.reviewTargetSamples} สะสม` : NA} tone={a.reviewSamplesRemaining != null && a.reviewSamplesRemaining > 0 ? "amber" : "green"} />
+        <Row label="Window samples (latest)" value={countText(a.windowExactSamples)} tone={a.canDecrease ? "amber" : "neutral"} />
+        <Row label="Current-price eligible" value={countText(a.currentPriceEligibleExactSamples)} />
+        <Row label="Remaining" value={a.reviewSamplesRemaining != null && a.reviewSamplesRemaining > 0 ? `ขาดอีก ${a.reviewSamplesRemaining} cumulative samples` : "ครบ sample ขั้นต่ำ"} tone={a.reviewSamplesRemaining != null && a.reviewSamplesRemaining > 0 ? "amber" : "green"} />
         <Row label="Exact avg netRR" value={fmt(z.exactAvgNetRR)} tone={z.exactAvgNetRR != null && z.heuristicAvgNetRR != null && z.exactAvgNetRR > z.heuristicAvgNetRR ? "green" : "neutral"} />
         <Row label="Heuristic avg netRR" value={fmt(z.heuristicAvgNetRR)} />
         <Row label="Exact vs heuristic delta" value={fmt(z.exactVsHeuristicDelta)} tone={z.exactVsHeuristicDelta != null && z.exactVsHeuristicDelta > 0 ? "green" : "neutral"} />
@@ -159,6 +166,15 @@ export default function MtfEntryCandidatePipelineCard({ paper }: { paper: PaperV
         <Row label="Target after touch" value={pct(t.targetAfterEntryTouchRate)} tone={t.targetAfterEntryTouchRate === 0 ? "amber" : "neutral"} />
         <Row label="Invalidation after touch" value={pct(t.invalidationAfterEntryTouchRate)} tone={t.invalidationAfterEntryTouchRate != null && t.targetAfterEntryTouchRate != null && t.invalidationAfterEntryTouchRate > t.targetAfterEntryTouchRate ? "amber" : "neutral"} />
         <Row label="Geometry" value={`${g.status} · ready ${g.geometryReady}`} tone={toneFor(g.status)} />
+      </div>
+
+      <div className="rounded-lg border border-[#e5d5bf] bg-white/70 p-2 text-[11px] font-bold leading-relaxed text-[#6e5b49]">
+        <div>ตัวอย่างสะสมควรเพิ่มหรือคงที่ · ใช้ cumulative สำหรับ review progress</div>
+        <div>ค่าที่ลดลงคือ window/current-filtered ไม่ใช่ cumulative</div>
+        <div>ใช้ current-price eligible สำหรับสภาพตลาดตอนนี้ · ใช้ window samples เพื่อดูความสดของ pattern ล่าสุด</div>
+        {a.canDecrease ? (
+          <div className="mt-1 font-black text-amber-900">ค่านี้เป็น rolling/current-filtered จึงอาจลดลงได้ และยังไม่ใช่ lifetime cumulative counter</div>
+        ) : null}
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-2">

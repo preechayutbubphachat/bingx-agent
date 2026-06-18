@@ -982,6 +982,7 @@ export function buildPaperLoopDiagnostics(
     currentPriceContext: context.mtfEntryCurrentPriceContext ?? buildMtfEntryCurrentPriceContext(context, currentPrice, summary.checkedAt),
     mtfObFvgShadowSummary: trendEvidenceDecisionSummary.mtfObFvgShadowSummary,
     exactZoneComparisonSummary: trendEvidenceDecisionSummary.exactZoneComparisonSummary,
+    sampleAccounting: trendEvidenceDecisionSummary.sampleAccounting,
     shadowOutcomeSummary: trendEvidenceDecisionSummary.shadowOutcomeSummary,
     shadowOutcomeQualityGate: trendEvidenceDecisionSummary.shadowOutcomeQualityGate,
     shadowEvidenceCoverage: trendEvidenceDecisionSummary.shadowEvidenceCoverage,

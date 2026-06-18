@@ -84,6 +84,19 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             priceMovePct: 0.5,
             reason: "Current price is fresh and close enough to the prior analysis context.",
           },
+          sampleAccounting: {
+            lifetimeExactSamples: 75,
+            windowExactSamples: 70,
+            currentPriceEligibleExactSamples: 12,
+            reviewTargetSamples: 100,
+            reviewSamplesUsed: 75,
+            reviewSamplesRemaining: 25,
+            sampleSource: "LIFETIME_CUMULATIVE",
+            isMonotonicExpected: true,
+            canDecrease: false,
+            explanation: "Lifetime cumulative exact samples drive review progress.",
+            warnings: [],
+          },
           verdict: {
             status: "PROMISING_GEOMETRY_BUT_EXECUTION_NOT_READY",
             summary: "Exact Zone มี RR geometry ดีกว่า heuristic แต่ execution outcome ยังไม่พร้อม",
@@ -110,6 +123,9 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.mtfEntryCandidatePipeline.currentPriceContext.freshnessStatus, "FRESH");
   assert.equal(vm.paper.mtfEntryCandidatePipeline.currentPriceContext.currentPrice, 101.5);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.currentCandidateReevaluation.status, "CURRENT_PRICE_CONFIRMED");
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.sampleAccounting.reviewSamplesUsed, 75);
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.sampleAccounting.windowExactSamples, 70);
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.sampleAccounting.currentPriceEligibleExactSamples, 12);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.verdict.status, "PROMISING_GEOMETRY_BUT_EXECUTION_NOT_READY");
   assert.equal(vm.paper.mtfEntryCandidatePipeline.activationAllowed, false);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.paperActivationAllowed, false);

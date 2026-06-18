@@ -75,6 +75,19 @@ export interface MtfEntryCandidatePipeline {
     pending: number;
     notes: string[];
   };
+  sampleAccounting: {
+    lifetimeExactSamples: number | null;
+    windowExactSamples: number | null;
+    currentPriceEligibleExactSamples: number | null;
+    reviewTargetSamples: 100;
+    reviewSamplesUsed: number | null;
+    reviewSamplesRemaining: number | null;
+    sampleSource: "LIFETIME_CUMULATIVE" | "ROLLING_WINDOW" | "CURRENT_PRICE_ELIGIBLE" | "UNKNOWN";
+    isMonotonicExpected: boolean;
+    canDecrease: boolean;
+    explanation: string;
+    warnings: string[];
+  };
   currentPriceContext: {
     currentPrice: number | null;
     priceSource: string | null;
@@ -122,6 +135,7 @@ export interface MtfEntryCandidatePipelineInput {
   noTradeReasonAnalysis?: unknown;
   reviewReadinessScore?: unknown;
   currentPriceContext?: unknown;
+  sampleAccounting?: unknown;
 }
 
 const SOURCE = "MTF_ENTRY_CANDIDATE_PIPELINE_V1" as const;
@@ -210,6 +224,19 @@ function emptyPipeline(): MtfEntryCandidatePipeline {
       pending: 0,
       notes: ["No exact-zone geometry available."],
     },
+    sampleAccounting: {
+      lifetimeExactSamples: null,
+      windowExactSamples: null,
+      currentPriceEligibleExactSamples: null,
+      reviewTargetSamples: REQUIRED_EXACT_SAMPLES,
+      reviewSamplesUsed: null,
+      reviewSamplesRemaining: REQUIRED_EXACT_SAMPLES,
+      sampleSource: "UNKNOWN",
+      isMonotonicExpected: false,
+      canDecrease: true,
+      explanation: "No exact sample accounting is available.",
+      warnings: ["No lifetime cumulative counter is available."],
+    },
     currentPriceContext: {
       currentPrice: null,
       priceSource: null,
@@ -256,6 +283,64 @@ function firstNumber(...values: unknown[]): number | null {
     if (n != null) return n;
   }
   return null;
+}
+
+function nonNegativeIntOrNull(value: unknown): number | null {
+  const n = fin(value);
+  return n != null ? Math.max(0, Math.floor(n)) : null;
+}
+
+function sampleAccounting(
+  input: MtfEntryCandidatePipelineInput,
+  windowExactSamples: number,
+): MtfEntryCandidatePipeline["sampleAccounting"] {
+  const raw = obj(input.sampleAccounting);
+  const lifetimeExactSamples = nonNegativeIntOrNull(raw.lifetimeExactSamples);
+  const explicitWindowExactSamples = nonNegativeIntOrNull(raw.windowExactSamples);
+  const currentPriceEligibleExactSamples = nonNegativeIntOrNull(raw.currentPriceEligibleExactSamples);
+  const windowSamples = explicitWindowExactSamples ?? windowExactSamples;
+
+  const sampleSource: MtfEntryCandidatePipeline["sampleAccounting"]["sampleSource"] =
+    lifetimeExactSamples != null
+      ? "LIFETIME_CUMULATIVE"
+      : currentPriceEligibleExactSamples != null
+        ? "CURRENT_PRICE_ELIGIBLE"
+        : windowSamples > 0
+          ? "ROLLING_WINDOW"
+          : "UNKNOWN";
+
+  const reviewSamplesUsed =
+    lifetimeExactSamples ??
+    (sampleSource === "CURRENT_PRICE_ELIGIBLE" ? currentPriceEligibleExactSamples : null) ??
+    (windowSamples > 0 ? windowSamples : null);
+  const reviewSamplesRemaining = reviewSamplesUsed == null ? REQUIRED_EXACT_SAMPLES : Math.max(0, REQUIRED_EXACT_SAMPLES - reviewSamplesUsed);
+  const canDecrease = sampleSource !== "LIFETIME_CUMULATIVE";
+  const warnings: string[] = [];
+  if (sampleSource === "ROLLING_WINDOW") warnings.push("rolling window can decrease as old samples leave the window");
+  if (sampleSource === "CURRENT_PRICE_ELIGIBLE") warnings.push("current-price eligible samples can decrease when the market moves");
+  if (lifetimeExactSamples == null) warnings.push("lifetime cumulative exact sample counter is not available; do not treat this as monotonic review progress");
+
+  const explanation = sampleSource === "LIFETIME_CUMULATIVE"
+    ? "Lifetime cumulative exact samples drive review progress. Window and current-price eligible counts are displayed separately."
+    : sampleSource === "ROLLING_WINDOW"
+      ? "Only rolling-window exact samples are available. This value can decrease and should be used for recent pattern freshness, not cumulative review progress."
+      : sampleSource === "CURRENT_PRICE_ELIGIBLE"
+        ? "Only current-price eligible exact samples are available. This value can decrease as market context changes."
+        : "No exact sample accounting is available.";
+
+  return {
+    lifetimeExactSamples,
+    windowExactSamples: windowSamples > 0 ? windowSamples : null,
+    currentPriceEligibleExactSamples,
+    reviewTargetSamples: REQUIRED_EXACT_SAMPLES,
+    reviewSamplesUsed,
+    reviewSamplesRemaining,
+    sampleSource,
+    isMonotonicExpected: sampleSource === "LIFETIME_CUMULATIVE",
+    canDecrease,
+    explanation,
+    warnings,
+  };
 }
 
 function currentPriceContext(input: MtfEntryCandidatePipelineInput): MtfEntryCandidatePipeline["currentPriceContext"] {
@@ -497,13 +582,15 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
   const exactSamples = count(exact.exactSamples);
   const priceContext = currentPriceContext(input);
   const reevaluation = currentCandidateReevaluation(input, priceContext);
+  const accounting = sampleAccounting(input, exactSamples);
 
   if (!hasCandidateData(input, exactSamples)) return emptyPipeline();
 
   const exactAvgNetRR = fin(exact.exactAvgNetRR);
   const heuristicAvgNetRR = fin(exact.heuristicAvgNetRR);
   const exactVsHeuristicDelta = fin(exact.avgExactVsHeuristicDelta);
-  const samplesRemaining = Math.max(0, REQUIRED_EXACT_SAMPLES - exactSamples);
+  const reviewSamplesUsed = accounting.reviewSamplesUsed ?? exactSamples;
+  const samplesRemaining = accounting.reviewSamplesRemaining ?? Math.max(0, REQUIRED_EXACT_SAMPLES - reviewSamplesUsed);
   const ttcCount = targetTooCloseCount(exact);
   const targetTooCloseRate = rate(ttcCount, exactSamples);
   const missedFillRate = fin(fill.missedFillRate);
@@ -526,7 +613,8 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
   const missedFillWeak = missedFillRate != null && missedFillRate > ACCEPTABLE_MISSED_FILL_RATE;
 
   const blockers: string[] = [];
-  if (samplesRemaining > 0) blockers.push(`exact samples ${exactSamples}/${REQUIRED_EXACT_SAMPLES} - ขาด exact samples อีก ${samplesRemaining}`);
+  if (samplesRemaining > 0) blockers.push(`review exact samples ${reviewSamplesUsed}/${REQUIRED_EXACT_SAMPLES} - ขาด cumulative exact samples อีก ${samplesRemaining}`);
+  if (accounting.canDecrease) blockers.push("sample count is rolling/current-filtered and can decrease; do not treat it as cumulative review progress");
   if (targetTooCloseDominates) blockers.push(`TARGET_TOO_CLOSE สูง (${ttcCount}/${exactSamples})`);
   if (missedFillWeak) blockers.push(`Missed fill rate สูง (${Math.round((missedFillRate ?? 0) * 100)}%)`);
   if (targetAfterEntryTouchRate === 0) blockers.push("หลัง entry touch ยังไม่เห็น target ชนะ invalidation");
@@ -544,7 +632,7 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
   }
 
   const cleanReviewReady =
-    exactSamples >= REQUIRED_EXACT_SAMPLES &&
+    reviewSamplesUsed >= REQUIRED_EXACT_SAMPLES &&
     !targetTooCloseDominates &&
     !missedFillWeak &&
     entryTouched >= MIN_ENTRY_TOUCH_FOR_REVIEW &&
@@ -567,7 +655,7 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
   }
 
   if (cleanReviewReady && !currentPriceBlocksFinalVerdict) verdictStatus = "REVIEW_READY_NOT_ACTIVATION";
-  else if (exactSamples >= REQUIRED_EXACT_SAMPLES && invalidationDominates) {
+  else if (reviewSamplesUsed >= REQUIRED_EXACT_SAMPLES && invalidationDominates) {
     verdictStatus = "INVALIDATION_DOMINATES_AFTER_TOUCH";
   }
 
@@ -643,6 +731,7 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
         "review-only geometry; no live or paper activation",
       ],
     },
+    sampleAccounting: accounting,
     currentPriceContext: priceContext,
     currentCandidateReevaluation: reevaluation,
     verdict: {

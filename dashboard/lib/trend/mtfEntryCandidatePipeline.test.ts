@@ -246,6 +246,55 @@ test("material price move from prior analysis is flagged before confidence is re
   assert.notEqual(result.verdict.status, "REVIEW_READY_NOT_ACTIVATION");
 });
 
+test("sample accounting uses lifetime exact samples for review progress when available", () => {
+  const result = evaluateMtfEntryCandidatePipeline(input({
+    sampleAccounting: {
+      lifetimeExactSamples: 75,
+      windowExactSamples: 70,
+    },
+    exactZoneComparisonSummary: exact({ exactSamples: 70 }),
+  }));
+
+  assert.equal(result.sampleAccounting.lifetimeExactSamples, 75);
+  assert.equal(result.sampleAccounting.windowExactSamples, 70);
+  assert.equal(result.sampleAccounting.reviewSamplesUsed, 75);
+  assert.equal(result.sampleAccounting.reviewSamplesRemaining, 25);
+  assert.equal(result.sampleAccounting.sampleSource, "LIFETIME_CUMULATIVE");
+  assert.equal(result.sampleAccounting.isMonotonicExpected, true);
+  assert.equal(result.sampleAccounting.canDecrease, false);
+});
+
+test("window-only exact samples are labeled as rolling and may decrease", () => {
+  const result = evaluateMtfEntryCandidatePipeline(input({
+    exactZoneComparisonSummary: exact({ exactSamples: 70 }),
+  }));
+
+  assert.equal(result.sampleAccounting.lifetimeExactSamples, null);
+  assert.equal(result.sampleAccounting.windowExactSamples, 70);
+  assert.equal(result.sampleAccounting.reviewSamplesUsed, 70);
+  assert.equal(result.sampleAccounting.reviewSamplesRemaining, 30);
+  assert.equal(result.sampleAccounting.sampleSource, "ROLLING_WINDOW");
+  assert.equal(result.sampleAccounting.canDecrease, true);
+  assert.ok(result.sampleAccounting.warnings.some((warning) => /rolling window can decrease/i.test(warning)));
+});
+
+test("current-price eligible exact samples are separate from review progress", () => {
+  const result = evaluateMtfEntryCandidatePipeline(input({
+    sampleAccounting: {
+      lifetimeExactSamples: 100,
+      windowExactSamples: 70,
+      currentPriceEligibleExactSamples: 12,
+    },
+    exactZoneComparisonSummary: exact({ exactSamples: 70 }),
+  }));
+
+  assert.equal(result.sampleAccounting.reviewSamplesUsed, 100);
+  assert.equal(result.sampleAccounting.reviewSamplesRemaining, 0);
+  assert.equal(result.sampleAccounting.currentPriceEligibleExactSamples, 12);
+  assert.equal(result.sampleAccounting.sampleSource, "LIFETIME_CUMULATIVE");
+  assert.equal(result.activationAllowed, false);
+});
+
 test("no data fixture returns NO_CANDIDATE without throwing", () => {
   const result = evaluateMtfEntryCandidatePipeline({});
   assert.equal(result.status, "NO_CANDIDATE");

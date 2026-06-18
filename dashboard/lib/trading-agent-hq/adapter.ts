@@ -88,6 +88,7 @@ function mapMtfEntryCandidatePipeline(raw: AnyObj): PaperVM["mtfEntryCandidatePi
   const geometry = obj(raw.geometry);
   const currentPriceContext = obj(raw.currentPriceContext);
   const currentCandidateReevaluation = obj(raw.currentCandidateReevaluation);
+  const sampleAccounting = obj(raw.sampleAccounting);
   const verdict = obj(raw.verdict);
   return {
     schemaVersion: num(raw.schemaVersion, 1),
@@ -154,6 +155,19 @@ function mapMtfEntryCandidatePipeline(raw: AnyObj): PaperVM["mtfEntryCandidatePi
       currentPrice: numOrNull(currentCandidateReevaluation.currentPrice),
       priceMovePct: numOrNull(currentCandidateReevaluation.priceMovePct),
       reason: str(currentCandidateReevaluation.reason, "Current price context is missing."),
+    },
+    sampleAccounting: {
+      lifetimeExactSamples: numOrNull(sampleAccounting.lifetimeExactSamples),
+      windowExactSamples: numOrNull(sampleAccounting.windowExactSamples),
+      currentPriceEligibleExactSamples: numOrNull(sampleAccounting.currentPriceEligibleExactSamples),
+      reviewTargetSamples: num(sampleAccounting.reviewTargetSamples, 100),
+      reviewSamplesUsed: numOrNull(sampleAccounting.reviewSamplesUsed),
+      reviewSamplesRemaining: numOrNull(sampleAccounting.reviewSamplesRemaining),
+      sampleSource: str(sampleAccounting.sampleSource, "UNKNOWN"),
+      isMonotonicExpected: bool(sampleAccounting.isMonotonicExpected),
+      canDecrease: sampleAccounting.canDecrease === false ? false : true,
+      explanation: str(sampleAccounting.explanation, "No exact sample accounting is available."),
+      warnings: strArray(sampleAccounting.warnings),
     },
     verdict: {
       status: str(verdict.status, "NO_CANDIDATE"),

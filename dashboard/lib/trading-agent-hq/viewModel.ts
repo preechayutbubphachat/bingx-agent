@@ -242,6 +242,19 @@ export interface MtfEntryCandidatePipelineVM {
     priceMovePct: number | null;
     reason: string;
   };
+  sampleAccounting: {
+    lifetimeExactSamples: number | null;
+    windowExactSamples: number | null;
+    currentPriceEligibleExactSamples: number | null;
+    reviewTargetSamples: number;
+    reviewSamplesUsed: number | null;
+    reviewSamplesRemaining: number | null;
+    sampleSource: string;
+    isMonotonicExpected: boolean;
+    canDecrease: boolean;
+    explanation: string;
+    warnings: string[];
+  };
   verdict: {
     status: string;
     summary: string;

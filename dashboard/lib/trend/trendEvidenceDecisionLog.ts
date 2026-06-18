@@ -107,6 +107,12 @@ export interface TrendEvidenceDecisionSummary {
   mtfObFvgShadowSummary: MtfObFvgShadowSnapshotSummary;
   /** T-3H-6-d5 read-only exact-zone vs heuristic comparison. Never read by runner/decision logic. */
   exactZoneComparisonSummary: ExactZoneComparisonSummary;
+  /** D7.0-d read-only sample accounting. Lifetime uses all available retained records, window uses this summary window. */
+  sampleAccounting: {
+    lifetimeExactSamples: number | null;
+    windowExactSamples: number | null;
+    currentPriceEligibleExactSamples: number | null;
+  };
   /** D5.2-b read-only counterfactual reachability evidence. Never read by runner/decision logic. */
   shadowOutcomeSummary: ShadowOutcomeSummary;
   /** D5.2-d read-only sample/context quality gate. Never read by runner/decision logic. */
@@ -132,6 +138,11 @@ export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummar
     malformedLines: 0,
     mtfObFvgShadowSummary: emptyMtfObFvgShadowSnapshotSummary(),
     exactZoneComparisonSummary: emptyExactZoneComparisonSummary(),
+    sampleAccounting: {
+      lifetimeExactSamples: null,
+      windowExactSamples: null,
+      currentPriceEligibleExactSamples: null,
+    },
     shadowOutcomeSummary: emptyShadowOutcomeSummary(),
     shadowOutcomeQualityGate: emptyShadowOutcomeQualityGate(),
     shadowEvidenceCoverage: emptyShadowEvidenceCoverageTracker(),
@@ -353,6 +364,14 @@ export async function readTrendEvidenceDecisionLogSummary(
     candlesByTimeframe: options.candlesByTimeframe,
   });
   const shadowOutcomeQualityGate = evaluateShadowOutcomeQualityGate(shadowOutcomeSummary);
+  const windowExactZoneComparisonSummary = summarizeExactZoneComparison(records, {
+    candlesByTimeframe: options.candlesByTimeframe,
+  });
+  const allAvailableRecords = all.filter((r) => {
+    const t = Date.parse(r.recordedAt);
+    return Number.isFinite(t) && t <= nowMs + 5 * 60_000;
+  });
+  const lifetimeExactZoneComparisonSummary = summarizeExactZoneComparison(allAvailableRecords);
 
   return {
     available: true,
@@ -369,9 +388,12 @@ export async function readTrendEvidenceDecisionLogSummary(
     sampleWarning: records.length < DECISION_LOG_MIN_SAMPLE,
     malformedLines: malformed,
     mtfObFvgShadowSummary: summarizeMtfObFvgShadowSnapshots(records),
-    exactZoneComparisonSummary: summarizeExactZoneComparison(records, {
-      candlesByTimeframe: options.candlesByTimeframe,
-    }),
+    exactZoneComparisonSummary: windowExactZoneComparisonSummary,
+    sampleAccounting: {
+      lifetimeExactSamples: lifetimeExactZoneComparisonSummary.exactSamples,
+      windowExactSamples: windowExactZoneComparisonSummary.exactSamples,
+      currentPriceEligibleExactSamples: null,
+    },
     shadowOutcomeSummary,
     shadowOutcomeQualityGate,
     shadowEvidenceCoverage: evaluateShadowEvidenceCoverage(shadowOutcomeQualityGate),

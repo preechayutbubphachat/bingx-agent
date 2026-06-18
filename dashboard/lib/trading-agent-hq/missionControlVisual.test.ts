@@ -7,6 +7,7 @@ import {
   hudPanelClass,
   normalizedPanelClass,
   missionCardTone,
+  statusWallGridClass,
   statusTileClass,
   threeColumnShellClass,
   reviewOnlySafetyCopy,
@@ -45,10 +46,17 @@ test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
   assert.match(normalizedPanelClass("compact"), /min-h-\[160px\]/);
   assert.doesNotMatch(normalizedPanelClass("standard"), /h-full/);
   assert.match(normalizedPanelClass("tall"), /min-h-\[360px\]/);
-  assert.match(statusTileClass(), /min-h-\[158px\]/);
+  assert.match(statusTileClass(), /min-h-\[170px\]/);
   assert.doesNotMatch(statusTileClass(), /h-\[116px\]/);
   assert.doesNotMatch(statusTileClass(), /min-h-\[116px\]/);
-  assert.match(statusTileClass(), /contain:layout_paint/);
+  assert.match(statusTileClass(), /contain:layout/);
+  assert.doesNotMatch(statusTileClass(), /overflow-hidden/);
   assert.doesNotMatch(statusTileClass(), /h-full/);
   assert.match(statusTileClass(), /line-clamp-2/);
+  assert.match(statusWallGridClass(), /agent-hq-collapsed-grid/);
+  assert.match(statusWallGridClass(), /overflow-visible/);
+  assert.doesNotMatch(statusWallGridClass(), /max-h-/);
+  assert.doesNotMatch(statusWallGridClass(), /overflow-y-auto/);
+  assert.doesNotMatch(statusWallGridClass(), /grid-cols-/);
+  assert.doesNotMatch(statusWallGridClass(), /contain:layout_paint/);
 });

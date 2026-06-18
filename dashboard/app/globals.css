@@ -261,12 +261,14 @@ body {
 
 .agent-hq-collapsed-grid {
   align-content: start;
-  grid-auto-rows: minmax(158px, auto);
-  scrollbar-gutter: stable;
+  align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-auto-rows: minmax(170px, auto);
+  overflow: visible;
 }
 
 .agent-hq-collapsed-grid > button {
-  min-height: 158px;
+  min-height: 170px;
   transform: none !important;
 }
 

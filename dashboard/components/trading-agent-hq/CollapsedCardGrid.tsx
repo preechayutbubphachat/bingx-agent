@@ -6,6 +6,7 @@
 // SAFETY: presentation only. No runtime side effects or control surfaces.
 
 import CollapsedCardTile, { type CollapsedTile } from "./CollapsedCardTile";
+import { statusWallGridClass } from "@/lib/trading-agent-hq/missionControlVisual";
 
 type Props = {
   tiles: CollapsedTile[];
@@ -26,7 +27,7 @@ export default function CollapsedCardGrid({ tiles, onExpand }: Props) {
           </span>
         ) : null}
       </div>
-      <div className="agent-hq-collapsed-grid grid max-h-[410px] grid-cols-1 gap-2 overflow-y-auto overflow-x-hidden overscroll-contain pr-1 [contain:layout_paint] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:max-h-[430px] scrollbar-thin">
+      <div className={statusWallGridClass()}>
         {tiles.map((tile) => (
           <CollapsedCardTile key={tile.id} tile={tile} onExpand={onExpand} />
         ))}

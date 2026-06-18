@@ -7,6 +7,7 @@ import {
   hudPanelClass,
   normalizedPanelClass,
   missionCardTone,
+  statusWallPanelClass,
   statusWallGridClass,
   statusTileClass,
   threeColumnShellClass,
@@ -59,4 +60,8 @@ test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
   assert.doesNotMatch(statusWallGridClass(), /overflow-y-auto/);
   assert.doesNotMatch(statusWallGridClass(), /grid-cols-/);
   assert.doesNotMatch(statusWallGridClass(), /contain:layout_paint/);
+  assert.match(statusWallPanelClass(), /agent-hq-status-wall/);
+  assert.doesNotMatch(statusWallPanelClass(), /overflow-hidden/);
+  assert.doesNotMatch(statusWallPanelClass(), /contain:layout/);
+  assert.doesNotMatch(statusWallPanelClass(), /contain:layout_paint/);
 });

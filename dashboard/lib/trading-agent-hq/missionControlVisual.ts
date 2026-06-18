@@ -92,3 +92,7 @@ export function statusTileClass(): string {
 export function statusWallGridClass(): string {
   return "agent-hq-collapsed-grid grid gap-2 overflow-visible";
 }
+
+export function statusWallPanelClass(): string {
+  return `${normalizedPanelClass("compact")} agent-hq-status-wall p-3`;
+}

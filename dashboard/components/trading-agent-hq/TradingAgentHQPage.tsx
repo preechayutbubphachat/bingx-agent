@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { TradingAgentHQViewModel, AgentId } from "@/lib/trading-agent-hq/viewModel";
 import { buildAgentProgressions } from "@/lib/trading-agent-hq/progression";
 import { buildMissionControlSummary } from "@/lib/trading-agent-hq/missionControl";
-import { analysisRailReadabilityClass, normalizedPanelClass } from "@/lib/trading-agent-hq/missionControlVisual";
+import { analysisRailReadabilityClass, normalizedPanelClass, statusWallPanelClass } from "@/lib/trading-agent-hq/missionControlVisual";
 import { useTradingAgentHQ } from "@/lib/trading-agent-hq/useTradingAgentHQ";
 import { useAgentAnimations } from "@/lib/trading-agent-hq/useAgentAnimations";
 import {
@@ -384,7 +384,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             />
           </div>
           {/* Agent & System Status */}
-          <section className={`${normalizedPanelClass("compact")} agent-hq-status-wall p-3 [contain:layout]`}>
+          <section className={statusWallPanelClass()}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-[14px] font-black text-cyan-100">
                 <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-[14px]" aria-hidden="true">▦</span>

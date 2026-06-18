@@ -349,6 +349,27 @@ body {
   -webkit-line-clamp: 2;
 }
 
+.agent-hq-content-frame > .grid > div:first-child > * {
+  flex-shrink: 0;
+}
+
+.agent-hq-content-frame > .grid > div:first-child > section {
+  flex-shrink: 0;
+  overflow: visible !important;
+}
+
+.agent-hq-content-frame .min-h-\[190px\] .truncate {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.agent-hq-content-frame .max-h-\[132px\] {
+  max-height: 190px;
+}
+
+
 .agent-hq-analysis-rail dl > div,
 .agent-hq-analysis-rail ul > li,
 .agent-hq-analysis-rail [class*="rounded-lg"][class*="px-2"] {

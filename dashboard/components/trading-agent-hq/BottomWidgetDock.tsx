@@ -30,7 +30,7 @@ function Widget({
   children: ReactNode;
 }) {
   return (
-    <section className="flex h-[310px] min-w-0 max-w-full flex-col overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-3 shadow-[0_0_30px_rgba(34,211,238,0.07)]">
+    <section className="flex h-auto min-h-[300px] max-h-[380px] min-w-0 max-w-full shrink-0 flex-col overflow-visible rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-3 shadow-[0_0_30px_rgba(34,211,238,0.07)]">
       <h2 className="mb-2 flex shrink-0 items-center gap-1.5 truncate text-xs font-black uppercase tracking-[0.12em] text-cyan-100">
         {icon && <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-cyan-300/40 bg-cyan-400/10 text-sm text-cyan-100" aria-hidden>{icon}</span>}
         <span className="truncate">{title}</span>
@@ -168,7 +168,7 @@ export default function BottomWidgetDock({
   const sampleStatus = vm.paper.sampleStatus === "SUFFICIENT" ? "INFO" : "DATA_GAP";
   const costStatus = vm.paper.costGateStatus === "PASS" ? "COST_PASS" : vm.paper.costGateStatus === "UNKNOWN" ? "PENDING" : "DATA_GAP";
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-4 2xl:grid-cols-7">
+    <div className="grid min-w-0 grid-cols-1 items-stretch gap-3 xl:grid-cols-2 2xl:grid-cols-3">
       <Widget icon="📊" title="ความคืบหน้า Agent">
         <div className="space-y-2">
           {agentProgressions.map((item) => (

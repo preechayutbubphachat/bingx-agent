@@ -3,6 +3,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   analysisRailReadabilityClass,
+  centerCardBodyClass,
+  centerInfoCardClass,
   cyberProgressTone,
   hudPanelClass,
   normalizedPanelClass,
@@ -37,6 +39,7 @@ test("cyber progress tone maps review scores without trading language", () => {
 });
 
 test("D6.2 layout helpers enforce independent desktop column scrolling", () => {
+  assert.match(threeColumnShellClass(), /agent-hq-shell/);
   assert.match(threeColumnShellClass(), /h-screen/);
   assert.match(threeColumnShellClass(), /overflow-hidden/);
   assert.match(threeColumnShellClass(), /lg:flex-row/);
@@ -46,7 +49,9 @@ test("D6.2 layout helpers enforce independent desktop column scrolling", () => {
 });
 
 test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
-  assert.match(normalizedPanelClass("compact"), /min-h-\[160px\]/);
+  assert.match(normalizedPanelClass("compact"), /min-h-\[190px\]/);
+  assert.match(normalizedPanelClass("compact"), /shrink-0/);
+  assert.match(normalizedPanelClass("compact"), /overflow-visible/);
   assert.doesNotMatch(normalizedPanelClass("standard"), /h-full/);
   assert.match(normalizedPanelClass("tall"), /min-h-\[360px\]/);
   assert.match(statusTileClass(), /min-h-\[160px\]/);
@@ -73,6 +78,21 @@ test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
   assert.doesNotMatch(statusWallPanelClass(), /overflow-hidden/);
   assert.doesNotMatch(statusWallPanelClass(), /contain:layout/);
   assert.doesNotMatch(statusWallPanelClass(), /contain:layout_paint/);
+});
+
+test("D6.4-b center card helpers keep content visible or intentionally scrollable", () => {
+  assert.match(centerInfoCardClass("compact"), /min-h-\[190px\]/);
+  assert.match(centerInfoCardClass("compact"), /h-auto/);
+  assert.match(centerInfoCardClass("compact"), /shrink-0/);
+  assert.match(centerInfoCardClass("compact"), /overflow-visible/);
+  assert.doesNotMatch(centerInfoCardClass("compact"), /overflow-hidden|h-full|translate|contain:/);
+
+  assert.match(centerCardBodyClass("natural"), /overflow-visible/);
+  assert.doesNotMatch(centerCardBodyClass("natural"), /overflow-hidden|max-h-|h-\[/);
+
+  assert.match(centerCardBodyClass("scroll"), /overflow-y-auto/);
+  assert.match(centerCardBodyClass("scroll"), /min-h-0/);
+  assert.doesNotMatch(centerCardBodyClass("scroll"), /overflow-hidden|translate|contain:/);
 });
 
 test("D6.4 stable status wall classes avoid overlap-prone layout primitives", () => {

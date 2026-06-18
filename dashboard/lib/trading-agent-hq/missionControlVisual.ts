@@ -38,7 +38,7 @@ export function reviewOnlySafetyCopy(): string {
 }
 
 export function threeColumnShellClass(): string {
-  return "flex h-screen min-h-screen flex-col overflow-hidden bg-[#020817] text-[#d7f7ff] lg:flex-row";
+  return "agent-hq-shell flex h-screen min-h-screen flex-col overflow-hidden bg-[#020817] text-[#d7f7ff] lg:flex-row";
 }
 
 export function analysisRailReadabilityClass(): string {
@@ -78,11 +78,21 @@ export type NormalizedPanelSize = "compact" | "standard" | "tall";
 export function normalizedPanelClass(size: NormalizedPanelSize = "standard"): string {
   const height =
     size === "compact"
-      ? "min-h-[160px]"
+      ? "min-h-[190px]"
       : size === "tall"
         ? "min-h-[360px]"
         : "min-h-[220px]";
-  return `${height} rounded-2xl border border-cyan-400/20 bg-slate-950/75 shadow-[0_0_30px_rgba(34,211,238,0.06)]`;
+  return `${height} h-auto shrink-0 overflow-visible rounded-2xl border border-cyan-400/20 bg-slate-950/75 shadow-[0_0_30px_rgba(34,211,238,0.06)]`;
+}
+
+export function centerInfoCardClass(size: NormalizedPanelSize = "standard"): string {
+  return `${normalizedPanelClass(size)} flex flex-col`;
+}
+
+export function centerCardBodyClass(mode: "natural" | "scroll" = "natural"): string {
+  return mode === "scroll"
+    ? "min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin"
+    : "min-h-0 flex-1 overflow-visible";
 }
 
 export function statusTileClass(): string {

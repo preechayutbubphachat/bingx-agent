@@ -94,5 +94,5 @@ export function statusWallGridClass(): string {
 }
 
 export function statusWallPanelClass(): string {
-  return "agent-hq-status-wall-stable block h-auto min-h-0 overflow-visible rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-3 shadow-[0_0_18px_rgba(34,211,238,0.05)]";
+  return "agent-hq-status-wall-stable block h-auto min-h-0 shrink-0 overflow-visible rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-3 shadow-[0_0_18px_rgba(34,211,238,0.05)]";
 }

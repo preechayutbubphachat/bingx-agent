@@ -66,6 +66,7 @@ test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
   assert.doesNotMatch(statusWallPanelClass(), /agent-hq-status-wall /);
   assert.match(statusWallPanelClass(), /h-auto/);
   assert.match(statusWallPanelClass(), /min-h-0/);
+  assert.match(statusWallPanelClass(), /shrink-0/);
   assert.match(statusWallPanelClass(), /overflow-visible/);
   assert.doesNotMatch(statusWallPanelClass(), /overflow-hidden/);
   assert.doesNotMatch(statusWallPanelClass(), /contain:layout/);

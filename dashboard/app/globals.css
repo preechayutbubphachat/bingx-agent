@@ -264,6 +264,7 @@ body {
   box-sizing: border-box;
   contain: none !important;
   display: block !important;
+  flex: 0 0 auto !important;
   height: auto !important;
   max-height: none !important;
   min-height: 0 !important;

@@ -76,6 +76,7 @@ import {
   evaluateMtfEntryCandidatePipeline,
   type MtfEntryCandidatePipeline,
 } from "../trend/mtfEntryCandidatePipeline.ts";
+import { getCandlesFromSnapshot } from "../candleAdapter.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
@@ -198,6 +199,7 @@ export interface PaperLoopDiagnosticsContext {
   canonicalMarketRegime?: CanonicalMarketRegime | null;
   latestCanonicalMarketRegimeDiagnostic?: unknown;
   marketSnapshot?: unknown;
+  mtfEntryCurrentPriceContext?: unknown;
   newsContext?: unknown;
   multiTimeframeIndicatorEvidence?: MultiTimeframeIndicatorEvidence | null;
   trendZoneCandidate?: TrendZoneShadow | null;
@@ -331,6 +333,48 @@ function finiteOrNull(value: unknown): number | null {
 
 function stringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function candleTimestampIso(candle: unknown): string | null {
+  const c = unknownObj(candle);
+  const t = c.t ?? c.time ?? c.timestamp ?? c.openTime;
+  if (typeof t === "number" && Number.isFinite(t)) return new Date(t).toISOString();
+  if (typeof t === "string" && t.trim()) {
+    const parsed = Date.parse(t);
+    return Number.isFinite(parsed) ? new Date(parsed).toISOString() : t;
+  }
+  return null;
+}
+
+function snapshotGeneratedAt(raw: unknown): string | null {
+  const snapshot = unknownObj(raw);
+  const meta = unknownObj(snapshot.meta);
+  return stringOrNull(
+    snapshot.generatedAt ??
+    snapshot.generated_at ??
+    snapshot.calculatedAt ??
+    snapshot.calculated_at ??
+    meta.generatedAt ??
+    meta.generated_at ??
+    meta.calculatedAt ??
+    meta.calculated_at
+  );
+}
+
+function buildMtfEntryCurrentPriceContext(context: PaperLoopDiagnosticsContext, priorAnalysisPrice: number | null, checkedAt: string | null) {
+  const candles15m = context.marketSnapshot ? getCandlesFromSnapshot(context.marketSnapshot, "15M") : [];
+  const latest15mCandle = candles15m.length ? candles15m[candles15m.length - 1] : null;
+  const latest15mClose = finiteOrNull(unknownObj(latest15mCandle).close);
+
+  return {
+    currentPrice: latest15mClose,
+    priceSource: latest15mClose != null ? "market_snapshot.15m.close" : null,
+    latestCandleAt: candleTimestampIso(latest15mCandle),
+    snapshotGeneratedAt: snapshotGeneratedAt(context.marketSnapshot ?? null),
+    evaluatedAt: checkedAt,
+    timeframe: "15m",
+    previousAnalysisPrice: priorAnalysisPrice,
+  };
 }
 
 function stringArray(value: unknown): string[] {
@@ -935,6 +979,7 @@ export function buildPaperLoopDiagnostics(
     trendStrategy,
     trendManualPaperArmGate,
     trendPaperExecutionPreflight,
+    currentPriceContext: context.mtfEntryCurrentPriceContext ?? buildMtfEntryCurrentPriceContext(context, currentPrice, summary.checkedAt),
     mtfObFvgShadowSummary: trendEvidenceDecisionSummary.mtfObFvgShadowSummary,
     exactZoneComparisonSummary: trendEvidenceDecisionSummary.exactZoneComparisonSummary,
     shadowOutcomeSummary: trendEvidenceDecisionSummary.shadowOutcomeSummary,

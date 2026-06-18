@@ -81,6 +81,15 @@ function shadow(over = {}) {
 
 function input(over = {}) {
   return {
+    currentPriceContext: {
+      currentPrice: 101.5,
+      priceSource: "market_snapshot.15m.close",
+      latestCandleAt: "2026-06-18T10:00:00.000Z",
+      snapshotGeneratedAt: "2026-06-18T10:01:00.000Z",
+      evaluatedAt: "2026-06-18T10:05:00.000Z",
+      timeframe: "15m",
+      previousAnalysisPrice: 101,
+    },
     canonicalMarketRegime: {
       regime: "DOWNTREND",
       direction: "BEARISH",
@@ -144,12 +153,97 @@ test("current-runtime-like fixture is promising geometry but execution not ready
   assert.equal(result.zoneCandidate.status, "TARGET_TOO_CLOSE");
   assert.equal(result.triggerReview.status, "INVALIDATION_DOMINATES");
   assert.equal(result.geometry.status, "WARNING_DEGRADED");
+  assert.equal(result.currentPriceContext.freshnessStatus, "FRESH");
+  assert.equal(result.currentPriceContext.reevaluationRequired, false);
+  assert.equal(result.currentCandidateReevaluation.status, "CURRENT_PRICE_CONFIRMED");
   assert.equal(result.verdict.status, "PROMISING_GEOMETRY_BUT_EXECUTION_NOT_READY");
   assert.match(result.verdict.summary, /execution outcome/i);
   assert.ok(result.verdict.blockers.some((b) => b.includes("75/100")));
   assert.ok(result.verdict.blockers.some((b) => b.includes("TARGET_TOO_CLOSE")));
   assert.ok(result.verdict.blockers.some((b) => b.includes("Missed fill rate")));
   assert.ok(result.verdict.blockers.some((b) => b.includes("target ชนะ invalidation")));
+});
+
+test("missing current price requires stale re-evaluation and blocks review ready", () => {
+  const result = evaluateMtfEntryCandidatePipeline(input({
+    currentPriceContext: {
+      currentPrice: null,
+      priceSource: null,
+      latestCandleAt: "2026-06-18T10:00:00.000Z",
+      snapshotGeneratedAt: "2026-06-18T10:01:00.000Z",
+      evaluatedAt: "2026-06-18T10:05:00.000Z",
+      timeframe: "15m",
+      previousAnalysisPrice: 100,
+    },
+  }));
+
+  assert.equal(result.status, "STALE_REEVALUATION_REQUIRED");
+  assert.equal(result.currentPriceContext.freshnessStatus, "MISSING");
+  assert.equal(result.currentPriceContext.reevaluationRequired, true);
+  assert.equal(result.currentCandidateReevaluation.status, "STALE_REEVALUATION_REQUIRED");
+  assert.notEqual(result.verdict.status, "REVIEW_READY_NOT_ACTIVATION");
+  assert.equal(result.verdict.nextAction, "refresh_market_snapshot_or_wait_for_latest_runtime_cycle");
+  assert.equal(result.activationAllowed, false);
+});
+
+test("stale latest candle requires re-evaluation before using candidate verdict", () => {
+  const result = evaluateMtfEntryCandidatePipeline(input({
+    currentPriceContext: {
+      currentPrice: 100.8,
+      priceSource: "market_snapshot.15m.close",
+      latestCandleAt: "2026-06-18T09:00:00.000Z",
+      snapshotGeneratedAt: "2026-06-18T09:01:00.000Z",
+      evaluatedAt: "2026-06-18T10:05:00.000Z",
+      timeframe: "15m",
+      previousAnalysisPrice: 100,
+    },
+    trendPaperExecutionPreflight: {
+      status: "NOT_READY",
+      direction: "SHORT",
+      entry: 100,
+      stopLoss: 120,
+      takeProfit1: 94,
+      rewardRisk: 2,
+      failedInputs: ["operator_arm_missing"],
+      notes: [],
+    },
+  }));
+
+  assert.equal(result.status, "STALE_REEVALUATION_REQUIRED");
+  assert.equal(result.currentPriceContext.freshnessStatus, "STALE");
+  assert.equal(result.currentPriceContext.reevaluationRequired, true);
+  assert.equal(result.currentCandidateReevaluation.status, "STALE_REEVALUATION_REQUIRED");
+  assert.equal(result.verdict.nextAction, "refresh_market_snapshot_or_wait_for_latest_runtime_cycle");
+});
+
+test("material price move from prior analysis is flagged before confidence is reused", () => {
+  const result = evaluateMtfEntryCandidatePipeline(input({
+    currentPriceContext: {
+      currentPrice: 107,
+      priceSource: "market_snapshot.15m.close",
+      latestCandleAt: "2026-06-18T10:00:00.000Z",
+      snapshotGeneratedAt: "2026-06-18T10:01:00.000Z",
+      evaluatedAt: "2026-06-18T10:05:00.000Z",
+      timeframe: "15m",
+      previousAnalysisPrice: 100,
+    },
+    trendPaperExecutionPreflight: {
+      status: "NOT_READY",
+      direction: "SHORT",
+      entry: 100,
+      stopLoss: 120,
+      takeProfit1: 94,
+      rewardRisk: 2,
+      failedInputs: ["operator_arm_missing"],
+      notes: [],
+    },
+  }));
+
+  assert.equal(result.currentPriceContext.freshnessStatus, "FRESH");
+  assert.equal(result.currentCandidateReevaluation.status, "PRICE_MOVED_FROM_PRIOR_ANALYSIS");
+  assert.equal(result.currentCandidateReevaluation.priceMovePct, 7);
+  assert.equal(result.status, "WARNING_DEGRADED");
+  assert.notEqual(result.verdict.status, "REVIEW_READY_NOT_ACTIVATION");
 });
 
 test("no data fixture returns NO_CANDIDATE without throwing", () => {

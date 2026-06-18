@@ -450,6 +450,23 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
         pending: 11,
         notes: ["runtime-like degraded mock", "review-only geometry; no live or paper activation"],
       },
+      currentPriceContext: {
+        currentPrice: 101.5,
+        priceSource: "market_snapshot.15m.close",
+        latestCandleAt: "2026-06-18T10:00:00.000Z",
+        snapshotGeneratedAt: "2026-06-18T10:01:00.000Z",
+        freshnessStatus: "FRESH",
+        ageSeconds: 300,
+        reevaluationRequired: false,
+        notes: ["Latest candle is fresh."],
+      },
+      currentCandidateReevaluation: {
+        status: "CURRENT_PRICE_CONFIRMED",
+        previousAnalysisPrice: 101,
+        currentPrice: 101.5,
+        priceMovePct: 0.5,
+        reason: "Current price is fresh and close enough to the prior analysis context.",
+      },
       verdict: {
         status: "PROMISING_GEOMETRY_BUT_EXECUTION_NOT_READY",
         summary: "Exact Zone มี RR geometry ดีกว่า heuristic แต่ execution outcome ยังไม่พร้อม",

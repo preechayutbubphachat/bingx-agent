@@ -13,6 +13,7 @@ export type MtfEntryCandidateStatus =
   | "WAITING_TRIGGER"
   | "ENTRY_TOUCHED_REVIEW"
   | "WARNING_DEGRADED"
+  | "STALE_REEVALUATION_REQUIRED"
   | "REVIEW_READY"
   | "NOT_READY";
 
@@ -74,6 +75,31 @@ export interface MtfEntryCandidatePipeline {
     pending: number;
     notes: string[];
   };
+  currentPriceContext: {
+    currentPrice: number | null;
+    priceSource: string | null;
+    latestCandleAt: string | null;
+    snapshotGeneratedAt: string | null;
+    freshnessStatus: "FRESH" | "STALE" | "MISSING" | "UNKNOWN";
+    ageSeconds: number | null;
+    reevaluationRequired: boolean;
+    notes: string[];
+  };
+  currentCandidateReevaluation: {
+    status:
+      | "CURRENT_PRICE_CONFIRMED"
+      | "PRICE_MOVED_FROM_PRIOR_ANALYSIS"
+      | "STALE_REEVALUATION_REQUIRED"
+      | "CURRENT_PRICE_OUTSIDE_CANDIDATE"
+      | "CURRENT_PRICE_NEAR_ENTRY"
+      | "CURRENT_PRICE_PAST_TARGET"
+      | "CURRENT_PRICE_INVALIDATED"
+      | "UNKNOWN";
+    previousAnalysisPrice: number | null;
+    currentPrice: number | null;
+    priceMovePct: number | null;
+    reason: string;
+  };
   verdict: {
     status: MtfEntryCandidateVerdictStatus;
     summary: string;
@@ -95,6 +121,7 @@ export interface MtfEntryCandidatePipelineInput {
   shadowEvidenceCoverage?: unknown;
   noTradeReasonAnalysis?: unknown;
   reviewReadinessScore?: unknown;
+  currentPriceContext?: unknown;
 }
 
 const SOURCE = "MTF_ENTRY_CANDIDATE_PIPELINE_V1" as const;
@@ -102,6 +129,7 @@ const REQUIRED_EXACT_SAMPLES = 100 as const;
 const TARGET_TOO_CLOSE_DOMINANT_RATE = 0.5;
 const ACCEPTABLE_MISSED_FILL_RATE = 0.3;
 const MIN_ENTRY_TOUCH_FOR_REVIEW = 20;
+const MATERIAL_PRICE_MOVE_PCT = 3;
 
 function obj(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {};
@@ -126,6 +154,10 @@ function strArray(v: unknown): string[] {
 
 function rate(numerator: number, denominator: number): number | null {
   return denominator > 0 ? Math.round((numerator / denominator) * 10_000) / 10_000 : null;
+}
+
+function round2(v: number): number {
+  return Math.round(v * 100) / 100;
 }
 
 function emptyPipeline(): MtfEntryCandidatePipeline {
@@ -178,12 +210,161 @@ function emptyPipeline(): MtfEntryCandidatePipeline {
       pending: 0,
       notes: ["No exact-zone geometry available."],
     },
+    currentPriceContext: {
+      currentPrice: null,
+      priceSource: null,
+      latestCandleAt: null,
+      snapshotGeneratedAt: null,
+      freshnessStatus: "MISSING",
+      ageSeconds: null,
+      reevaluationRequired: true,
+      notes: ["Current price context is missing."],
+    },
+    currentCandidateReevaluation: {
+      status: "STALE_REEVALUATION_REQUIRED",
+      previousAnalysisPrice: null,
+      currentPrice: null,
+      priceMovePct: null,
+      reason: "Current price context is missing; refresh market snapshot before reviewing candidate.",
+    },
     verdict: {
       status: "NO_CANDIDATE",
       summary: "No MTF entry candidate diagnostics available.",
       blockers: ["missing exact-zone or MTF shadow diagnostics"],
       nextAction: "continue_collecting_shadow_diagnostics_without_activation",
     },
+  };
+}
+
+function staleThresholdSeconds(timeframe: string | null): number {
+  const tf = (timeframe ?? "15m").trim().toLowerCase();
+  if (tf === "5m" || tf === "5") return 15 * 60;
+  if (tf === "1h" || tf === "60m" || tf === "60") return 2 * 60 * 60;
+  return 45 * 60;
+}
+
+function parseTimeMs(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const t = Date.parse(value);
+  return Number.isFinite(t) ? t : null;
+}
+
+function firstNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    const n = fin(value);
+    if (n != null) return n;
+  }
+  return null;
+}
+
+function currentPriceContext(input: MtfEntryCandidatePipelineInput): MtfEntryCandidatePipeline["currentPriceContext"] {
+  const raw = obj(input.currentPriceContext);
+  const currentPrice = fin(raw.currentPrice);
+  const priceSource = str(raw.priceSource);
+  const latestCandleAt = str(raw.latestCandleAt ?? raw.calculatedAt);
+  const snapshotGeneratedAt = str(raw.snapshotGeneratedAt);
+  const evaluatedAtMs = parseTimeMs(raw.evaluatedAt) ?? Date.now();
+  const latestCandleMs = parseTimeMs(latestCandleAt);
+  const ageSeconds = latestCandleMs == null ? null : Math.max(0, Math.round((evaluatedAtMs - latestCandleMs) / 1000));
+  const threshold = staleThresholdSeconds(str(raw.timeframe));
+  const notes: string[] = [];
+
+  let freshnessStatus: MtfEntryCandidatePipeline["currentPriceContext"]["freshnessStatus"] = "UNKNOWN";
+  if (currentPrice == null || !latestCandleAt) {
+    freshnessStatus = "MISSING";
+    notes.push("Current price or latest candle timestamp is missing.");
+  } else if (ageSeconds == null) {
+    freshnessStatus = "UNKNOWN";
+    notes.push("Latest candle timestamp cannot be parsed.");
+  } else if (ageSeconds > threshold) {
+    freshnessStatus = "STALE";
+    notes.push(`Latest candle age ${ageSeconds}s exceeds ${threshold}s freshness threshold.`);
+  } else {
+    freshnessStatus = "FRESH";
+    notes.push(`Latest candle age ${ageSeconds}s is within ${threshold}s freshness threshold.`);
+  }
+
+  return {
+    currentPrice,
+    priceSource,
+    latestCandleAt,
+    snapshotGeneratedAt,
+    freshnessStatus,
+    ageSeconds,
+    reevaluationRequired: freshnessStatus !== "FRESH",
+    notes,
+  };
+}
+
+function currentCandidateReevaluation(
+  input: MtfEntryCandidatePipelineInput,
+  context: MtfEntryCandidatePipeline["currentPriceContext"],
+): MtfEntryCandidatePipeline["currentCandidateReevaluation"] {
+  const raw = obj(input.currentPriceContext);
+  const preflight = obj(input.trendPaperExecutionPreflight);
+  const trend = obj(input.trendStrategy);
+  const currentPrice = context.currentPrice;
+  const previousAnalysisPrice = fin(raw.previousAnalysisPrice);
+  const directionRaw = str(preflight.direction ?? trend.direction)?.toUpperCase() ?? null;
+  const direction = directionRaw === "LONG" || directionRaw === "SHORT" ? directionRaw : null;
+  const entry = firstNumber(raw.entry, preflight.entry);
+  const target = firstNumber(raw.target, preflight.takeProfit1, trend.target1);
+  const invalidation = firstNumber(raw.invalidation, preflight.stopLoss, trend.invalidation);
+  const priceMovePct = currentPrice != null && previousAnalysisPrice != null && previousAnalysisPrice !== 0
+    ? round2(((currentPrice - previousAnalysisPrice) / previousAnalysisPrice) * 100)
+    : null;
+
+  if (context.reevaluationRequired) {
+    return {
+      status: "STALE_REEVALUATION_REQUIRED",
+      previousAnalysisPrice,
+      currentPrice,
+      priceMovePct,
+      reason: "Current price context is missing or stale; refresh market snapshot before reviewing candidate.",
+    };
+  }
+
+  if (currentPrice == null) {
+    return {
+      status: "UNKNOWN",
+      previousAnalysisPrice,
+      currentPrice,
+      priceMovePct,
+      reason: "Current price is unavailable.",
+    };
+  }
+
+  if (direction === "LONG") {
+    if (invalidation != null && currentPrice <= invalidation) {
+      return { status: "CURRENT_PRICE_INVALIDATED", previousAnalysisPrice, currentPrice, priceMovePct, reason: "Current price is below or at long invalidation." };
+    }
+    if (target != null && currentPrice >= target) {
+      return { status: "CURRENT_PRICE_PAST_TARGET", previousAnalysisPrice, currentPrice, priceMovePct, reason: "Current price is already beyond long target." };
+    }
+  } else if (direction === "SHORT") {
+    if (invalidation != null && currentPrice >= invalidation) {
+      return { status: "CURRENT_PRICE_INVALIDATED", previousAnalysisPrice, currentPrice, priceMovePct, reason: "Current price is above or at short invalidation." };
+    }
+    if (target != null && currentPrice <= target) {
+      return { status: "CURRENT_PRICE_PAST_TARGET", previousAnalysisPrice, currentPrice, priceMovePct, reason: "Current price is already beyond short target." };
+    }
+  }
+
+  if (entry != null && Math.abs((currentPrice - entry) / entry) * 100 <= 1) {
+    return { status: "CURRENT_PRICE_NEAR_ENTRY", previousAnalysisPrice, currentPrice, priceMovePct, reason: "Current price is near the candidate entry area." };
+  }
+
+  if (priceMovePct != null && Math.abs(priceMovePct) >= MATERIAL_PRICE_MOVE_PCT) {
+    return { status: "PRICE_MOVED_FROM_PRIOR_ANALYSIS", previousAnalysisPrice, currentPrice, priceMovePct, reason: "Current price moved materially from the prior analysis price; re-evaluate before trusting old verdict." };
+  }
+
+  return {
+    status: "CURRENT_PRICE_CONFIRMED",
+    previousAnalysisPrice,
+    currentPrice,
+    priceMovePct,
+    reason: "Current price is fresh and close enough to the prior analysis context.",
   };
 }
 
@@ -314,6 +495,8 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
   const bucket = shadowBucket(input.shadowOutcomeSummary);
   const fill = obj(exact.fillResolution);
   const exactSamples = count(exact.exactSamples);
+  const priceContext = currentPriceContext(input);
+  const reevaluation = currentCandidateReevaluation(input, priceContext);
 
   if (!hasCandidateData(input, exactSamples)) return emptyPipeline();
 
@@ -370,7 +553,20 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
     targetAfterEntryTouchRate > invalidationAfterEntryTouchRate &&
     !warningFlags.some((flag) => flag !== "REVIEW_NOT_ACTIVATION");
 
-  if (cleanReviewReady) verdictStatus = "REVIEW_READY_NOT_ACTIVATION";
+  const currentPriceBlocksFinalVerdict =
+    priceContext.reevaluationRequired ||
+    reevaluation.status === "PRICE_MOVED_FROM_PRIOR_ANALYSIS" ||
+    reevaluation.status === "CURRENT_PRICE_INVALIDATED" ||
+    reevaluation.status === "CURRENT_PRICE_PAST_TARGET" ||
+    reevaluation.status === "CURRENT_PRICE_OUTSIDE_CANDIDATE";
+
+  if (priceContext.reevaluationRequired) {
+    blockers.push("current price context is missing or stale; refresh market snapshot before reviewing candidate");
+  } else if (currentPriceBlocksFinalVerdict) {
+    blockers.push(`current price re-evaluation required: ${reevaluation.status}`);
+  }
+
+  if (cleanReviewReady && !currentPriceBlocksFinalVerdict) verdictStatus = "REVIEW_READY_NOT_ACTIVATION";
   else if (exactSamples >= REQUIRED_EXACT_SAMPLES && invalidationDominates) {
     verdictStatus = "INVALIDATION_DOMINATES_AFTER_TOUCH";
   }
@@ -398,7 +594,9 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
           : "GEOMETRY_READY";
 
   const status: MtfEntryCandidateStatus =
-    cleanReviewReady
+    priceContext.reevaluationRequired
+      ? "STALE_REEVALUATION_REQUIRED"
+      : cleanReviewReady && !currentPriceBlocksFinalVerdict
       ? "REVIEW_READY"
       : blockers.length > 0 || warningFlags.some((flag) => flag !== "REVIEW_NOT_ACTIVATION")
         ? "WARNING_DEGRADED"
@@ -445,6 +643,8 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
         "review-only geometry; no live or paper activation",
       ],
     },
+    currentPriceContext: priceContext,
+    currentCandidateReevaluation: reevaluation,
     verdict: {
       status: verdictStatus,
       summary: verdictStatus === "REVIEW_READY_NOT_ACTIVATION"
@@ -453,7 +653,9 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
           ? "Exact Zone มี RR geometry ดีกว่า heuristic แต่ execution outcome ยังไม่พร้อม"
           : "Candidate needs more evidence before manual review.",
       blockers,
-      nextAction: cleanReviewReady
+      nextAction: priceContext.reevaluationRequired
+        ? "refresh_market_snapshot_or_wait_for_latest_runtime_cycle"
+        : cleanReviewReady && !currentPriceBlocksFinalVerdict
         ? "manual_review_only_keep_activation_disabled"
         : "continue_collecting_exact_zone_and_shadow_outcome_evidence",
     },

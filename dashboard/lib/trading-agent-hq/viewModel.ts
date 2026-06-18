@@ -225,6 +225,23 @@ export interface MtfEntryCandidatePipelineVM {
     pending: number;
     notes: string[];
   };
+  currentPriceContext: {
+    currentPrice: number | null;
+    priceSource: string | null;
+    latestCandleAt: string | null;
+    snapshotGeneratedAt: string | null;
+    freshnessStatus: string;
+    ageSeconds: number | null;
+    reevaluationRequired: boolean;
+    notes: string[];
+  };
+  currentCandidateReevaluation: {
+    status: string;
+    previousAnalysisPrice: number | null;
+    currentPrice: number | null;
+    priceMovePct: number | null;
+    reason: string;
+  };
   verdict: {
     status: string;
     summary: string;

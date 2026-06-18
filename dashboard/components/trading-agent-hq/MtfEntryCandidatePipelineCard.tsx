@@ -45,7 +45,7 @@ function verdictText(status: string): string {
 
 function toneFor(status: string): "neutral" | "green" | "amber" | "red" {
   if (status === "REVIEW_READY" || status === "REVIEW_READY_NOT_ACTIVATION") return "green";
-  if (status === "WARNING_DEGRADED" || status.includes("DOMINATES") || status.includes("TOO_CLOSE")) return "amber";
+  if (status === "WARNING_DEGRADED" || status === "STALE" || status === "STALE_REEVALUATION_REQUIRED" || status.includes("DOMINATES") || status.includes("TOO_CLOSE")) return "amber";
   if (status === "NO_CANDIDATE" || status === "NO_EXACT_ZONE") return "neutral";
   if (status === "NOT_READY") return "red";
   return "neutral";
@@ -89,6 +89,13 @@ export default function MtfEntryCandidatePipelineCard({ paper }: { paper: PaperV
   const z = p.zoneCandidate;
   const t = p.triggerReview;
   const g = p.geometry;
+  const c = p.currentPriceContext;
+  const r = p.currentCandidateReevaluation;
+  const priceFreshnessTone = c.freshnessStatus === "FRESH"
+    ? "green"
+    : c.freshnessStatus === "MISSING" || c.freshnessStatus === "UNKNOWN"
+      ? "red"
+      : "amber";
   const targetTooCloseCount = paper.trendEvidenceDecisionSummary.exactZoneComparisonSummary.conflictBreakdown.TARGET_TOO_CLOSE;
   const targetTooCloseRate = z.exactSamples > 0 ? targetTooCloseCount / z.exactSamples : null;
   const targetTooCloseDisplay = z.exactSamples > 0 ? `${targetTooCloseCount}/${z.exactSamples} (${pct(targetTooCloseRate)})` : NA;
@@ -120,6 +127,21 @@ export default function MtfEntryCandidatePipelineCard({ paper }: { paper: PaperV
       <div className="rounded-lg border border-[#e5d5bf] bg-white/70 p-2 text-[11px] font-bold leading-relaxed text-[#6e5b49]">
         <div className="font-black text-[#2b2118]">{verdictText(p.verdict.status)}</div>
         <div>ยังไม่เปลี่ยน entry logic จริง · score/verdict ไม่ feed runner/gate/order path</div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-1.5 rounded-lg border border-sky-200 bg-sky-50/70 p-2">
+        <Row label="อิงราคาปัจจุบัน" value={c.freshnessStatus} tone={priceFreshnessTone} />
+        <Row label="Current Price" value={fmt(c.currentPrice)} />
+        <Row label="Latest candle" value={c.latestCandleAt ?? NA} tone={c.reevaluationRequired ? "amber" : "neutral"} />
+        <Row label="Current re-evaluation" value={r.status} tone={toneFor(r.status)} />
+        {c.reevaluationRequired ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-black text-amber-950">
+            ข้อมูลราคาปัจจุบันไม่สดพอ — ต้อง refresh ก่อนสรุป candidate
+          </div>
+        ) : null}
+        <div className="text-[11px] font-bold leading-relaxed text-sky-950">
+          ถ้าราคาเปลี่ยนจากรอบวิเคราะห์เดิม ระบบจะ re-evaluate ก่อน ไม่ใช้ verdict เก่า
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-1.5">

@@ -86,6 +86,8 @@ function mapMtfEntryCandidatePipeline(raw: AnyObj): PaperVM["mtfEntryCandidatePi
   const zone = obj(raw.zoneCandidate);
   const trigger = obj(raw.triggerReview);
   const geometry = obj(raw.geometry);
+  const currentPriceContext = obj(raw.currentPriceContext);
+  const currentCandidateReevaluation = obj(raw.currentCandidateReevaluation);
   const verdict = obj(raw.verdict);
   return {
     schemaVersion: num(raw.schemaVersion, 1),
@@ -135,6 +137,23 @@ function mapMtfEntryCandidatePipeline(raw: AnyObj): PaperVM["mtfEntryCandidatePi
       missedFillRate: numOrNull(geometry.missedFillRate),
       pending: num(geometry.pending, 0),
       notes: strArray(geometry.notes),
+    },
+    currentPriceContext: {
+      currentPrice: numOrNull(currentPriceContext.currentPrice),
+      priceSource: strOrNull(currentPriceContext.priceSource),
+      latestCandleAt: strOrNull(currentPriceContext.latestCandleAt),
+      snapshotGeneratedAt: strOrNull(currentPriceContext.snapshotGeneratedAt),
+      freshnessStatus: str(currentPriceContext.freshnessStatus, "MISSING"),
+      ageSeconds: numOrNull(currentPriceContext.ageSeconds),
+      reevaluationRequired: currentPriceContext.reevaluationRequired === false ? false : true,
+      notes: strArray(currentPriceContext.notes),
+    },
+    currentCandidateReevaluation: {
+      status: str(currentCandidateReevaluation.status, "STALE_REEVALUATION_REQUIRED"),
+      previousAnalysisPrice: numOrNull(currentCandidateReevaluation.previousAnalysisPrice),
+      currentPrice: numOrNull(currentCandidateReevaluation.currentPrice),
+      priceMovePct: numOrNull(currentCandidateReevaluation.priceMovePct),
+      reason: str(currentCandidateReevaluation.reason, "Current price context is missing."),
     },
     verdict: {
       status: str(verdict.status, "NO_CANDIDATE"),

@@ -67,6 +67,23 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             pending: 11,
             notes: [],
           },
+          currentPriceContext: {
+            currentPrice: 101.5,
+            priceSource: "market_snapshot.15m.close",
+            latestCandleAt: "2026-06-18T10:00:00.000Z",
+            snapshotGeneratedAt: "2026-06-18T10:01:00.000Z",
+            freshnessStatus: "FRESH",
+            ageSeconds: 300,
+            reevaluationRequired: false,
+            notes: ["Latest candle is fresh."],
+          },
+          currentCandidateReevaluation: {
+            status: "CURRENT_PRICE_CONFIRMED",
+            previousAnalysisPrice: 101,
+            currentPrice: 101.5,
+            priceMovePct: 0.5,
+            reason: "Current price is fresh and close enough to the prior analysis context.",
+          },
           verdict: {
             status: "PROMISING_GEOMETRY_BUT_EXECUTION_NOT_READY",
             summary: "Exact Zone มี RR geometry ดีกว่า heuristic แต่ execution outcome ยังไม่พร้อม",
@@ -90,6 +107,9 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.exactAvgNetRR, 6.1932);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.heuristicAvgNetRR, 1.7058);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.exactVsHeuristicDelta, 4.8687);
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.currentPriceContext.freshnessStatus, "FRESH");
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.currentPriceContext.currentPrice, 101.5);
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.currentCandidateReevaluation.status, "CURRENT_PRICE_CONFIRMED");
   assert.equal(vm.paper.mtfEntryCandidatePipeline.verdict.status, "PROMISING_GEOMETRY_BUT_EXECUTION_NOT_READY");
   assert.equal(vm.paper.mtfEntryCandidatePipeline.activationAllowed, false);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.paperActivationAllowed, false);

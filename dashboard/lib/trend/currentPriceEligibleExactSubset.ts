@@ -77,6 +77,8 @@ export interface CurrentPriceEligibleExactSubset {
   topCandidates: Array<{
     id: string;
     direction: "LONG" | "SHORT" | "UNKNOWN";
+    zoneType?: string | null;
+    readiness?: string | null;
     status: CurrentPriceEligibleCandidateStatus;
     entry: number | null;
     entryLow: number | null;
@@ -86,6 +88,7 @@ export interface CurrentPriceEligibleExactSubset {
     target2: number | null;
     netRR: number | null;
     distanceToEntryPct: number | null;
+    flags?: string[];
     reason: string;
   }>;
   requiredGeometryInputs: string[];
@@ -99,6 +102,7 @@ export interface CurrentPriceEligibleExactSubsetInput {
   currentPriceContext?: unknown;
   currentCandidateReevaluation?: unknown;
   exactZoneComparisonSummary?: unknown;
+  exactCandidateGeometrySnapshot?: unknown;
   mtfObFvgShadowSummary?: unknown;
   shadowOutcomeSummary?: unknown;
   exactCandidateRecords?: unknown;
@@ -117,9 +121,12 @@ interface CandidateGeometry {
   target2: number | null;
   netRR: number | null;
   capturedAt: string | null;
+  zoneType: string | null;
+  readiness: string | null;
   costTooHigh: boolean;
   targetTooClose: boolean;
   warnings: string[];
+  flags: string[];
 }
 
 const SOURCE = "CURRENT_PRICE_ELIGIBLE_EXACT_SUBSET_V1" as const;
@@ -221,6 +228,10 @@ function candidateFromRaw(rawValue: unknown, fallbackId: string): CandidateGeome
     ...textArray(raw.warnings),
     ...textArray(exactZone.warnings),
   ];
+  const flags = [
+    ...textArray(raw.flags),
+    ...warnings,
+  ];
   const direction = normalizeDirection(fill.direction ?? raw.direction ?? exactZone.direction ?? setup.direction);
   const entryLow = firstNumber(raw.entryLow, raw.exactZoneLow, raw.obLow, raw.fvgLow, exactZone.entryLow, exactZone.exactZoneLow, exactZone.obLow, exactZone.fvgLow);
   const entryHigh = firstNumber(raw.entryHigh, raw.exactZoneHigh, raw.obHigh, raw.fvgHigh, exactZone.entryHigh, exactZone.exactZoneHigh, exactZone.obHigh, exactZone.fvgHigh);
@@ -241,17 +252,22 @@ function candidateFromRaw(rawValue: unknown, fallbackId: string): CandidateGeome
     target2,
     netRR,
     capturedAt: firstText(raw.capturedAt, fill.capturedAt, exactZone.capturedAt),
-    costTooHigh: bool(raw.costTooHigh) || warnings.includes("COST_TOO_HIGH") || text(raw.exactZoneReadiness ?? exactZone.exactZoneReadiness) === "COST_TOO_HIGH",
-    targetTooClose: bool(raw.targetTooClose) || warnings.includes("TARGET_TOO_CLOSE") || text(raw.exactZoneReadiness ?? exactZone.exactZoneReadiness) === "TARGET_TOO_CLOSE",
+    zoneType: firstText(raw.zoneType, exactZone.zoneType),
+    readiness: firstText(raw.readiness, raw.exactZoneReadiness, exactZone.readiness, exactZone.exactZoneReadiness),
+    costTooHigh: bool(raw.costTooHigh) || flags.includes("COST_TOO_HIGH") || text(raw.readiness ?? raw.exactZoneReadiness ?? exactZone.exactZoneReadiness) === "COST_TOO_HIGH",
+    targetTooClose: bool(raw.targetTooClose) || flags.includes("TARGET_TOO_CLOSE") || text(raw.readiness ?? raw.exactZoneReadiness ?? exactZone.exactZoneReadiness) === "TARGET_TOO_CLOSE",
     warnings,
+    flags,
   };
 }
 
 function collectCandidateRecords(input: CurrentPriceEligibleExactSubsetInput): CandidateGeometry[] {
   const exact = obj(input.exactZoneComparisonSummary);
+  const geometrySnapshot = obj(input.exactCandidateGeometrySnapshot);
   const mtf = obj(input.mtfObFvgShadowSummary);
   const latest = obj(mtf.latestSnapshot);
   const rawCandidates = [
+    ...arr(geometrySnapshot.candidates),
     ...arr(input.exactCandidateRecords),
     ...arr(input.exactCandidates),
     ...arr(input.candidateRecords),
@@ -367,6 +383,9 @@ function statusForCandidate(
     target2: candidate.target2,
     netRR: candidate.netRR,
     distanceToEntryPct,
+    zoneType: candidate.zoneType,
+    readiness: candidate.readiness,
+    flags: candidate.flags,
     reason,
   };
 }
@@ -456,10 +475,13 @@ function currentPriceContext(input: CurrentPriceEligibleExactSubsetInput): Curre
 
 function hasAggregateExactData(input: CurrentPriceEligibleExactSubsetInput): boolean {
   const exact = obj(input.exactZoneComparisonSummary);
+  const geometrySnapshot = obj(input.exactCandidateGeometrySnapshot);
+  const geometrySummary = obj(geometrySnapshot.summary);
   const mtf = obj(input.mtfObFvgShadowSummary);
   const pipeline = obj(input.mtfEntryCandidatePipeline);
   const accounting = obj(pipeline.sampleAccounting);
   return (
+    firstNumber(geometrySummary.totalCandidates, geometrySummary.structuredGeometryCount, geometrySummary.missingGeometryCount) != null ||
     firstNumber(exact.exactSamples, mtf.exactZoneSamples, accounting.lifetimeExactSamples, accounting.windowExactSamples) != null ||
     Object.keys(obj(mtf.latestSnapshot)).length > 0
   );

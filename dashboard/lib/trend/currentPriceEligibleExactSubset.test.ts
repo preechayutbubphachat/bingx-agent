@@ -67,6 +67,37 @@ test("fresh current price and valid LONG candidate near entry produces clean rev
   assert.equal(result.shadowOnly, true);
 });
 
+test("consumes exactCandidateGeometrySnapshot candidates as the preferred geometry source", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    exactCandidateGeometrySnapshot: {
+      schemaVersion: 1,
+      source: "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1",
+      capturedAt: "2026-06-18T05:00:00.000Z",
+      candidates: [{
+        id: "snapshot-long-clean",
+        direction: "LONG",
+        zoneType: "OB_FVG_OVERLAP",
+        readiness: "READY",
+        entry: 100,
+        entryLow: 99.9,
+        entryHigh: 100.2,
+        stopLoss: 98,
+        invalidation: 98,
+        target1: 103,
+        netRR: 1.6,
+        flags: [],
+      }],
+    },
+  }));
+
+  assert.equal(result.sampleAccounting.currentPriceEligibleExactSamples, 1);
+  assert.equal(result.topCandidates[0]?.id, "snapshot-long-clean");
+  assert.equal(result.topCandidates[0]?.zoneType, "OB_FVG_OVERLAP");
+  assert.equal(result.topCandidates[0]?.readiness, "READY");
+  assert.deepEqual(result.topCandidates[0]?.flags, []);
+  assert.equal(result.activationAllowed, false);
+});
+
 test("stale current price requires re-evaluation and produces no clean subset", () => {
   const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
     currentPriceContext: { ...freshContext, freshnessStatus: "STALE", ageSeconds: 4_000 },

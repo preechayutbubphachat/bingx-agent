@@ -380,6 +380,8 @@ export interface CurrentPriceEligibleExactSubsetVM {
   topCandidates: Array<{
     id: string;
     direction: string;
+    zoneType: string | null;
+    readiness: string | null;
     status: string;
     entry: number | null;
     entryLow: number | null;
@@ -389,6 +391,7 @@ export interface CurrentPriceEligibleExactSubsetVM {
     target2: number | null;
     netRR: number | null;
     distanceToEntryPct: number | null;
+    flags: string[];
     reason: string;
   }>;
   requiredGeometryInputs: string[];

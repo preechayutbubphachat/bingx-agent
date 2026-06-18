@@ -272,6 +272,8 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
         return {
           id: str(candidate.id, "unknown"),
           direction: str(candidate.direction, "UNKNOWN"),
+          zoneType: strOrNull(candidate.zoneType),
+          readiness: strOrNull(candidate.readiness),
           status: str(candidate.status, "MISSED"),
           entry: numOrNull(candidate.entry),
           entryLow: numOrNull(candidate.entryLow),
@@ -281,6 +283,7 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
           target2: numOrNull(candidate.target2),
           netRR: numOrNull(candidate.netRR),
           distanceToEntryPct: numOrNull(candidate.distanceToEntryPct),
+          flags: strArray(candidate.flags),
           reason: str(candidate.reason, ""),
         };
       })

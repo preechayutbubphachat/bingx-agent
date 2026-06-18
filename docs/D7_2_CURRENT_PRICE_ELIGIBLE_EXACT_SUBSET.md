@@ -34,6 +34,13 @@ Passing lifetime sample count is not the same as having a clean current-price su
 
 D7.2 must not invent geometry. Aggregate exact-zone summaries are useful but not enough to compute current-price eligibility.
 
+D7.3 adds `exactCandidateGeometrySnapshot` as the preferred per-candidate source. D7.2 reads candidates in this order:
+
+- `exactCandidateGeometrySnapshot.candidates`
+- existing exact candidate records
+- latest shadow snapshot fill-resolution input
+- aggregate-only exact summary as missing geometry
+
 Required per-candidate fields:
 
 - `direction`

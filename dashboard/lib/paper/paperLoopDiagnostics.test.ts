@@ -741,9 +741,9 @@ test("current-price eligible exact subset reports missing geometry when only agg
     mtfEntryCurrentPriceContext: {
       currentPrice: 100,
       priceSource: "test.currentPrice",
-      latestCandleAt: "2026-06-18T05:00:00.000Z",
-      snapshotGeneratedAt: "2026-06-18T05:00:30.000Z",
-      evaluatedAt: "2026-06-18T05:01:00.000Z",
+      latestCandleAt: new Date().toISOString(),
+      snapshotGeneratedAt: new Date().toISOString(),
+      evaluatedAt: new Date().toISOString(),
       timeframe: "15m",
       previousAnalysisPrice: 100,
     },
@@ -776,4 +776,63 @@ test("current-price eligible exact subset reports missing geometry when only agg
   assert.equal(d.currentPriceEligibleExactSubset.activationAllowed, false);
   assert.equal(d.currentPriceEligibleExactSubset.paperActivationAllowed, false);
   assert.equal(d.currentPriceEligibleExactSubset.liveActivationAllowed, false);
+});
+
+test("current-price eligible exact subset consumes exact candidate geometry snapshot", () => {
+  const d = buildPaperLoopDiagnostics(summary({}), null, {
+    mtfEntryCurrentPriceContext: {
+      currentPrice: 100,
+      priceSource: "test.currentPrice",
+      latestCandleAt: "2026-06-18T05:00:00.000Z",
+      snapshotGeneratedAt: "2026-06-18T05:00:30.000Z",
+      evaluatedAt: "2026-06-18T05:01:00.000Z",
+      timeframe: "15m",
+      previousAnalysisPrice: 100,
+    },
+    trendEvidenceDecisionSummary: {
+      sampleAccounting: { lifetimeExactSamples: 325, windowExactSamples: 65, currentPriceEligibleExactSamples: null },
+      exactCandidateGeometrySnapshot: {
+        schemaVersion: 1,
+        source: "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1",
+        capturedAt: new Date().toISOString(),
+        candidates: [{
+          id: "snapshot-long-clean",
+          direction: "LONG",
+          zoneType: "OB_FVG_OVERLAP",
+          readiness: "READY",
+          entry: 100,
+          entryLow: 99.9,
+          entryHigh: 100.2,
+          stopLoss: 98,
+          invalidation: 98,
+          target1: 103,
+          netRR: 1.6,
+          flags: [],
+        }],
+        summary: {
+          totalCandidates: 1,
+          structuredGeometryCount: 1,
+          missingGeometryCount: 0,
+          exactCount: 1,
+          fvgOnlyCount: 0,
+          targetTooCloseCount: 0,
+          costTooHighCount: 0,
+          conflictCount: 0,
+        },
+      },
+      shadowOutcomeSummary: {
+        shadowOutcomes: {
+          totalSetups: 65,
+          entryTouched: 40,
+          entryTouchRate: 0.61,
+          targetAfterEntryTouchRate: 0.4,
+          invalidationAfterEntryTouchRate: 0.2,
+        },
+      },
+    },
+  });
+
+  assert.equal(d.currentPriceEligibleExactSubset.sampleAccounting.currentPriceEligibleExactSamples, 1);
+  assert.equal(d.currentPriceEligibleExactSubset.topCandidates[0]?.id, "snapshot-long-clean");
+  assert.equal(d.currentPriceEligibleExactSubset.activationAllowed, false);
 });

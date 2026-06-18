@@ -56,6 +56,10 @@ function Badge({ children }: { children: string }) {
   );
 }
 
+function flagText(flags: string[]): string {
+  return flags.length ? flags.join(", ") : NA;
+}
+
 export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: PaperVM }) {
   const s = paper.currentPriceEligibleExactSubset;
   const price = s.currentPrice;
@@ -63,6 +67,7 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
   const filters = s.eligibilityFilters;
   const gate = s.cleanSubsetGate;
   const firstCandidate = s.topCandidates[0] ?? null;
+  const geometryMissing = s.status === "GEOMETRY_INPUTS_MISSING";
 
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-[#d7e4df] bg-[#f7fbf8] p-3 shadow-sm">
@@ -81,15 +86,23 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
       <div className="flex flex-wrap gap-1">
         <Badge>ยึดราคาปัจจุบันก่อน</Badge>
         <Badge>ไม่ใช้ verdict เก่าโดยไม่ re-evaluate</Badge>
-        <Badge>Clean subset = ใช้รีวิวเท่านั้น</Badge>
+        <Badge>ใช้เพื่อรีวิวเท่านั้น</Badge>
         <Badge>ไม่ใช่สัญญาณเข้าไม้</Badge>
         <Badge>ไม่ใช่ Activation</Badge>
         <Badge>ไม่ส่ง Order</Badge>
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-2 text-[11px] font-bold leading-relaxed text-amber-950">
-        ถ้า geometry inputs ขาด ระบบจะไม่เดา และจะหยุดที่สถานะ GEOMETRY_INPUTS_MISSING
+        ระบบจะไม่เดา geometry · ต้องมี entry / stop / target ต่อ candidate
       </div>
+
+      {geometryMissing ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-2 text-[11px] font-bold leading-relaxed text-rose-950">
+          <div>ยังไม่มี per-candidate geometry snapshot</div>
+          <div>มี aggregate exact evidence แล้ว แต่ยังคำนวณ current-price eligible ไม่ได้</div>
+          <div>ขั้นถัดไป: เพิ่ม exactCandidateGeometrySnapshot ใน evidence log</div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-1.5">
         <Row label="Current Price" value={fmt(price.value)} rowTone={price.freshnessStatus === "FRESH" ? "green" : "amber"} />
@@ -111,10 +124,16 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
       </div>
 
       {firstCandidate ? (
-        <div className="rounded-lg border border-sky-200 bg-sky-50/70 p-2 text-[11px] font-bold leading-relaxed text-sky-950">
-          <div className="mb-1 font-black">Top candidate: {firstCandidate.id} · {firstCandidate.status}</div>
-          <div>{firstCandidate.direction} · entry {fmt(firstCandidate.entry)} · zone {fmt(firstCandidate.entryLow)}-{fmt(firstCandidate.entryHigh)} · RR {fmt(firstCandidate.netRR)}</div>
-          <div>{firstCandidate.reason}</div>
+        <div className="space-y-1.5">
+          {s.topCandidates.slice(0, 3).map((candidate) => (
+            <div key={candidate.id} className="rounded-lg border border-sky-200 bg-sky-50/70 p-2 text-[11px] font-bold leading-relaxed text-sky-950">
+              <div className="mb-1 font-black">Top candidate: {candidate.id} · {candidate.status}</div>
+              <div>{candidate.direction} · {candidate.zoneType ?? "UNKNOWN_ZONE"} · readiness {candidate.readiness ?? NA}</div>
+              <div>entry {fmt(candidate.entry)} · zone {fmt(candidate.entryLow)}-{fmt(candidate.entryHigh)} · stop {fmt(candidate.stopLoss)} · target {fmt(candidate.target1)} · RR {fmt(candidate.netRR)}</div>
+              <div>distance {fmt(candidate.distanceToEntryPct)}% · flags {flagText(candidate.flags)}</div>
+              <div>{candidate.reason}</div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="rounded-lg border border-amber-200 bg-white/80 p-2 text-[11px] font-bold leading-relaxed text-amber-950">

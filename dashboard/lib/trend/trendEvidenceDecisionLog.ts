@@ -41,6 +41,11 @@ import {
   evaluateShadowEvidenceCoverage,
   type ShadowEvidenceCoverageTracker,
 } from "./shadowEvidenceCoverageTracker.ts";
+import {
+  buildExactCandidateGeometrySnapshot,
+  summarizeExactCandidateGeometrySnapshots,
+  type ExactCandidateGeometrySnapshot,
+} from "./exactCandidateGeometrySnapshot.ts";
 
 export const TREND_EVIDENCE_DECISION_LOG_SCHEMA_VERSION = 1;
 export const TREND_EVIDENCE_DECISION_LOG_FILE_NAME = "trend_paper_evidence_decisions.jsonl";
@@ -80,6 +85,8 @@ export interface TrendEvidenceDecisionRecord {
   rrSnapshot?: RrSnapshot;
   /** T-3H-6-c1 optional MTF OB/FVG refinement shadow snapshot; observability only. */
   smcMtfShadowSnapshot?: SmcMtfShadowSnapshot;
+  /** D7.3 optional exact candidate geometry snapshot; observability only. */
+  exactCandidateGeometrySnapshot?: ExactCandidateGeometrySnapshot;
 }
 
 export interface RejectReasonCount {
@@ -113,6 +120,8 @@ export interface TrendEvidenceDecisionSummary {
     windowExactSamples: number | null;
     currentPriceEligibleExactSamples: number | null;
   };
+  /** D7.3 read-only exact candidate geometry snapshot summary. Never read by decision logic. */
+  exactCandidateGeometrySnapshot: ExactCandidateGeometrySnapshot;
   /** D5.2-b read-only counterfactual reachability evidence. Never read by runner/decision logic. */
   shadowOutcomeSummary: ShadowOutcomeSummary;
   /** D5.2-d read-only sample/context quality gate. Never read by runner/decision logic. */
@@ -143,6 +152,7 @@ export function emptyTrendEvidenceDecisionSummary(): TrendEvidenceDecisionSummar
       windowExactSamples: null,
       currentPriceEligibleExactSamples: null,
     },
+    exactCandidateGeometrySnapshot: summarizeExactCandidateGeometrySnapshots([]),
     shadowOutcomeSummary: emptyShadowOutcomeSummary(),
     shadowOutcomeQualityGate: emptyShadowOutcomeQualityGate(),
     shadowEvidenceCoverage: emptyShadowEvidenceCoverageTracker(),
@@ -192,6 +202,7 @@ export function buildTrendEvidenceDecisionRecord(input: {
   };
   rrSnapshot?: RrSnapshot | null;
   smcMtfShadowSnapshot?: SmcMtfShadowSnapshot | null;
+  exactCandidateGeometrySnapshot?: ExactCandidateGeometrySnapshot | null;
 }): TrendEvidenceDecisionRecord {
   const s = input.state;
   const strOrNull = (v: unknown): string | null => (typeof v === "string" && v.length ? v : null);
@@ -224,6 +235,14 @@ export function buildTrendEvidenceDecisionRecord(input: {
   };
   if (input.rrSnapshot) record.rrSnapshot = input.rrSnapshot;
   if (input.smcMtfShadowSnapshot) record.smcMtfShadowSnapshot = input.smcMtfShadowSnapshot;
+  if (input.exactCandidateGeometrySnapshot) {
+    record.exactCandidateGeometrySnapshot = input.exactCandidateGeometrySnapshot;
+  } else if (input.smcMtfShadowSnapshot) {
+    record.exactCandidateGeometrySnapshot = buildExactCandidateGeometrySnapshot({
+      capturedAt: input.now,
+      smcMtfShadowSnapshot: input.smcMtfShadowSnapshot,
+    });
+  }
   return record;
 }
 
@@ -394,6 +413,7 @@ export async function readTrendEvidenceDecisionLogSummary(
       windowExactSamples: windowExactZoneComparisonSummary.exactSamples,
       currentPriceEligibleExactSamples: null,
     },
+    exactCandidateGeometrySnapshot: summarizeExactCandidateGeometrySnapshots(records),
     shadowOutcomeSummary,
     shadowOutcomeQualityGate,
     shadowEvidenceCoverage: evaluateShadowEvidenceCoverage(shadowOutcomeQualityGate),

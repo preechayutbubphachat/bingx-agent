@@ -211,7 +211,23 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
               requireStructuredGeometry: true,
             },
           },
-          topCandidates: [],
+          topCandidates: [{
+            id: "snapshot-long-clean",
+            direction: "LONG",
+            zoneType: "OB_FVG_OVERLAP",
+            readiness: "READY",
+            status: "CLEAN_REVIEW_ONLY",
+            entry: 101.5,
+            entryLow: 101.2,
+            entryHigh: 101.8,
+            stopLoss: 99.5,
+            target1: 104.5,
+            target2: null,
+            netRR: 1.6,
+            distanceToEntryPct: 0,
+            flags: ["REVIEW_ONLY"],
+            reason: "Current price is inside the exact entry area.",
+          }],
           requiredGeometryInputs: ["direction", "entryLow/entryHigh or entry"],
           warnings: ["aggregate-only"],
           nextAction: "add exact candidate geometry snapshot fields to observability log",
@@ -247,6 +263,9 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.mtfExactZoneFailureAttribution.failureAttribution.dominantFailures[0]?.code, "TARGET_TOO_CLOSE_DOMINATES");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.status, "GEOMETRY_INPUTS_MISSING");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.currentPrice.value, 101.5);
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.zoneType, "OB_FVG_OVERLAP");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.readiness, "READY");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.flags[0], "REVIEW_ONLY");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.requiredGeometryInputs[0], "direction");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.activationAllowed, false);
 });

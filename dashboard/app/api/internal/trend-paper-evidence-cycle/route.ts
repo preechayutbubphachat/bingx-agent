@@ -46,6 +46,7 @@ import { buildExactZoneShadowInput } from "@/lib/trend/exactZoneShadowInput";
 import { computeRrBlockerDrilldown } from "@/lib/trend/rrBlockerDrilldown";
 import { computeMtfObFvgRefinementShadow, type MtfDirection } from "@/lib/trend/mtfObFvgRefinementShadow";
 import { buildRrSnapshot, buildSmcMtfShadowSnapshot } from "@/lib/trend/mtfObFvgShadowSnapshot";
+import { buildExactCandidateGeometrySnapshot } from "@/lib/trend/exactCandidateGeometrySnapshot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -204,6 +205,7 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
   const stop = num(preflight.stopLoss) ?? num(trendStrategy.invalidation) ?? num(trendZone.invalidation);
   const target = num(preflight.takeProfit1) ?? num(trendStrategy.target1) ?? num(trendZoneTargets.t1);
   const rawRR = num(trendStrategy.rewardRisk) ?? num(preflight.rewardRisk);
+  const currentPrice = num(trendStrategy.currentPrice) ?? num(d.currentPrice);
 
   const rr = computeRrBlockerDrilldown({
     rawRR,
@@ -211,7 +213,7 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
     entry,
     stopLoss: stop,
     target1: target,
-    currentPrice: num(trendStrategy.currentPrice) ?? num(d.currentPrice),
+    currentPrice,
     distanceToEntryZonePct: num(trendStrategy.distanceToEntryZonePct),
     riskStatus: typeof trendStrategy.riskStatus === "string" ? trendStrategy.riskStatus : null,
     feePct: diagnostics.config.feePct,
@@ -231,7 +233,7 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
     atr: indicatorValue("atr"),
     atrPct: indicatorValue("atrPct"),
     bbw: indicatorValue("bbw"),
-    currentPrice: num(trendStrategy.currentPrice) ?? num(d.currentPrice),
+    currentPrice,
     distanceToEntryZonePct: num(trendStrategy.distanceToEntryZonePct),
     entryZone,
     optionalObZone: null,
@@ -257,7 +259,7 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
     context: {
       regime: typeof canonicalMarketRegime.regime === "string" ? canonicalMarketRegime.regime : typeof regimeDecision.regime === "string" ? regimeDecision.regime : null,
       session: typeof d.session === "string" ? d.session : null,
-      currentPrice: num(trendStrategy.currentPrice) ?? num(d.currentPrice),
+      currentPrice,
       currentEntry: entry,
       currentStop: stop,
       currentTarget: target,
@@ -275,9 +277,7 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
       })
     : heuristicMtf;
 
-  return {
-    rrSnapshot: buildRrSnapshot(rr, capturedAt),
-    smcMtfShadowSnapshot: buildSmcMtfShadowSnapshot(mtf, capturedAt, exactZone.usesExactObFvgZones ? exactZone : null, {
+  const smcMtfShadowSnapshot = buildSmcMtfShadowSnapshot(mtf, capturedAt, exactZone.usesExactObFvgZones ? exactZone : null, {
       direction,
       entry,
       invalidation: stop,
@@ -288,6 +288,25 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
       canonicalDirection: typeof canonicalMarketRegime.direction === "string" ? canonicalMarketRegime.direction : null,
       priceVsGrid: typeof d.priceVsGrid === "string" ? d.priceVsGrid : null,
       dynamicGridStatus: typeof dynamicGrid.status === "string" ? dynamicGrid.status : null,
+    });
+  const latest15mCandle = diagnostics.candles15m.length ? diagnostics.candles15m[diagnostics.candles15m.length - 1] : null;
+  const latest15mAt = latest15mCandle && typeof latest15mCandle === "object"
+    ? latest15mCandle.t
+    : null;
+
+  return {
+    rrSnapshot: buildRrSnapshot(rr, capturedAt),
+    smcMtfShadowSnapshot,
+    exactCandidateGeometrySnapshot: buildExactCandidateGeometrySnapshot({
+      capturedAt,
+      currentPriceContext: {
+        currentPrice,
+        latestCandleAt: typeof latest15mAt === "number" ? new Date(latest15mAt).toISOString() : typeof latest15mAt === "string" ? latest15mAt : null,
+        freshnessStatus: currentPrice != null ? "FRESH" : "MISSING",
+        feePct: diagnostics.config.feePct,
+        slippagePct: diagnostics.config.slippagePct,
+      },
+      smcMtfShadowSnapshot,
     }),
   };
 }
@@ -429,6 +448,7 @@ export async function POST(req: NextRequest) {
         state: result.nextState as unknown as Record<string, unknown>,
         rrSnapshot: snapshots.rrSnapshot,
         smcMtfShadowSnapshot: snapshots.smcMtfShadowSnapshot,
+        exactCandidateGeometrySnapshot: snapshots.exactCandidateGeometrySnapshot,
       }),
     ).catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : "append_failed" }));
 

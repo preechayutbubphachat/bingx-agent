@@ -1013,10 +1013,11 @@ export function buildPaperLoopDiagnostics(
   const currentPriceEligibleExactSubset = evaluateCurrentPriceEligibleExactSubset({
     mtfEntryCandidatePipeline,
     mtfExactZoneFailureAttribution,
+    exactCandidateGeometrySnapshot: trendEvidenceDecisionSummary.exactCandidateGeometrySnapshot,
     exactZoneComparisonSummary: trendEvidenceDecisionSummary.exactZoneComparisonSummary,
     mtfObFvgShadowSummary: trendEvidenceDecisionSummary.mtfObFvgShadowSummary,
     shadowOutcomeSummary: trendEvidenceDecisionSummary.shadowOutcomeSummary,
-    currentPriceContext: mtfEntryCandidatePipeline.currentPriceContext,
+    currentPriceContext: context.mtfEntryCurrentPriceContext ?? mtfEntryCandidatePipeline.currentPriceContext,
     currentCandidateReevaluation: mtfEntryCandidatePipeline.currentCandidateReevaluation,
     exactCandidateRecords: trendEvidenceDecisionSummary.exactCandidateRecords,
   });

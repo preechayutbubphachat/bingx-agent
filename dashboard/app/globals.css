@@ -260,7 +260,29 @@ body {
   overflow: visible !important;
 }
 
+.agent-hq-status-wall-stable {
+  box-sizing: border-box;
+  contain: none !important;
+  display: block !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  position: static !important;
+  transform: none !important;
+}
+
+.agent-hq-status-wall-stable > * {
+  contain: none !important;
+  position: static !important;
+  transform: none !important;
+}
+
 .agent-hq-status-wall button {
+  min-width: 0;
+}
+
+.agent-hq-status-wall-stable button {
   min-width: 0;
 }
 

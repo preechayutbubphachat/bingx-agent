@@ -251,8 +251,13 @@ body {
 
 .agent-hq-status-wall {
   border-color: rgba(34, 211, 238, 0.24);
+  contain: none !important;
+  display: flow-root;
+  height: auto !important;
   isolation: isolate;
+  min-height: 0 !important;
   overflow-anchor: none;
+  overflow: visible !important;
 }
 
 .agent-hq-status-wall button {
@@ -263,12 +268,16 @@ body {
   align-content: start;
   align-items: stretch;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  grid-auto-rows: minmax(170px, auto);
-  overflow: visible;
+  grid-auto-rows: minmax(160px, auto);
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 .agent-hq-collapsed-grid > button {
-  min-height: 170px;
+  contain: none !important;
+  height: auto !important;
+  min-height: 160px;
   transform: none !important;
 }
 

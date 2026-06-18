@@ -80,9 +80,8 @@ export default function CollapsedCardTile({ tile, onExpand }: Props) {
       aria-expanded="false"
       aria-label={`ขยายการ์ด ${title}`}
       title={`${title} — กดเพื่อขยาย`}
-      className={`${statusTileClass()} shadow-[0_0_24px_rgba(34,211,238,0.05)] transition hover:border-cyan-300/50 ${tileSurface(severity, emphasized)}`}
+      className={`${statusTileClass()} shadow-[0_0_18px_rgba(34,211,238,0.05)] transition-colors ${tileSurface(severity, emphasized)}`}
     >
-      <div className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
       {/* UI-2.2 mockup-style header: icon chip + title, severity dot/badge on the right */}
       <div className="flex items-start justify-between gap-1.5">
         <div className="flex min-w-0 items-center gap-1.5">

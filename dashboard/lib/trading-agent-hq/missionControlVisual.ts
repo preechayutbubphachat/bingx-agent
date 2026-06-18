@@ -86,7 +86,7 @@ export function normalizedPanelClass(size: NormalizedPanelSize = "standard"): st
 }
 
 export function statusTileClass(): string {
-  return "relative flex min-h-[170px] w-full flex-col gap-1.5 rounded-2xl border px-2.5 py-2.5 text-left [contain:layout] [&_.agent-hq-tile-title]:line-clamp-2";
+  return "flex h-auto min-h-[160px] w-full flex-col gap-1.5 rounded-xl border px-2.5 py-2.5 text-left [&_.agent-hq-tile-title]:line-clamp-2";
 }
 
 export function statusWallGridClass(): string {
@@ -94,5 +94,5 @@ export function statusWallGridClass(): string {
 }
 
 export function statusWallPanelClass(): string {
-  return `${normalizedPanelClass("compact")} agent-hq-status-wall p-3`;
+  return "agent-hq-status-wall block h-auto min-h-0 overflow-visible rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-3 shadow-[0_0_18px_rgba(34,211,238,0.05)]";
 }

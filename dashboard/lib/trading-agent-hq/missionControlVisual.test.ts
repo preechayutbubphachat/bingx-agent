@@ -47,11 +47,13 @@ test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
   assert.match(normalizedPanelClass("compact"), /min-h-\[160px\]/);
   assert.doesNotMatch(normalizedPanelClass("standard"), /h-full/);
   assert.match(normalizedPanelClass("tall"), /min-h-\[360px\]/);
-  assert.match(statusTileClass(), /min-h-\[170px\]/);
+  assert.match(statusTileClass(), /min-h-\[160px\]/);
+  assert.match(statusTileClass(), /h-auto/);
   assert.doesNotMatch(statusTileClass(), /h-\[116px\]/);
   assert.doesNotMatch(statusTileClass(), /min-h-\[116px\]/);
-  assert.match(statusTileClass(), /contain:layout/);
+  assert.doesNotMatch(statusTileClass(), /contain:/);
   assert.doesNotMatch(statusTileClass(), /overflow-hidden/);
+  assert.doesNotMatch(statusTileClass(), /relative/);
   assert.doesNotMatch(statusTileClass(), /h-full/);
   assert.match(statusTileClass(), /line-clamp-2/);
   assert.match(statusWallGridClass(), /agent-hq-collapsed-grid/);
@@ -61,6 +63,9 @@ test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
   assert.doesNotMatch(statusWallGridClass(), /grid-cols-/);
   assert.doesNotMatch(statusWallGridClass(), /contain:layout_paint/);
   assert.match(statusWallPanelClass(), /agent-hq-status-wall/);
+  assert.match(statusWallPanelClass(), /h-auto/);
+  assert.match(statusWallPanelClass(), /min-h-0/);
+  assert.match(statusWallPanelClass(), /overflow-visible/);
   assert.doesNotMatch(statusWallPanelClass(), /overflow-hidden/);
   assert.doesNotMatch(statusWallPanelClass(), /contain:layout/);
   assert.doesNotMatch(statusWallPanelClass(), /contain:layout_paint/);

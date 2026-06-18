@@ -776,6 +776,14 @@ test("current-price eligible exact subset reports missing geometry when only agg
   assert.equal(d.currentPriceEligibleExactSubset.activationAllowed, false);
   assert.equal(d.currentPriceEligibleExactSubset.paperActivationAllowed, false);
   assert.equal(d.currentPriceEligibleExactSubset.liveActivationAllowed, false);
+  assert.equal(d.currentPriceConsistencyAudit.schemaVersion, 1);
+  assert.equal(d.currentPriceConsistencyAudit.source, "CURRENT_PRICE_CONSISTENCY_AUDIT_V1");
+  assert.equal(d.currentPriceConsistencyAudit.canonicalCurrentPrice.value, 100);
+  assert.equal(d.currentPriceConsistencyAudit.canonicalCurrentPrice.source, "test.currentPrice");
+  assert.equal(d.currentPriceConsistencyAudit.safety.activationAllowed, false);
+  assert.equal(d.currentPriceConsistencyAudit.safety.paperActivationAllowed, false);
+  assert.equal(d.currentPriceConsistencyAudit.safety.liveActivationAllowed, false);
+  assert.equal(d.currentPriceConsistencyAudit.safety.orderAllowed, false);
 });
 
 test("current-price eligible exact subset consumes exact candidate geometry snapshot", () => {
@@ -835,4 +843,7 @@ test("current-price eligible exact subset consumes exact candidate geometry snap
   assert.equal(d.currentPriceEligibleExactSubset.sampleAccounting.currentPriceEligibleExactSamples, 1);
   assert.equal(d.currentPriceEligibleExactSubset.topCandidates[0]?.id, "snapshot-long-clean");
   assert.equal(d.currentPriceEligibleExactSubset.activationAllowed, false);
+  assert.equal(d.currentPriceConsistencyAudit.canonicalCurrentPrice.value, 100);
+  assert.equal(d.currentPriceConsistencyAudit.detectedConsumers.find((item) => item.path === "currentPriceEligibleExactSubset.currentPrice.value")?.status, "MATCH");
+  assert.equal(d.currentPriceConsistencyAudit.safety.activationAllowed, false);
 });

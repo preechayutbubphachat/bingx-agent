@@ -89,6 +89,7 @@ export interface PaperVM {
   mtfEntryCandidatePipeline: MtfEntryCandidatePipelineVM;
   mtfExactZoneFailureAttribution: MtfExactZoneFailureAttributionVM;
   currentPriceEligibleExactSubset: CurrentPriceEligibleExactSubsetVM;
+  currentPriceConsistencyAudit: CurrentPriceConsistencyAuditVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -415,6 +416,49 @@ export interface CurrentPriceEligibleExactSubsetVM {
   requiredGeometryInputs: string[];
   warnings: string[];
   nextAction: string;
+}
+
+export interface CurrentPriceConsistencyAuditVM {
+  schemaVersion: number;
+  source: string;
+  status: string;
+  canonicalCurrentPrice: {
+    value: number | null;
+    source: string | null;
+    latestCandleAt: string | null;
+    freshnessStatus: string;
+    ageSeconds: number | null;
+  };
+  detectedConsumers: Array<{
+    path: string;
+    value: number | null;
+    source: string | null;
+    priceDelta: number | null;
+    priceDeltaPct: number | null;
+    status: string;
+  }>;
+  affectedConditions: Array<{
+    condition: string;
+    previousValue: boolean | null;
+    currentPriceBasedValue: boolean | null;
+    impact: string;
+    explanation: string;
+  }>;
+  currentPriceReevaluation: {
+    trendZoneStatus: string;
+    distanceToEntryZonePct: number | null;
+    distanceToEntryZoneAbs: number | null;
+    priceMoveRequiredDirection: string;
+    explanation: string;
+  };
+  recommendations: string[];
+  safety: {
+    reviewOnly: boolean;
+    activationAllowed: boolean;
+    paperActivationAllowed: boolean;
+    liveActivationAllowed: boolean;
+    orderAllowed: boolean;
+  };
 }
 
 export interface EventRiskContextVM {

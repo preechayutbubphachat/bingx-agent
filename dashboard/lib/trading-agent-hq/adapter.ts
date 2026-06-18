@@ -366,6 +366,66 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
   };
 }
 
+function mapCurrentPriceConsistencyAudit(raw: AnyObj): PaperVM["currentPriceConsistencyAudit"] {
+  const canonical = obj(raw.canonicalCurrentPrice);
+  const reevaluation = obj(raw.currentPriceReevaluation);
+  const safety = obj(raw.safety);
+  const detectedConsumers = Array.isArray(raw.detectedConsumers)
+    ? raw.detectedConsumers.map((item) => {
+        const consumer = obj(item);
+        return {
+          path: str(consumer.path, "unknown"),
+          value: numOrNull(consumer.value),
+          source: strOrNull(consumer.source),
+          priceDelta: numOrNull(consumer.priceDelta),
+          priceDeltaPct: numOrNull(consumer.priceDeltaPct),
+          status: str(consumer.status, "UNKNOWN"),
+        };
+      })
+    : [];
+  const affectedConditions = Array.isArray(raw.affectedConditions)
+    ? raw.affectedConditions.map((item) => {
+        const condition = obj(item);
+        return {
+          condition: str(condition.condition, "unknown"),
+          previousValue: boolOrNull(condition.previousValue),
+          currentPriceBasedValue: boolOrNull(condition.currentPriceBasedValue),
+          impact: str(condition.impact, "UNKNOWN"),
+          explanation: str(condition.explanation, ""),
+        };
+      })
+    : [];
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "CURRENT_PRICE_CONSISTENCY_AUDIT_V1"),
+    status: str(raw.status, "MISSING_CURRENT_PRICE"),
+    canonicalCurrentPrice: {
+      value: numOrNull(canonical.value),
+      source: strOrNull(canonical.source),
+      latestCandleAt: strOrNull(canonical.latestCandleAt),
+      freshnessStatus: str(canonical.freshnessStatus, "MISSING"),
+      ageSeconds: numOrNull(canonical.ageSeconds),
+    },
+    detectedConsumers,
+    affectedConditions,
+    currentPriceReevaluation: {
+      trendZoneStatus: str(reevaluation.trendZoneStatus, "UNKNOWN"),
+      distanceToEntryZonePct: numOrNull(reevaluation.distanceToEntryZonePct),
+      distanceToEntryZoneAbs: numOrNull(reevaluation.distanceToEntryZoneAbs),
+      priceMoveRequiredDirection: str(reevaluation.priceMoveRequiredDirection, "UNKNOWN"),
+      explanation: str(reevaluation.explanation, ""),
+    },
+    recommendations: strArray(raw.recommendations),
+    safety: {
+      reviewOnly: safety.reviewOnly === false ? false : true,
+      activationAllowed: bool(safety.activationAllowed),
+      paperActivationAllowed: bool(safety.paperActivationAllowed),
+      liveActivationAllowed: bool(safety.liveActivationAllowed),
+      orderAllowed: bool(safety.orderAllowed),
+    },
+  };
+}
+
 function mapShadowEvidenceCoverage(raw: AnyObj): PaperVM["shadowEvidenceCoverage"] {
   if (!Object.keys(raw).length) return null;
   const requirements = Array.isArray(raw.requirements)
@@ -688,6 +748,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     mtfEntryCandidatePipeline: mapMtfEntryCandidatePipeline(obj(loop.mtfEntryCandidatePipeline)),
     mtfExactZoneFailureAttribution: mapMtfExactZoneFailureAttribution(obj(loop.mtfExactZoneFailureAttribution)),
     currentPriceEligibleExactSubset: mapCurrentPriceEligibleExactSubset(obj(loop.currentPriceEligibleExactSubset)),
+    currentPriceConsistencyAudit: mapCurrentPriceConsistencyAudit(obj(loop.currentPriceConsistencyAudit)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

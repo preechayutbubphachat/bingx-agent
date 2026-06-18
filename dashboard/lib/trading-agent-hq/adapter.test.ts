@@ -250,6 +250,52 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
           warnings: ["aggregate-only"],
           nextAction: "add exact candidate geometry snapshot fields to observability log",
         },
+        currentPriceConsistencyAudit: {
+          schemaVersion: 1,
+          source: "CURRENT_PRICE_CONSISTENCY_AUDIT_V1",
+          status: "PRICE_MISMATCH_DETECTED",
+          canonicalCurrentPrice: {
+            value: 101.5,
+            source: "market_snapshot.15m.close",
+            latestCandleAt: "2026-06-18T10:00:00.000Z",
+            freshnessStatus: "FRESH",
+            ageSeconds: 300,
+          },
+          detectedConsumers: [
+            {
+              path: "trendStrategy.currentPrice",
+              value: 103.5,
+              source: "trendStrategy.currentPrice",
+              priceDelta: 2,
+              priceDeltaPct: 1.9704,
+              status: "MISMATCH",
+            },
+          ],
+          affectedConditions: [
+            {
+              condition: "price_inside_entry_zone_or_edge",
+              previousValue: true,
+              currentPriceBasedValue: false,
+              impact: "PASS_TO_FAIL",
+              explanation: "A previous in-zone state is not current truth.",
+            },
+          ],
+          currentPriceReevaluation: {
+            trendZoneStatus: "WAITING_PULLBACK_TO_ENTRY",
+            distanceToEntryZonePct: 0.94,
+            distanceToEntryZoneAbs: 1,
+            priceMoveRequiredDirection: "UP_TO_ENTRY",
+            explanation: "Current price is below the SHORT entry zone.",
+          },
+          recommendations: ["Use canonical current price for all trend gate diagnostics before interpreting readiness."],
+          safety: {
+            reviewOnly: true,
+            activationAllowed: false,
+            paperActivationAllowed: false,
+            liveActivationAllowed: false,
+            orderAllowed: false,
+          },
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -293,4 +339,11 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.currentPriceEligibleExactSubset.priceSourceAudit.snapshotPriceSource, "not_available_at_snapshot_build");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.requiredGeometryInputs[0], "direction");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.activationAllowed, false);
+  assert.equal(vm.paper.currentPriceConsistencyAudit.status, "PRICE_MISMATCH_DETECTED");
+  assert.equal(vm.paper.currentPriceConsistencyAudit.canonicalCurrentPrice.value, 101.5);
+  assert.equal(vm.paper.currentPriceConsistencyAudit.detectedConsumers[0]?.status, "MISMATCH");
+  assert.equal(vm.paper.currentPriceConsistencyAudit.affectedConditions[0]?.impact, "PASS_TO_FAIL");
+  assert.equal(vm.paper.currentPriceConsistencyAudit.currentPriceReevaluation.trendZoneStatus, "WAITING_PULLBACK_TO_ENTRY");
+  assert.equal(vm.paper.currentPriceConsistencyAudit.safety.activationAllowed, false);
+  assert.equal(vm.paper.currentPriceConsistencyAudit.safety.orderAllowed, false);
 });

@@ -84,6 +84,10 @@ import {
   evaluateCurrentPriceEligibleExactSubset,
   type CurrentPriceEligibleExactSubset,
 } from "../trend/currentPriceEligibleExactSubset.ts";
+import {
+  buildCurrentPriceConsistencyAudit,
+  type CurrentPriceConsistencyAudit,
+} from "../trend/currentPriceConsistencyAudit.ts";
 import { getCandlesFromSnapshot } from "../candleAdapter.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -114,6 +118,7 @@ export interface PaperLoopDiagnostics {
   mtfEntryCandidatePipeline: MtfEntryCandidatePipeline;
   mtfExactZoneFailureAttribution: MtfExactZoneFailureAttribution;
   currentPriceEligibleExactSubset: CurrentPriceEligibleExactSubset;
+  currentPriceConsistencyAudit: CurrentPriceConsistencyAudit;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -1021,6 +1026,19 @@ export function buildPaperLoopDiagnostics(
     currentCandidateReevaluation: mtfEntryCandidatePipeline.currentCandidateReevaluation,
     exactCandidateRecords: trendEvidenceDecisionSummary.exactCandidateRecords,
   });
+  const currentPriceConsistencyAudit = buildCurrentPriceConsistencyAudit({
+    mtfEntryCandidatePipeline,
+    currentPriceEligibleExactSubset,
+    trendStrategy,
+    trendTransitionMonitor,
+    trendManualPaperArmGate,
+    trendManualPaperArmGateEffective,
+    trendZoneCandidate: context.trendZoneCandidate ?? null,
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    regimeEvidence,
+    snapshotPrice: currentPrice,
+    decisionPrice: null,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -1047,6 +1065,7 @@ export function buildPaperLoopDiagnostics(
     mtfEntryCandidatePipeline,
     mtfExactZoneFailureAttribution,
     currentPriceEligibleExactSubset,
+    currentPriceConsistencyAudit,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

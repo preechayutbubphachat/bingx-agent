@@ -383,6 +383,8 @@ export interface CurrentPriceEligibleExactSubsetVM {
     zoneType: string | null;
     readiness: string | null;
     status: string;
+    currentPriceStatus: string;
+    qualityStatus: string;
     entry: number | null;
     entryLow: number | null;
     entryHigh: number | null;
@@ -391,9 +393,25 @@ export interface CurrentPriceEligibleExactSubsetVM {
     target2: number | null;
     netRR: number | null;
     distanceToEntryPct: number | null;
+    distanceToEntryAbs: number | null;
+    priceMoveRequiredDirection: string;
+    occurrenceCount: number;
     flags: string[];
     reason: string;
   }>;
+  dedupSummary: {
+    rawCandidates: number;
+    uniqueCandidates: number;
+    duplicateCandidates: number;
+  };
+  priceSourceAudit: {
+    subsetPriceSource: string | null;
+    snapshotPriceSource: string | null;
+    subsetCurrentPrice: number | null;
+    snapshotCurrentPrice: number | null;
+    priceSourceConsistent: boolean;
+    notes: string[];
+  };
   requiredGeometryInputs: string[];
   warnings: string[];
   nextAction: string;

@@ -24,6 +24,30 @@ export type CurrentPriceEligibleCandidateStatus =
   | "STALE"
   | "CLEAN_REVIEW_ONLY";
 
+export type CurrentPriceCandidatePriceStatus =
+  | "INSIDE_ENTRY_ZONE"
+  | "NEAR_ENTRY"
+  | "WAITING_PULLBACK_TO_ENTRY"
+  | "PRICE_MOVED_AWAY_FROM_ENTRY"
+  | "ALREADY_INVALIDATED"
+  | "PAST_TARGET"
+  | "UNKNOWN";
+
+export type CurrentPriceCandidateQualityStatus =
+  | "CLEAN"
+  | "TARGET_TOO_CLOSE"
+  | "COST_TOO_HIGH"
+  | "CONFLICTING_MTF"
+  | "FVG_ONLY"
+  | "MISSING_GEOMETRY"
+  | "UNKNOWN";
+
+export type CurrentPriceCandidateMoveDirection =
+  | "UP_TO_ENTRY"
+  | "DOWN_TO_ENTRY"
+  | "INSIDE_ENTRY"
+  | "UNKNOWN";
+
 export interface CurrentPriceEligibleExactSubset {
   schemaVersion: 1;
   source: "CURRENT_PRICE_ELIGIBLE_EXACT_SUBSET_V1";
@@ -80,6 +104,8 @@ export interface CurrentPriceEligibleExactSubset {
     zoneType?: string | null;
     readiness?: string | null;
     status: CurrentPriceEligibleCandidateStatus;
+    currentPriceStatus: CurrentPriceCandidatePriceStatus;
+    qualityStatus: CurrentPriceCandidateQualityStatus;
     entry: number | null;
     entryLow: number | null;
     entryHigh: number | null;
@@ -88,9 +114,25 @@ export interface CurrentPriceEligibleExactSubset {
     target2: number | null;
     netRR: number | null;
     distanceToEntryPct: number | null;
+    distanceToEntryAbs: number | null;
+    priceMoveRequiredDirection: CurrentPriceCandidateMoveDirection;
+    occurrenceCount: number;
     flags?: string[];
     reason: string;
   }>;
+  dedupSummary: {
+    rawCandidates: number;
+    uniqueCandidates: number;
+    duplicateCandidates: number;
+  };
+  priceSourceAudit: {
+    subsetPriceSource: string | null;
+    snapshotPriceSource: string | null;
+    subsetCurrentPrice: number | null;
+    snapshotCurrentPrice: number | null;
+    priceSourceConsistent: boolean;
+    notes: string[];
+  };
   requiredGeometryInputs: string[];
   warnings: string[];
   nextAction: string;
@@ -123,10 +165,12 @@ interface CandidateGeometry {
   capturedAt: string | null;
   zoneType: string | null;
   readiness: string | null;
+  timeframeSource: string[];
   costTooHigh: boolean;
   targetTooClose: boolean;
   warnings: string[];
   flags: string[];
+  occurrenceCount: number;
 }
 
 const SOURCE = "CURRENT_PRICE_ELIGIBLE_EXACT_SUBSET_V1" as const;
@@ -196,6 +240,14 @@ function round4(value: number): number {
   return Math.round(value * 10_000) / 10_000;
 }
 
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function roundKey(value: number | null): string {
+  return value == null ? "" : String(Math.round(value * 100) / 100);
+}
+
 function pctDistance(price: number, low: number | null, high: number | null, entry: number | null): number | null {
   const anchorLow = low ?? entry;
   const anchorHigh = high ?? entry;
@@ -203,6 +255,15 @@ function pctDistance(price: number, low: number | null, high: number | null, ent
   if (price >= anchorLow && price <= anchorHigh) return 0;
   const nearest = price < anchorLow ? anchorLow : anchorHigh;
   return round4(Math.abs(price - nearest) / price * 100);
+}
+
+function absDistance(price: number, low: number | null, high: number | null, entry: number | null): number | null {
+  const anchorLow = low ?? entry;
+  const anchorHigh = high ?? entry;
+  if (anchorLow == null || anchorHigh == null || price <= 0) return null;
+  if (price >= anchorLow && price <= anchorHigh) return 0;
+  const nearest = price < anchorLow ? anchorLow : anchorHigh;
+  return round2(Math.abs(price - nearest));
 }
 
 function rate(count: number, total: number): number | null {
@@ -254,11 +315,31 @@ function candidateFromRaw(rawValue: unknown, fallbackId: string): CandidateGeome
     capturedAt: firstText(raw.capturedAt, fill.capturedAt, exactZone.capturedAt),
     zoneType: firstText(raw.zoneType, exactZone.zoneType),
     readiness: firstText(raw.readiness, raw.exactZoneReadiness, exactZone.readiness, exactZone.exactZoneReadiness),
+    timeframeSource: [
+      ...textArray(raw.timeframeSource),
+      ...textArray(exactZone.timeframeSource),
+      ...[firstText(raw.timeframe, fill.timeframe, exactZone.timeframe)].filter((item): item is string => item != null),
+    ],
     costTooHigh: bool(raw.costTooHigh) || flags.includes("COST_TOO_HIGH") || text(raw.readiness ?? raw.exactZoneReadiness ?? exactZone.exactZoneReadiness) === "COST_TOO_HIGH",
     targetTooClose: bool(raw.targetTooClose) || flags.includes("TARGET_TOO_CLOSE") || text(raw.readiness ?? raw.exactZoneReadiness ?? exactZone.exactZoneReadiness) === "TARGET_TOO_CLOSE",
     warnings,
     flags,
+    occurrenceCount: 1,
   };
+}
+
+function candidateDedupKey(candidate: CandidateGeometry): string {
+  const timeframe = candidate.timeframeSource.length ? candidate.timeframeSource.join("+") : "UNKNOWN_TF";
+  const entryKey = roundKey(candidate.entry ?? candidate.entryLow ?? candidate.entryHigh);
+  return [
+    candidate.direction,
+    timeframe,
+    candidate.zoneType ?? "UNKNOWN_ZONE",
+    entryKey,
+    roundKey(candidate.stopLoss),
+    roundKey(candidate.target1),
+    candidate.readiness ?? "UNKNOWN_READINESS",
+  ].join("|");
 }
 
 function collectCandidateRecords(input: CurrentPriceEligibleExactSubsetInput): CandidateGeometry[] {
@@ -285,13 +366,21 @@ function collectCandidateRecords(input: CurrentPriceEligibleExactSubsetInput): C
   const candidates = [...rawCandidates, ...objectCandidates]
     .map((item, index) => candidateFromRaw(item, `exact-candidate-${index + 1}`))
     .filter((item): item is CandidateGeometry => item != null);
-  const seen = new Set<string>();
-  return candidates.filter((candidate) => {
-    const key = `${candidate.id}:${candidate.direction}:${candidate.entry ?? ""}:${candidate.stopLoss ?? ""}:${candidate.target1 ?? ""}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return candidates;
+}
+
+function dedupeCandidates(candidates: CandidateGeometry[]): CandidateGeometry[] {
+  const unique = new Map<string, CandidateGeometry>();
+  for (const candidate of candidates) {
+    const key = candidateDedupKey(candidate);
+    const existing = unique.get(key);
+    if (existing) {
+      existing.occurrenceCount += 1;
+      continue;
+    }
+    unique.set(key, { ...candidate, flags: [...candidate.flags], warnings: [...candidate.warnings], timeframeSource: [...candidate.timeframeSource], occurrenceCount: 1 });
+  }
+  return [...unique.values()];
 }
 
 function hasStructuredGeometry(candidate: CandidateGeometry): boolean {
@@ -318,63 +407,121 @@ function targetTooClose(candidate: CandidateGeometry, currentPrice: number): boo
   return Math.abs(candidate.target1 - anchor) / anchor * 100 <= TARGET_TOO_CLOSE_PCT;
 }
 
+function qualityStatus(candidate: CandidateGeometry, currentPrice: number): CurrentPriceCandidateQualityStatus {
+  if (!hasStructuredGeometry(candidate)) return "MISSING_GEOMETRY";
+  if (targetTooClose(candidate, currentPrice)) return "TARGET_TOO_CLOSE";
+  if (candidate.costTooHigh) return "COST_TOO_HIGH";
+  if (candidate.flags.includes("CONFLICTING_MTF") || candidate.readiness === "CONFLICTING_MTF") return "CONFLICTING_MTF";
+  if (candidate.flags.includes("FVG_ONLY") || candidate.readiness === "FVG_ONLY" || candidate.zoneType === "FVG_ONLY") return "FVG_ONLY";
+  if ((candidate.netRR ?? 0) >= MIN_NET_RR) return "CLEAN";
+  return "UNKNOWN";
+}
+
+function moveDirection(
+  currentPriceStatus: CurrentPriceCandidatePriceStatus,
+  currentPrice: number,
+  low: number | null,
+  high: number | null,
+  entry: number | null,
+): CurrentPriceCandidateMoveDirection {
+  if (currentPriceStatus === "INSIDE_ENTRY_ZONE" || currentPriceStatus === "NEAR_ENTRY") return "INSIDE_ENTRY";
+  const anchorLow = low ?? entry;
+  const anchorHigh = high ?? entry;
+  if (anchorLow == null || anchorHigh == null) return "UNKNOWN";
+  if (currentPrice < anchorLow) return "UP_TO_ENTRY";
+  if (currentPrice > anchorHigh) return "DOWN_TO_ENTRY";
+  return "INSIDE_ENTRY";
+}
+
+function priceStatus(
+  candidate: CandidateGeometry,
+  currentPrice: number,
+  inside: boolean,
+  near: boolean,
+): CurrentPriceCandidatePriceStatus {
+  const low = candidate.entryLow ?? candidate.entry;
+  const high = candidate.entryHigh ?? candidate.entry;
+  if (low == null || high == null) return "UNKNOWN";
+  if (candidate.direction === "LONG" && candidate.stopLoss != null && currentPrice <= candidate.stopLoss) return "ALREADY_INVALIDATED";
+  if (candidate.direction === "SHORT" && candidate.stopLoss != null && currentPrice >= candidate.stopLoss) return "ALREADY_INVALIDATED";
+  if (candidate.direction === "LONG" && candidate.target1 != null && currentPrice >= candidate.target1) return "PAST_TARGET";
+  if (candidate.direction === "SHORT" && candidate.target1 != null && currentPrice <= candidate.target1) return "PAST_TARGET";
+  if (inside) return "INSIDE_ENTRY_ZONE";
+  if (near) return "NEAR_ENTRY";
+  if (candidate.direction === "LONG" && currentPrice > high) return "WAITING_PULLBACK_TO_ENTRY";
+  if (candidate.direction === "SHORT" && currentPrice < low) return "WAITING_PULLBACK_TO_ENTRY";
+  if (candidate.direction === "LONG" && currentPrice < low) return "PRICE_MOVED_AWAY_FROM_ENTRY";
+  if (candidate.direction === "SHORT" && currentPrice > high) return "PRICE_MOVED_AWAY_FROM_ENTRY";
+  return "UNKNOWN";
+}
+
+function candidateReason(
+  candidate: CandidateGeometry,
+  currentPriceStatus: CurrentPriceCandidatePriceStatus,
+  candidateQualityStatus: CurrentPriceCandidateQualityStatus,
+): string {
+  if (currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY" && candidate.direction === "SHORT") {
+    return candidateQualityStatus === "CLEAN"
+      ? "ราคาอยู่ต่ำกว่าโซน entry ของ SHORT ต้องรอ pullback เข้าหาโซนก่อนจึงจะ eligible"
+      : `ราคาอยู่ต่ำกว่าโซน entry ของ SHORT ต้องรอ pullback; และ candidate ยังติด ${candidateQualityStatus}`;
+  }
+  if (currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY" && candidate.direction === "LONG") {
+    return candidateQualityStatus === "CLEAN"
+      ? "ราคาอยู่สูงกว่าโซน entry ของ LONG ต้องรอ pullback ลงมาหาโซนก่อนจึงจะ eligible"
+      : `ราคาอยู่สูงกว่าโซน entry ของ LONG ต้องรอ pullback; และ candidate ยังติด ${candidateQualityStatus}`;
+  }
+  if (currentPriceStatus === "ALREADY_INVALIDATED") return "Current price has crossed stop/invalidation.";
+  if (currentPriceStatus === "PAST_TARGET") return "Current price is already past target; candidate is late for review.";
+  if (candidateQualityStatus !== "CLEAN") return `Current price state is ${currentPriceStatus}; quality blocker is ${candidateQualityStatus}.`;
+  if (currentPriceStatus === "INSIDE_ENTRY_ZONE") return "Current price is inside entry zone and clean criteria pass for review only.";
+  if (currentPriceStatus === "NEAR_ENTRY") return "Current price is near entry and clean criteria pass for review only.";
+  return `Current price state is ${currentPriceStatus}.`;
+}
+
 function statusForCandidate(
   candidate: CandidateGeometry,
   currentPrice: number,
   latestCandleAt: string | null,
 ): CurrentPriceEligibleExactSubset["topCandidates"][number] {
   const distanceToEntryPct = pctDistance(currentPrice, candidate.entryLow, candidate.entryHigh, candidate.entry);
+  const distanceToEntryAbs = absDistance(currentPrice, candidate.entryLow, candidate.entryHigh, candidate.entry);
   const inside = distanceToEntryPct === 0;
   const near = distanceToEntryPct != null && distanceToEntryPct <= NEAR_ENTRY_PCT;
   const stale = isCandidateStale(candidate, latestCandleAt);
-  const invalidated =
-    candidate.direction === "LONG" && candidate.stopLoss != null && currentPrice <= candidate.stopLoss ||
-    candidate.direction === "SHORT" && candidate.stopLoss != null && currentPrice >= candidate.stopLoss;
-  const pastTarget =
-    candidate.direction === "LONG" && candidate.target1 != null && currentPrice >= candidate.target1 ||
-    candidate.direction === "SHORT" && candidate.target1 != null && currentPrice <= candidate.target1;
-  const tooClose = targetTooClose(candidate, currentPrice);
-  const costHigh = candidate.costTooHigh;
-  const missed =
-    pastTarget ||
-    candidate.direction === "LONG" && distanceToEntryPct != null && !near && currentPrice > (candidate.entryHigh ?? candidate.entry ?? currentPrice) ||
-    candidate.direction === "SHORT" && distanceToEntryPct != null && !near && currentPrice < (candidate.entryLow ?? candidate.entry ?? currentPrice);
+  const currentPriceStatus = stale ? "UNKNOWN" : priceStatus(candidate, currentPrice, inside, near);
+  const candidateQualityStatus = qualityStatus(candidate, currentPrice);
+  const requiredMove = moveDirection(currentPriceStatus, currentPrice, candidate.entryLow, candidate.entryHigh, candidate.entry);
 
   let status: CurrentPriceEligibleCandidateStatus;
-  let reason: string;
   if (stale) {
     status = "STALE";
-    reason = "Candidate snapshot is older than the latest candle threshold.";
-  } else if (invalidated) {
+  } else if (currentPriceStatus === "ALREADY_INVALIDATED") {
     status = "INVALIDATED";
-    reason = "Current price has crossed stop/invalidation.";
-  } else if (tooClose) {
-    status = "TARGET_TOO_CLOSE";
-    reason = "Target distance is too close for a clean review candidate.";
-  } else if (costHigh) {
-    status = "COST_TOO_HIGH";
-    reason = "Candidate is flagged as cost too high.";
-  } else if (missed) {
+  } else if (currentPriceStatus === "PAST_TARGET") {
     status = "MISSED";
-    reason = "Current price has moved away from the entry area.";
-  } else if ((inside || near) && candidate.direction !== "UNKNOWN" && candidate.stopLoss != null && candidate.target1 != null && (candidate.netRR ?? 0) >= MIN_NET_RR) {
+  } else if ((inside || near) && candidateQualityStatus === "CLEAN") {
     status = "CLEAN_REVIEW_ONLY";
-    reason = "Current price is near/inside entry and clean criteria pass for review only.";
+  } else if (candidateQualityStatus === "TARGET_TOO_CLOSE") {
+    status = "TARGET_TOO_CLOSE";
+  } else if (candidateQualityStatus === "COST_TOO_HIGH") {
+    status = "COST_TOO_HIGH";
   } else if (inside) {
     status = "INSIDE_ENTRY_ZONE";
-    reason = "Current price is inside the exact entry area.";
   } else if (near) {
     status = "NEAR_ENTRY";
-    reason = "Current price is near the exact entry area.";
   } else {
     status = "MISSED";
-    reason = "Current price is not near the exact entry area.";
   }
+  const reason = stale
+    ? "Candidate snapshot is older than the latest candle threshold."
+    : candidateReason(candidate, currentPriceStatus, candidateQualityStatus);
 
   return {
     id: candidate.id,
     direction: candidate.direction,
     status,
+    currentPriceStatus,
+    qualityStatus: candidateQualityStatus,
     entry: candidate.entry,
     entryLow: candidate.entryLow,
     entryHigh: candidate.entryHigh,
@@ -383,6 +530,9 @@ function statusForCandidate(
     target2: candidate.target2,
     netRR: candidate.netRR,
     distanceToEntryPct,
+    distanceToEntryAbs,
+    priceMoveRequiredDirection: requiredMove,
+    occurrenceCount: candidate.occurrenceCount,
     zoneType: candidate.zoneType,
     readiness: candidate.readiness,
     flags: candidate.flags,
@@ -453,6 +603,19 @@ function baseResult(
       thresholds: THRESHOLDS,
     },
     topCandidates: [],
+    dedupSummary: {
+      rawCandidates: 0,
+      uniqueCandidates: 0,
+      duplicateCandidates: 0,
+    },
+    priceSourceAudit: {
+      subsetPriceSource: currentPrice.source,
+      snapshotPriceSource: null,
+      subsetCurrentPrice: currentPrice.value,
+      snapshotCurrentPrice: null,
+      priceSourceConsistent: false,
+      notes: ["No exact candidate geometry snapshot price source is available."],
+    },
     requiredGeometryInputs: [],
     warnings: [],
     nextAction: "continue collecting exact-zone diagnostics without activation",
@@ -470,6 +633,39 @@ function currentPriceContext(input: CurrentPriceEligibleExactSubsetInput): Curre
     latestCandleAt: firstText(selected.latestCandleAt),
     freshnessStatus: freshnessStatus(selected.freshnessStatus),
     ageSeconds: firstNumber(selected.ageSeconds),
+  };
+}
+
+function priceSourceAudit(
+  input: CurrentPriceEligibleExactSubsetInput,
+  price: CurrentPriceEligibleExactSubset["currentPrice"],
+): CurrentPriceEligibleExactSubset["priceSourceAudit"] {
+  const snapshot = obj(input.exactCandidateGeometrySnapshot);
+  const snapshotCurrentPrice = firstNumber(snapshot.currentPrice);
+  const snapshotPriceSource = firstText(snapshot.priceSource, snapshot.source === "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1" ? null : snapshot.source) ?? "not_available_at_snapshot_build";
+  const priceSourceConsistent =
+    price.value != null &&
+    snapshotCurrentPrice != null &&
+    price.value === snapshotCurrentPrice &&
+    price.source != null &&
+    snapshotPriceSource === price.source;
+  const notes: string[] = [];
+  if (!Object.keys(snapshot).length) {
+    notes.push("No exactCandidateGeometrySnapshot is available; subset uses currentPriceContext.");
+  } else if (snapshotCurrentPrice == null) {
+    notes.push("Snapshot currentPrice is missing; subset uses currentPriceContext as source of truth.");
+  } else if (!priceSourceConsistent) {
+    notes.push("Snapshot price context differs from subset currentPriceContext; subset uses currentPriceContext for eligibility.");
+  } else {
+    notes.push("Snapshot price context matches subset currentPriceContext.");
+  }
+  return {
+    subsetPriceSource: price.source,
+    snapshotPriceSource,
+    subsetCurrentPrice: price.value,
+    snapshotCurrentPrice,
+    priceSourceConsistent,
+    notes,
   };
 }
 
@@ -493,6 +689,7 @@ export function evaluateCurrentPriceEligibleExactSubset(
   const price = currentPriceContext(input);
   const samples = sampleAccounting(input);
   const result = baseResult("NO_DATA", price);
+  result.priceSourceAudit = priceSourceAudit(input, price);
   result.sampleAccounting.lifetimeExactSamples = samples.lifetimeExactSamples;
   result.sampleAccounting.windowExactSamples = samples.windowExactSamples;
 
@@ -509,6 +706,7 @@ export function evaluateCurrentPriceEligibleExactSubset(
   }
 
   const candidates = collectCandidateRecords(input);
+  result.dedupSummary.rawCandidates = candidates.length;
   if (!candidates.length) {
     if (!hasAggregateExactData(input)) {
       result.status = "NO_DATA";
@@ -525,6 +723,12 @@ export function evaluateCurrentPriceEligibleExactSubset(
   }
 
   const structured = candidates.filter(hasStructuredGeometry);
+  const uniqueStructured = dedupeCandidates(structured);
+  result.dedupSummary = {
+    rawCandidates: candidates.length,
+    uniqueCandidates: uniqueStructured.length,
+    duplicateCandidates: Math.max(0, candidates.length - uniqueStructured.length),
+  };
   const missingCount = candidates.length - structured.length;
   if (!structured.length) {
     result.status = "GEOMETRY_INPUTS_MISSING";
@@ -537,22 +741,21 @@ export function evaluateCurrentPriceEligibleExactSubset(
     return result;
   }
 
-  const topCandidates = structured.map((candidate) => statusForCandidate(candidate, price.value!, price.latestCandleAt));
+  const topCandidates = uniqueStructured.map((candidate) => statusForCandidate(candidate, price.value!, price.latestCandleAt));
   const cleanCandidates = topCandidates.filter((candidate) => candidate.status === "CLEAN_REVIEW_ONLY").length;
   const insideOrNear = topCandidates.filter((candidate) => (
-    candidate.status === "CLEAN_REVIEW_ONLY" ||
-    candidate.status === "INSIDE_ENTRY_ZONE" ||
-    candidate.status === "NEAR_ENTRY"
+    candidate.currentPriceStatus === "INSIDE_ENTRY_ZONE" ||
+    candidate.currentPriceStatus === "NEAR_ENTRY"
   )).length;
   const freshCandidates = topCandidates.filter((candidate) => candidate.status !== "STALE").length;
-  const targetTooCloseCandidates = topCandidates.filter((candidate) => candidate.status === "TARGET_TOO_CLOSE").length;
-  const missedCandidates = topCandidates.filter((candidate) => candidate.status === "MISSED").length;
-  const invalidatedCandidates = topCandidates.filter((candidate) => candidate.status === "INVALIDATED").length;
-  const costTooHighCandidates = topCandidates.filter((candidate) => candidate.status === "COST_TOO_HIGH").length;
+  const targetTooCloseCandidates = topCandidates.filter((candidate) => candidate.qualityStatus === "TARGET_TOO_CLOSE").length;
+  const missedCandidates = topCandidates.filter((candidate) => candidate.currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY" || candidate.currentPriceStatus === "PRICE_MOVED_AWAY_FROM_ENTRY" || candidate.currentPriceStatus === "PAST_TARGET").length;
+  const invalidatedCandidates = topCandidates.filter((candidate) => candidate.currentPriceStatus === "ALREADY_INVALIDATED").length;
+  const costTooHighCandidates = topCandidates.filter((candidate) => candidate.qualityStatus === "COST_TOO_HIGH").length;
   const rates = failureRates(input);
-  const targetTooCloseRate = rates.targetTooCloseRate ?? rate(targetTooCloseCandidates, structured.length);
-  const missedFillRate = rates.missedFillRate ?? rate(missedCandidates, structured.length);
-  const invalidationAfterTouchRate = rates.invalidationAfterTouchRate ?? rate(invalidatedCandidates, structured.length);
+  const targetTooCloseRate = rates.targetTooCloseRate ?? rate(targetTooCloseCandidates, uniqueStructured.length);
+  const missedFillRate = rates.missedFillRate ?? rate(missedCandidates, uniqueStructured.length);
+  const invalidationAfterTouchRate = rates.invalidationAfterTouchRate ?? rate(invalidatedCandidates, uniqueStructured.length);
 
   const passed: string[] = ["fresh current price", "structured geometry present"];
   const failed: string[] = [];
@@ -596,7 +799,7 @@ export function evaluateCurrentPriceEligibleExactSubset(
       geometryMissingSamples: missingCount,
     },
     eligibilityFilters: {
-      totalCandidates: candidates.length,
+      totalCandidates: uniqueStructured.length,
       freshCandidates,
       currentPriceInsideOrNearEntry: insideOrNear,
       missedCandidates,

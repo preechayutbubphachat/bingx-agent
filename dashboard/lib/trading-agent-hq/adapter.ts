@@ -266,6 +266,8 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
   const filters = obj(raw.eligibilityFilters);
   const gate = obj(raw.cleanSubsetGate);
   const thresholds = obj(gate.thresholds);
+  const dedup = obj(raw.dedupSummary);
+  const audit = obj(raw.priceSourceAudit);
   const topCandidates = Array.isArray(raw.topCandidates)
     ? raw.topCandidates.map((item) => {
         const candidate = obj(item);
@@ -275,6 +277,8 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
           zoneType: strOrNull(candidate.zoneType),
           readiness: strOrNull(candidate.readiness),
           status: str(candidate.status, "MISSED"),
+          currentPriceStatus: str(candidate.currentPriceStatus, "UNKNOWN"),
+          qualityStatus: str(candidate.qualityStatus, "UNKNOWN"),
           entry: numOrNull(candidate.entry),
           entryLow: numOrNull(candidate.entryLow),
           entryHigh: numOrNull(candidate.entryHigh),
@@ -283,6 +287,9 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
           target2: numOrNull(candidate.target2),
           netRR: numOrNull(candidate.netRR),
           distanceToEntryPct: numOrNull(candidate.distanceToEntryPct),
+          distanceToEntryAbs: numOrNull(candidate.distanceToEntryAbs),
+          priceMoveRequiredDirection: str(candidate.priceMoveRequiredDirection, "UNKNOWN"),
+          occurrenceCount: num(candidate.occurrenceCount, 1),
           flags: strArray(candidate.flags),
           reason: str(candidate.reason, ""),
         };
@@ -340,6 +347,19 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
       },
     },
     topCandidates,
+    dedupSummary: {
+      rawCandidates: num(dedup.rawCandidates, 0),
+      uniqueCandidates: num(dedup.uniqueCandidates, 0),
+      duplicateCandidates: num(dedup.duplicateCandidates, 0),
+    },
+    priceSourceAudit: {
+      subsetPriceSource: strOrNull(audit.subsetPriceSource),
+      snapshotPriceSource: strOrNull(audit.snapshotPriceSource),
+      subsetCurrentPrice: numOrNull(audit.subsetCurrentPrice),
+      snapshotCurrentPrice: numOrNull(audit.snapshotCurrentPrice),
+      priceSourceConsistent: bool(audit.priceSourceConsistent),
+      notes: strArray(audit.notes),
+    },
     requiredGeometryInputs: strArray(raw.requiredGeometryInputs),
     warnings: strArray(raw.warnings),
     nextAction: str(raw.nextAction, "continue collecting exact-zone diagnostics without activation"),

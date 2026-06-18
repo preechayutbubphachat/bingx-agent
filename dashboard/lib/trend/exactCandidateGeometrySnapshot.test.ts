@@ -68,6 +68,7 @@ test("builds structured exact candidate geometry from exact shadow snapshot", ()
     capturedAt: NOW,
     currentPriceContext: {
       currentPrice: 100.9,
+      priceSource: "market_snapshot.15m.close",
       latestCandleAt: NOW,
       freshnessStatus: "FRESH",
     },
@@ -76,6 +77,10 @@ test("builds structured exact candidate geometry from exact shadow snapshot", ()
 
   assert.equal(result.schemaVersion, 1);
   assert.equal(result.source, "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1");
+  assert.equal(result.currentPrice, 100.9);
+  assert.equal(result.priceSource, "market_snapshot.15m.close");
+  assert.equal(result.latestCandleAt, NOW);
+  assert.equal(result.freshnessStatus, "FRESH");
   assert.equal(result.candidates.length, 1);
   assert.equal(result.summary.structuredGeometryCount, 1);
   assert.equal(result.summary.missingGeometryCount, 0);

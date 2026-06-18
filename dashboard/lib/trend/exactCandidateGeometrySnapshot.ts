@@ -28,6 +28,7 @@ export interface ExactCandidateGeometrySnapshot {
   source: "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1";
   capturedAt: string;
   currentPrice: number | null;
+  priceSource: string | null;
   latestCandleAt: string | null;
   freshnessStatus: ExactCandidateGeometryFreshness;
   candidates: ExactCandidateGeometry[];
@@ -187,6 +188,7 @@ function emptySnapshot(input: ExactCandidateGeometrySnapshotInput, missingGeomet
     source: SOURCE,
     capturedAt: cleanIso(input.capturedAt),
     currentPrice: firstNumber(context.currentPrice, context.value),
+    priceSource: str(context.priceSource ?? context.source) ?? "not_available_at_snapshot_build",
     latestCandleAt: str(context.latestCandleAt),
     freshnessStatus: freshness(context.freshnessStatus),
     candidates: [],

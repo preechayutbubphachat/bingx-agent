@@ -194,13 +194,146 @@ test("current price far away marks candidate missed and no eligible subset", () 
       entryLow: 99.8,
       entryHigh: 100,
       stopLoss: 98,
-      target1: 104,
+      target1: 110,
       netRR: 1.5,
     }],
   }));
 
   assert.equal(result.topCandidates[0]?.status, "MISSED");
   assert.equal(result.status, "NO_CURRENT_PRICE_ELIGIBLE_CANDIDATES");
+});
+
+test("SHORT below entry waits for pullback and keeps target-too-close as quality status", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    currentPriceContext: {
+      ...freshContext,
+      currentPrice: 62_778,
+      priceSource: "mtfEntryCandidatePipeline.currentPriceContext",
+    },
+    exactCandidateGeometrySnapshot: {
+      schemaVersion: 1,
+      source: "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1",
+      currentPrice: null,
+      priceSource: null,
+      freshnessStatus: "UNKNOWN",
+      candidates: [{
+        id: "short-runtime-target-close",
+        direction: "SHORT",
+        zoneType: "OB_FVG_OVERLAP",
+        readiness: "TARGET_TOO_CLOSE",
+        entry: 63_654.92,
+        stopLoss: 64_876.7,
+        target1: 62_232.6,
+        netRR: 0.9,
+        flags: ["TARGET_TOO_CLOSE"],
+      }],
+    },
+  }));
+
+  assert.equal(result.sampleAccounting.currentPriceEligibleExactSamples, 0);
+  assert.equal(result.topCandidates[0]?.currentPriceStatus, "WAITING_PULLBACK_TO_ENTRY");
+  assert.equal(result.topCandidates[0]?.qualityStatus, "TARGET_TOO_CLOSE");
+  assert.equal(result.topCandidates[0]?.priceMoveRequiredDirection, "UP_TO_ENTRY");
+  assert.equal(result.topCandidates[0]?.distanceToEntryPct, 1.3969);
+  assert.equal(result.topCandidates[0]?.distanceToEntryAbs, 876.92);
+  assert.match(result.topCandidates[0]?.reason ?? "", /ราคาอยู่ต่ำกว่าโซน entry ของ SHORT/);
+  assert.equal(result.status, "NO_CURRENT_PRICE_ELIGIBLE_CANDIDATES");
+});
+
+test("LONG above entry waits for pullback down to entry", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    currentPriceContext: { ...freshContext, currentPrice: 105 },
+    exactCandidateRecords: [{
+      id: "long-waiting-pullback",
+      direction: "LONG",
+      entryLow: 99.8,
+      entryHigh: 100,
+      stopLoss: 98,
+      target1: 110,
+      netRR: 1.5,
+    }],
+  }));
+
+  assert.equal(result.topCandidates[0]?.currentPriceStatus, "WAITING_PULLBACK_TO_ENTRY");
+  assert.equal(result.topCandidates[0]?.priceMoveRequiredDirection, "DOWN_TO_ENTRY");
+  assert.equal(result.sampleAccounting.currentPriceEligibleExactSamples, 0);
+});
+
+test("deduplicates repeated candidate geometry for presentation and counts occurrences", () => {
+  const repeated = {
+    id: "duplicate-a",
+    direction: "LONG",
+    zoneType: "OB_FVG_OVERLAP",
+    readiness: "READY",
+    entry: 100,
+    stopLoss: 98,
+    target1: 103,
+    netRR: 1.6,
+  };
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    exactCandidateRecords: [
+      repeated,
+      { ...repeated, id: "duplicate-b" },
+      { ...repeated, id: "duplicate-c", entry: 100.0004 },
+    ],
+  }));
+
+  assert.equal(result.dedupSummary.rawCandidates, 3);
+  assert.equal(result.dedupSummary.uniqueCandidates, 1);
+  assert.equal(result.dedupSummary.duplicateCandidates, 2);
+  assert.equal(result.topCandidates.length, 1);
+  assert.equal(result.topCandidates[0]?.occurrenceCount, 3);
+});
+
+test("audits when subset price source differs from geometry snapshot price source", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    currentPriceContext: { ...freshContext, currentPrice: 100, priceSource: "runtime.currentPriceContext" },
+    exactCandidateGeometrySnapshot: {
+      schemaVersion: 1,
+      source: "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1",
+      currentPrice: null,
+      priceSource: null,
+      freshnessStatus: "UNKNOWN",
+      candidates: [{
+        id: "snapshot-price-missing",
+        direction: "LONG",
+        entry: 100,
+        stopLoss: 98,
+        target1: 103,
+        netRR: 1.6,
+      }],
+    },
+  }));
+
+  assert.equal(result.priceSourceAudit.subsetPriceSource, "runtime.currentPriceContext");
+  assert.equal(result.priceSourceAudit.snapshotPriceSource, "not_available_at_snapshot_build");
+  assert.equal(result.priceSourceAudit.subsetCurrentPrice, 100);
+  assert.equal(result.priceSourceAudit.snapshotCurrentPrice, null);
+  assert.equal(result.priceSourceAudit.priceSourceConsistent, false);
+  assert.ok(result.priceSourceAudit.notes.some((note) => note.includes("currentPriceContext")));
+});
+
+test("clean near-entry candidate exposes clean quality and current-price status separately", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    currentPriceContext: { ...freshContext, currentPrice: 100.1 },
+    exactCandidateRecords: [{
+      id: "clean-near-entry",
+      direction: "LONG",
+      entryLow: 100,
+      entryHigh: 100.2,
+      stopLoss: 98,
+      target1: 104,
+      netRR: 1.8,
+    }],
+  }));
+
+  assert.equal(result.topCandidates[0]?.currentPriceStatus, "INSIDE_ENTRY_ZONE");
+  assert.equal(result.topCandidates[0]?.qualityStatus, "CLEAN");
+  assert.equal(result.topCandidates[0]?.status, "CLEAN_REVIEW_ONLY");
+  assert.equal(result.sampleAccounting.currentPriceEligibleExactSamples, 1);
+  assert.equal(result.activationAllowed, false);
+  assert.equal(result.paperActivationAllowed, false);
+  assert.equal(result.liveActivationAllowed, false);
 });
 
 test("helper does not mutate input", () => {

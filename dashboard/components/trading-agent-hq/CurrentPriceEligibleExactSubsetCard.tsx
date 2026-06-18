@@ -60,6 +60,13 @@ function flagText(flags: string[]): string {
   return flags.length ? flags.join(", ") : NA;
 }
 
+function moveDirectionLabel(direction: string): string {
+  if (direction === "UP_TO_ENTRY") return "ขึ้นไปหา entry";
+  if (direction === "DOWN_TO_ENTRY") return "ลงมาหา entry";
+  if (direction === "INSIDE_ENTRY") return "อยู่ใน/ใกล้ entry";
+  return NA;
+}
+
 export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: PaperVM }) {
   const s = paper.currentPriceEligibleExactSubset;
   const price = s.currentPrice;
@@ -68,6 +75,7 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
   const gate = s.cleanSubsetGate;
   const firstCandidate = s.topCandidates[0] ?? null;
   const geometryMissing = s.status === "GEOMETRY_INPUTS_MISSING";
+  const hasWaitingCandidate = s.topCandidates.some((candidate) => candidate.currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY");
 
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-[#d7e4df] bg-[#f7fbf8] p-3 shadow-sm">
@@ -96,6 +104,14 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
         ระบบจะไม่เดา geometry · ต้องมี entry / stop / target ต่อ candidate
       </div>
 
+      {hasWaitingCandidate ? (
+        <div className="rounded-lg border border-amber-200 bg-white/85 p-2 text-[11px] font-bold leading-relaxed text-amber-950">
+          <div>ราคาปัจจุบันยังไม่อยู่ใกล้ entry</div>
+          <div>ต้องรอ pullback เข้าหาโซนก่อนจึงจะ eligible</div>
+          <div>TARGET_TOO_CLOSE คือปัญหา quality ไม่ใช่สถานะราคาปัจจุบัน</div>
+        </div>
+      ) : null}
+
       {geometryMissing ? (
         <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-2 text-[11px] font-bold leading-relaxed text-rose-950">
           <div>ยังไม่มี per-candidate geometry snapshot</div>
@@ -107,6 +123,8 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
       <div className="grid grid-cols-1 gap-1.5">
         <Row label="Current Price" value={fmt(price.value)} rowTone={price.freshnessStatus === "FRESH" ? "green" : "amber"} />
         <Row label="Freshness" value={price.freshnessStatus} rowTone={price.freshnessStatus === "FRESH" ? "green" : "amber"} />
+        <Row label="Subset price source" value={s.priceSourceAudit.subsetPriceSource ?? price.source ?? NA} />
+        <Row label="Snapshot price source" value={s.priceSourceAudit.snapshotPriceSource ?? NA} rowTone={s.priceSourceAudit.priceSourceConsistent ? "green" : "amber"} />
         <Row label="Latest candle" value={price.latestCandleAt ?? NA} />
         <Row label="Lifetime exact samples" value={count(sample.lifetimeExactSamples)} />
         <Row label="Window exact samples" value={count(sample.windowExactSamples)} />
@@ -117,6 +135,8 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
       </div>
 
       <div className="grid grid-cols-2 gap-1.5">
+        <Row label="Raw candidates" value={String(s.dedupSummary.rawCandidates)} />
+        <Row label="Unique / duplicates" value={`${s.dedupSummary.uniqueCandidates} / ${s.dedupSummary.duplicateCandidates}`} rowTone={s.dedupSummary.duplicateCandidates > 0 ? "amber" : "green"} />
         <Row label="Near/inside" value={String(filters.currentPriceInsideOrNearEntry)} rowTone={filters.currentPriceInsideOrNearEntry > 0 ? "green" : "amber"} />
         <Row label="Clean" value={String(filters.cleanCandidates)} rowTone={filters.cleanCandidates > 0 ? "green" : "amber"} />
         <Row label="Missed" value={String(filters.missedCandidates)} rowTone={filters.missedCandidates > 0 ? "amber" : "neutral"} />
@@ -128,9 +148,11 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
           {s.topCandidates.slice(0, 3).map((candidate) => (
             <div key={candidate.id} className="rounded-lg border border-sky-200 bg-sky-50/70 p-2 text-[11px] font-bold leading-relaxed text-sky-950">
               <div className="mb-1 font-black">Top candidate: {candidate.id} · {candidate.status}</div>
-              <div>{candidate.direction} · {candidate.zoneType ?? "UNKNOWN_ZONE"} · readiness {candidate.readiness ?? NA}</div>
+              <div>{candidate.direction} · current {candidate.currentPriceStatus} · quality {candidate.qualityStatus}</div>
+              <div>{candidate.zoneType ?? "UNKNOWN_ZONE"} · readiness {candidate.readiness ?? NA} · occurrence {candidate.occurrenceCount}</div>
               <div>entry {fmt(candidate.entry)} · zone {fmt(candidate.entryLow)}-{fmt(candidate.entryHigh)} · stop {fmt(candidate.stopLoss)} · target {fmt(candidate.target1)} · RR {fmt(candidate.netRR)}</div>
-              <div>distance {fmt(candidate.distanceToEntryPct)}% · flags {flagText(candidate.flags)}</div>
+              <div>distance {fmt(candidate.distanceToEntryPct)}% / {fmt(candidate.distanceToEntryAbs)} · move {moveDirectionLabel(candidate.priceMoveRequiredDirection)}</div>
+              <div>flags {flagText(candidate.flags)}</div>
               <div>{candidate.reason}</div>
             </div>
           ))}
@@ -151,6 +173,7 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
       <div className="rounded-lg border border-[#d7e4df] bg-white/80 p-2 text-[11px] font-bold leading-relaxed text-[#26352d]">
         <div className="font-black">Next action</div>
         <div>{s.nextAction}</div>
+        <div>ใช้รีวิวเท่านั้น ไม่ใช่สัญญาณเข้าไม้ · ไม่ส่ง Order / ไม่ Activation</div>
       </div>
     </section>
   );

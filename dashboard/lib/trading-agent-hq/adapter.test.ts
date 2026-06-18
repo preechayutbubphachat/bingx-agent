@@ -217,6 +217,8 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             zoneType: "OB_FVG_OVERLAP",
             readiness: "READY",
             status: "CLEAN_REVIEW_ONLY",
+            currentPriceStatus: "INSIDE_ENTRY_ZONE",
+            qualityStatus: "CLEAN",
             entry: 101.5,
             entryLow: 101.2,
             entryHigh: 101.8,
@@ -225,9 +227,25 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             target2: null,
             netRR: 1.6,
             distanceToEntryPct: 0,
+            distanceToEntryAbs: 0,
+            priceMoveRequiredDirection: "INSIDE_ENTRY",
+            occurrenceCount: 2,
             flags: ["REVIEW_ONLY"],
             reason: "Current price is inside the exact entry area.",
           }],
+          dedupSummary: {
+            rawCandidates: 3,
+            uniqueCandidates: 2,
+            duplicateCandidates: 1,
+          },
+          priceSourceAudit: {
+            subsetPriceSource: "market_snapshot.15m.close",
+            snapshotPriceSource: "not_available_at_snapshot_build",
+            subsetCurrentPrice: 101.5,
+            snapshotCurrentPrice: null,
+            priceSourceConsistent: false,
+            notes: ["Snapshot currentPrice is missing; subset uses currentPriceContext as source of truth."],
+          },
           requiredGeometryInputs: ["direction", "entryLow/entryHigh or entry"],
           warnings: ["aggregate-only"],
           nextAction: "add exact candidate geometry snapshot fields to observability log",
@@ -265,7 +283,14 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.currentPriceEligibleExactSubset.currentPrice.value, 101.5);
   assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.zoneType, "OB_FVG_OVERLAP");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.readiness, "READY");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.currentPriceStatus, "INSIDE_ENTRY_ZONE");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.qualityStatus, "CLEAN");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.priceMoveRequiredDirection, "INSIDE_ENTRY");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.occurrenceCount, 2);
   assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.flags[0], "REVIEW_ONLY");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.dedupSummary.duplicateCandidates, 1);
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.priceSourceAudit.priceSourceConsistent, false);
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.priceSourceAudit.snapshotPriceSource, "not_available_at_snapshot_build");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.requiredGeometryInputs[0], "direction");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.activationAllowed, false);
 });

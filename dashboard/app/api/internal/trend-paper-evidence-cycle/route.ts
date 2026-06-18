@@ -206,6 +206,11 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
   const target = num(preflight.takeProfit1) ?? num(trendStrategy.target1) ?? num(trendZoneTargets.t1);
   const rawRR = num(trendStrategy.rewardRisk) ?? num(preflight.rewardRisk);
   const currentPrice = num(trendStrategy.currentPrice) ?? num(d.currentPrice);
+  const priceSource = num(trendStrategy.currentPrice) != null
+    ? "trendStrategy.currentPrice"
+    : num(d.currentPrice) != null
+      ? "paperLoopDiagnostics.currentPrice"
+      : "not_available_at_snapshot_build";
 
   const rr = computeRrBlockerDrilldown({
     rawRR,
@@ -301,6 +306,7 @@ function buildDecisionLogSnapshots(diagnostics: Awaited<ReturnType<typeof buildD
       capturedAt,
       currentPriceContext: {
         currentPrice,
+        priceSource,
         latestCandleAt: typeof latest15mAt === "number" ? new Date(latest15mAt).toISOString() : typeof latest15mAt === "string" ? latest15mAt : null,
         freshnessStatus: currentPrice != null ? "FRESH" : "MISSING",
         feePct: diagnostics.config.feePct,

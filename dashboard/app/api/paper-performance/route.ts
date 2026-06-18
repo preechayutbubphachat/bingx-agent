@@ -136,6 +136,12 @@ export async function GET() {
       const latest1hClose = candles1h.length ? candles1h[candles1h.length - 1]?.close ?? null : null;
       const trendPaperJournalSnapshot = await readTrendPaperJournalSnapshot().catch(() => null);
       const trendPaperArmSessionSnapshot = await readTrendPaperArmSession().catch(() => null);
+      // T-3H-6-a/D7.0: read before paperLoopDiagnostics so derived review objects
+      // consume exact-zone and shadow-outcome runtime evidence on the first build.
+      const decisionSummary = await readTrendEvidenceDecisionLogSummary({
+        windowHours: 48,
+        candlesByTimeframe: { "15M": candles15m },
+      }).catch(() => null);
       const trendPaperExecutionConfig = {
         enabled: envBool(process.env.TREND_PAPER_SIMULATION_ENABLED, false),
         mode: "PAPER_SIMULATION_ONLY" as const,
@@ -180,6 +186,11 @@ export async function GET() {
         trendPaperArmSession: trendPaperArmSessionSnapshot?.session ?? null,
         noTradeDiagnostics: report.noTradeDiagnostics ?? null,
         noTradeReasons: report.noTradeReasons ?? null,
+        trendEvidenceDecisionSummary: decisionSummary ?? {
+          available: false,
+          totalRecords: 0,
+          sampleWarning: true,
+        },
       });
       costGate = enrichCostGateWithGridSpacing(report.costGate, paperLoopDiagnostics);
       (paperLoopDiagnostics as unknown as Record<string, unknown>).newsContextSummary = safeNewsContextSummary;
@@ -216,10 +227,6 @@ export async function GET() {
         exchangeOrderAllowed: false,
       };
       // T-3H-6-a: attach read-only rejection/decision summary (48h window; safe fallback)
-      const decisionSummary = await readTrendEvidenceDecisionLogSummary({
-        windowHours: 48,
-        candlesByTimeframe: { "15M": candles15m },
-      }).catch(() => null);
       (paperLoopDiagnostics as unknown as Record<string, unknown>).trendEvidenceDecisionSummary = decisionSummary ?? {
         available: false,
         totalRecords: 0,

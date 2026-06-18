@@ -162,6 +162,30 @@ test("no data fixture returns NO_CANDIDATE without throwing", () => {
   assert.equal(result.activationAllowed, false);
 });
 
+test("falls back to mtfObFvgShadowSummary exact fields when exact comparison is absent", () => {
+  const result = evaluateMtfEntryCandidatePipeline(input({
+    exactZoneComparisonSummary: null,
+    mtfObFvgShadowSummary: {
+      available: true,
+      exactZoneSamples: 75,
+      exactAvgNetRR: 6.1932,
+      exactVsHeuristicAvgDelta: 4.8687,
+      usesExactObFvgZonesCount: 75,
+      exactZoneDataStatusCounts: { EXACT_ZONE_CONFLICT: 75 },
+      exactZoneReadinessCounts: { TARGET_TOO_CLOSE: 50 },
+      fillResolutionInputSamples: 64,
+      fillResolutionGeometryReadyCount: 64,
+    },
+  }));
+
+  assert.equal(result.zoneCandidate.exactSamples, 75);
+  assert.equal(result.zoneCandidate.samplesRemaining, 25);
+  assert.equal(result.zoneCandidate.exactAvgNetRR, 6.1932);
+  assert.equal(result.zoneCandidate.exactVsHeuristicDelta, 4.8687);
+  assert.notEqual(result.zoneCandidate.status, "NO_EXACT_ZONE");
+  assert.equal(result.activationAllowed, false);
+});
+
 test("100+ exact samples with invalidation dominance is not review ready", () => {
   const result = evaluateMtfEntryCandidatePipeline(input({
     exactZoneComparisonSummary: exact({

@@ -89,9 +89,9 @@ export default function MtfEntryCandidatePipelineCard({ paper }: { paper: PaperV
   const z = p.zoneCandidate;
   const t = p.triggerReview;
   const g = p.geometry;
-  const targetTooCloseRate = z.exactSamples > 0 ? z.warningFlags.includes("HIGH_TARGET_TOO_CLOSE_RATE") ? null : null : null;
   const targetTooCloseCount = paper.trendEvidenceDecisionSummary.exactZoneComparisonSummary.conflictBreakdown.TARGET_TOO_CLOSE;
-  const targetTooCloseDisplay = z.exactSamples > 0 ? `${targetTooCloseCount}/${z.exactSamples}` : NA;
+  const targetTooCloseRate = z.exactSamples > 0 ? targetTooCloseCount / z.exactSamples : null;
+  const targetTooCloseDisplay = z.exactSamples > 0 ? `${targetTooCloseCount}/${z.exactSamples} (${pct(targetTooCloseRate)})` : NA;
 
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-[#e5d5bf] bg-[#fffaf1] p-3 shadow-sm">
@@ -131,7 +131,7 @@ export default function MtfEntryCandidatePipelineCard({ paper }: { paper: PaperV
         <Row label="Exact avg netRR" value={fmt(z.exactAvgNetRR)} tone={z.exactAvgNetRR != null && z.heuristicAvgNetRR != null && z.exactAvgNetRR > z.heuristicAvgNetRR ? "green" : "neutral"} />
         <Row label="Heuristic avg netRR" value={fmt(z.heuristicAvgNetRR)} />
         <Row label="Exact vs heuristic delta" value={fmt(z.exactVsHeuristicDelta)} tone={z.exactVsHeuristicDelta != null && z.exactVsHeuristicDelta > 0 ? "green" : "neutral"} />
-        <Row label="Target-too-close rate" value={targetTooCloseRate == null ? targetTooCloseDisplay : pct(targetTooCloseRate)} tone={targetTooCloseCount > 0 ? "amber" : "neutral"} />
+        <Row label="Target-too-close rate" value={targetTooCloseDisplay} tone={targetTooCloseCount > 0 ? "amber" : "neutral"} />
         <Row label="Missed fill rate" value={pct(g.missedFillRate)} tone={g.missedFillRate != null && g.missedFillRate > 0.3 ? "amber" : "neutral"} />
         <Row label="Entry touched" value={String(t.entryTouched)} tone={t.entryTouched >= 20 ? "green" : "amber"} />
         <Row label="Target after touch" value={pct(t.targetAfterEntryTouchRate)} tone={t.targetAfterEntryTouchRate === 0 ? "amber" : "neutral"} />

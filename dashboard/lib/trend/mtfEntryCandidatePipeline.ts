@@ -216,6 +216,57 @@ function shadowBucket(summary: unknown): Record<string, unknown> {
   return obj(obj(summary).shadowOutcomes);
 }
 
+function dominant(counts: Record<string, unknown>): string | null {
+  const entries = Object.entries(counts).filter(([, value]) => typeof value === "number" && Number.isFinite(value) && value > 0);
+  if (!entries.length) return null;
+  entries.sort((a, b) => (b[1] as number) - (a[1] as number) || a[0].localeCompare(b[0]));
+  return entries[0]![0];
+}
+
+function exactSummaryFromInput(input: MtfEntryCandidatePipelineInput): Record<string, unknown> {
+  const primary = obj(input.exactZoneComparisonSummary);
+  if (Object.keys(primary).length) return primary;
+
+  const mtf = obj(input.mtfObFvgShadowSummary);
+  const exactSamples = count(mtf.exactZoneSamples);
+  if (exactSamples <= 0) return {};
+
+  const exactDataStatusCounts = obj(mtf.exactZoneDataStatusCounts);
+  const exactReadinessCounts = obj(mtf.exactZoneReadinessCounts);
+  const targetTooClose = count(exactReadinessCounts.TARGET_TOO_CLOSE);
+  const costTooHigh = count(exactReadinessCounts.COST_TOO_HIGH);
+  const conflictingMtf = count(exactReadinessCounts.CONFLICTING_MTF);
+  const warningFlags = ["REVIEW_NOT_ACTIVATION"];
+  if (exactSamples < REQUIRED_EXACT_SAMPLES) warningFlags.push("LOW_EXACT_SAMPLE_SIZE");
+  if (targetTooClose / exactSamples >= TARGET_TOO_CLOSE_DOMINANT_RATE) warningFlags.push("HIGH_TARGET_TOO_CLOSE_RATE");
+
+  return {
+    exactSamples,
+    heuristicSamples: 0,
+    exactAvgNetRR: fin(mtf.exactAvgNetRR),
+    heuristicAvgNetRR: null,
+    avgExactVsHeuristicDelta: fin(mtf.exactVsHeuristicAvgDelta),
+    exactDataStatusCounts,
+    exactReadinessCounts,
+    usesExactObFvgZonesCount: count(mtf.usesExactObFvgZonesCount),
+    fillResolutionInputSamples: count(mtf.fillResolutionInputSamples),
+    fillResolutionInputMissing: Math.max(0, exactSamples - count(mtf.fillResolutionInputSamples)),
+    fillResolutionGeometryReadyCount: count(mtf.fillResolutionGeometryReadyCount),
+    dominantExactStatus: dominant(exactDataStatusCounts),
+    dominantExactReadiness: dominant(exactReadinessCounts),
+    fillResolution: {},
+    warningFlags,
+    conflictBreakdown: {
+      TARGET_TOO_CLOSE: targetTooClose,
+      COST_TOO_HIGH: costTooHigh,
+      CONFLICTING_MTF: conflictingMtf,
+      other: {},
+    },
+    readiness: "CONTINUE_LOGGING",
+    source: "MTF_OB_FVG_SHADOW_SUMMARY_FALLBACK",
+  };
+}
+
 function zoneStatus(exact: Record<string, unknown>, exactSamples: number): MtfEntryCandidatePipeline["zoneCandidate"]["status"] {
   if (exactSamples <= 0) return "NO_EXACT_ZONE";
   const dominantStatus = str(exact.dominantExactStatus);
@@ -259,7 +310,7 @@ function hasCandidateData(input: MtfEntryCandidatePipelineInput, exactSamples: n
 }
 
 export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipelineInput = {}): MtfEntryCandidatePipeline {
-  const exact = obj(input.exactZoneComparisonSummary);
+  const exact = exactSummaryFromInput(input);
   const bucket = shadowBucket(input.shadowOutcomeSummary);
   const fill = obj(exact.fillResolution);
   const exactSamples = count(exact.exactSamples);

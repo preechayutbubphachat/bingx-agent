@@ -9,6 +9,8 @@ import {
   missionCardTone,
   statusWallPanelClass,
   statusWallGridClass,
+  statusWallStableCardClass,
+  statusWallStableGridClass,
   statusTileClass,
   threeColumnShellClass,
   reviewOnlySafetyCopy,
@@ -71,4 +73,20 @@ test("D6.3 panel helpers normalize card rhythm without fixed clipping", () => {
   assert.doesNotMatch(statusWallPanelClass(), /overflow-hidden/);
   assert.doesNotMatch(statusWallPanelClass(), /contain:layout/);
   assert.doesNotMatch(statusWallPanelClass(), /contain:layout_paint/);
+});
+
+test("D6.4 stable status wall classes avoid overlap-prone layout primitives", () => {
+  assert.match(statusWallStableGridClass(), /agent-hq-status-wall-stable-grid/);
+  assert.match(statusWallStableGridClass(), /grid/);
+  assert.match(statusWallStableGridClass(), /gap-3/);
+  assert.match(statusWallStableGridClass(), /overflow-visible/);
+  assert.doesNotMatch(statusWallStableGridClass(), /overflow-hidden|overflow-y-auto|max-h-|h-\[/);
+  assert.doesNotMatch(statusWallStableGridClass(), /absolute|translate|transform|contain:/);
+
+  assert.match(statusWallStableCardClass(), /agent-hq-status-wall-stable-card/);
+  assert.match(statusWallStableCardClass(), /flex/);
+  assert.match(statusWallStableCardClass(), /h-auto/);
+  assert.match(statusWallStableCardClass(), /min-h-\[148px\]/);
+  assert.doesNotMatch(statusWallStableCardClass(), /h-\[116px\]|min-h-\[116px\]|max-h-/);
+  assert.doesNotMatch(statusWallStableCardClass(), /overflow-hidden|absolute|translate|transform|contain:/);
 });

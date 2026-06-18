@@ -96,3 +96,21 @@ export function statusWallGridClass(): string {
 export function statusWallPanelClass(): string {
   return "agent-hq-status-wall-stable block h-auto min-h-0 shrink-0 overflow-visible rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-3 shadow-[0_0_18px_rgba(34,211,238,0.05)]";
 }
+
+export function statusWallStableGridClass(): string {
+  return "agent-hq-status-wall-stable-grid grid gap-3 overflow-visible";
+}
+
+export function statusWallStableCardClass(severity: "critical" | "warning" | "success" | "info" | "none" = "none"): string {
+  const tone =
+    severity === "critical"
+      ? "border-rose-300/35 bg-rose-400/10"
+      : severity === "warning"
+        ? "border-amber-300/35 bg-amber-400/10"
+        : severity === "success"
+          ? "border-emerald-300/35 bg-emerald-400/10"
+          : severity === "info"
+            ? "border-cyan-300/35 bg-cyan-400/10"
+            : "border-cyan-400/20 bg-slate-900/80";
+  return `agent-hq-status-wall-stable-card flex h-auto min-h-[148px] w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left shadow-[0_0_14px_rgba(34,211,238,0.05)] transition-colors ${tone}`;
+}

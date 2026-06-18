@@ -735,3 +735,45 @@ test("MTF exact-zone attribution is exposed from decision summary diagnostics", 
   assert.equal(d.mtfExactZoneFailureAttribution.status, "GEOMETRY_PROMISING_EXECUTION_WEAK");
   assert.equal(d.mtfExactZoneFailureAttribution.cleanSubsetGate.status, "NOT_READY");
 });
+
+test("current-price eligible exact subset reports missing geometry when only aggregate exact evidence exists", () => {
+  const d = buildPaperLoopDiagnostics(summary({}), null, {
+    mtfEntryCurrentPriceContext: {
+      currentPrice: 100,
+      priceSource: "test.currentPrice",
+      latestCandleAt: "2026-06-18T05:00:00.000Z",
+      snapshotGeneratedAt: "2026-06-18T05:00:30.000Z",
+      evaluatedAt: "2026-06-18T05:01:00.000Z",
+      timeframe: "15m",
+      previousAnalysisPrice: 100,
+    },
+    trendEvidenceDecisionSummary: {
+      sampleAccounting: { lifetimeExactSamples: 325, windowExactSamples: 65, currentPriceEligibleExactSamples: null },
+      exactZoneComparisonSummary: {
+        exactSamples: 65,
+        exactAvgNetRR: 5.06,
+        heuristicAvgNetRR: 1.62,
+        avgExactVsHeuristicDelta: 3.44,
+        exactReadinessCounts: { TARGET_TOO_CLOSE: 40 },
+        conflictBreakdown: { TARGET_TOO_CLOSE: 40, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
+        fillResolution: { missedFillRate: 0.797 },
+      },
+      shadowOutcomeSummary: {
+        shadowOutcomes: {
+          totalSetups: 65,
+          entryTouched: 13,
+          entryTouchRate: 0.2,
+          targetAfterEntryTouchRate: 0,
+          invalidationAfterEntryTouchRate: 0.72,
+        },
+      },
+    },
+  });
+
+  assert.equal(d.currentPriceEligibleExactSubset.status, "GEOMETRY_INPUTS_MISSING");
+  assert.equal(d.currentPriceEligibleExactSubset.sampleAccounting.currentPriceEligibleExactSamples, null);
+  assert.ok(d.currentPriceEligibleExactSubset.requiredGeometryInputs.includes("direction"));
+  assert.equal(d.currentPriceEligibleExactSubset.activationAllowed, false);
+  assert.equal(d.currentPriceEligibleExactSubset.paperActivationAllowed, false);
+  assert.equal(d.currentPriceEligibleExactSubset.liveActivationAllowed, false);
+});

@@ -80,6 +80,10 @@ import {
   evaluateMtfExactZoneFailureAttribution,
   type MtfExactZoneFailureAttribution,
 } from "../trend/mtfExactZoneFailureAttribution.ts";
+import {
+  evaluateCurrentPriceEligibleExactSubset,
+  type CurrentPriceEligibleExactSubset,
+} from "../trend/currentPriceEligibleExactSubset.ts";
 import { getCandlesFromSnapshot } from "../candleAdapter.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -109,6 +113,7 @@ export interface PaperLoopDiagnostics {
   reviewReadinessScore: ReviewReadinessScore;
   mtfEntryCandidatePipeline: MtfEntryCandidatePipeline;
   mtfExactZoneFailureAttribution: MtfExactZoneFailureAttribution;
+  currentPriceEligibleExactSubset: CurrentPriceEligibleExactSubset;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -1005,6 +1010,16 @@ export function buildPaperLoopDiagnostics(
     currentPriceContext: mtfEntryCandidatePipeline.currentPriceContext,
     currentCandidateReevaluation: mtfEntryCandidatePipeline.currentCandidateReevaluation,
   });
+  const currentPriceEligibleExactSubset = evaluateCurrentPriceEligibleExactSubset({
+    mtfEntryCandidatePipeline,
+    mtfExactZoneFailureAttribution,
+    exactZoneComparisonSummary: trendEvidenceDecisionSummary.exactZoneComparisonSummary,
+    mtfObFvgShadowSummary: trendEvidenceDecisionSummary.mtfObFvgShadowSummary,
+    shadowOutcomeSummary: trendEvidenceDecisionSummary.shadowOutcomeSummary,
+    currentPriceContext: mtfEntryCandidatePipeline.currentPriceContext,
+    currentCandidateReevaluation: mtfEntryCandidatePipeline.currentCandidateReevaluation,
+    exactCandidateRecords: trendEvidenceDecisionSummary.exactCandidateRecords,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -1030,6 +1045,7 @@ export function buildPaperLoopDiagnostics(
     reviewReadinessScore,
     mtfEntryCandidatePipeline,
     mtfExactZoneFailureAttribution,
+    currentPriceEligibleExactSubset,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

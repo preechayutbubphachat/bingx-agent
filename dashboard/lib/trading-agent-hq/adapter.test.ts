@@ -161,6 +161,61 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             doNotDo: ["do not activate paper/live"],
           },
         },
+        currentPriceEligibleExactSubset: {
+          schemaVersion: 1,
+          source: "CURRENT_PRICE_ELIGIBLE_EXACT_SUBSET_V1",
+          status: "GEOMETRY_INPUTS_MISSING",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+          currentPrice: {
+            value: 101.5,
+            source: "market_snapshot.15m.close",
+            latestCandleAt: "2026-06-18T10:00:00.000Z",
+            freshnessStatus: "FRESH",
+            ageSeconds: 300,
+          },
+          sampleAccounting: {
+            lifetimeExactSamples: 325,
+            windowExactSamples: 65,
+            currentPriceEligibleExactSamples: null,
+            cleanCurrentPriceEligibleSamples: null,
+            geometryInputSamples: 0,
+            geometryMissingSamples: 0,
+          },
+          eligibilityFilters: {
+            totalCandidates: 0,
+            freshCandidates: 0,
+            currentPriceInsideOrNearEntry: 0,
+            missedCandidates: 0,
+            invalidatedCandidates: 0,
+            targetTooCloseCandidates: 0,
+            costTooHighCandidates: 0,
+            cleanCandidates: 0,
+          },
+          cleanSubsetGate: {
+            status: "NOT_READY",
+            passed: [],
+            failed: ["structured exact candidate geometry missing"],
+            thresholds: {
+              minCleanEligibleCandidates: 10,
+              maxTargetTooCloseRate: 0.4,
+              maxMissedFillRate: 0.5,
+              minEntryTouchRate: 0.35,
+              minTargetAfterTouchRate: 0.25,
+              maxInvalidationAfterTouchRate: 0.5,
+              requireFreshCurrentPrice: true,
+              requireStructuredGeometry: true,
+            },
+          },
+          topCandidates: [],
+          requiredGeometryInputs: ["direction", "entryLow/entryHigh or entry"],
+          warnings: ["aggregate-only"],
+          nextAction: "add exact candidate geometry snapshot fields to observability log",
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -190,4 +245,8 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.mtfExactZoneFailureAttribution.status, "GEOMETRY_PROMISING_EXECUTION_WEAK");
   assert.equal(vm.paper.mtfExactZoneFailureAttribution.sample.sampleGatePassed, true);
   assert.equal(vm.paper.mtfExactZoneFailureAttribution.failureAttribution.dominantFailures[0]?.code, "TARGET_TOO_CLOSE_DOMINATES");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.status, "GEOMETRY_INPUTS_MISSING");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.currentPrice.value, 101.5);
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.requiredGeometryInputs[0], "direction");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.activationAllowed, false);
 });

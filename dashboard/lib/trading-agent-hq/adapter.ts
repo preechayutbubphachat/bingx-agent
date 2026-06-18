@@ -260,6 +260,89 @@ function mapMtfExactZoneFailureAttribution(raw: AnyObj): PaperVM["mtfExactZoneFa
   };
 }
 
+function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceEligibleExactSubset"] {
+  const currentPrice = obj(raw.currentPrice);
+  const sample = obj(raw.sampleAccounting);
+  const filters = obj(raw.eligibilityFilters);
+  const gate = obj(raw.cleanSubsetGate);
+  const thresholds = obj(gate.thresholds);
+  const topCandidates = Array.isArray(raw.topCandidates)
+    ? raw.topCandidates.map((item) => {
+        const candidate = obj(item);
+        return {
+          id: str(candidate.id, "unknown"),
+          direction: str(candidate.direction, "UNKNOWN"),
+          status: str(candidate.status, "MISSED"),
+          entry: numOrNull(candidate.entry),
+          entryLow: numOrNull(candidate.entryLow),
+          entryHigh: numOrNull(candidate.entryHigh),
+          stopLoss: numOrNull(candidate.stopLoss),
+          target1: numOrNull(candidate.target1),
+          target2: numOrNull(candidate.target2),
+          netRR: numOrNull(candidate.netRR),
+          distanceToEntryPct: numOrNull(candidate.distanceToEntryPct),
+          reason: str(candidate.reason, ""),
+        };
+      })
+    : [];
+
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "CURRENT_PRICE_ELIGIBLE_EXACT_SUBSET_V1"),
+    status: str(raw.status, "NO_DATA"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    activationAllowed: bool(raw.activationAllowed),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    reviewOnly: raw.reviewOnly === false ? false : true,
+    shadowOnly: raw.shadowOnly === false ? false : true,
+    currentPrice: {
+      value: numOrNull(currentPrice.value),
+      source: strOrNull(currentPrice.source),
+      latestCandleAt: strOrNull(currentPrice.latestCandleAt),
+      freshnessStatus: str(currentPrice.freshnessStatus, "MISSING"),
+      ageSeconds: numOrNull(currentPrice.ageSeconds),
+    },
+    sampleAccounting: {
+      lifetimeExactSamples: numOrNull(sample.lifetimeExactSamples),
+      windowExactSamples: numOrNull(sample.windowExactSamples),
+      currentPriceEligibleExactSamples: numOrNull(sample.currentPriceEligibleExactSamples),
+      cleanCurrentPriceEligibleSamples: numOrNull(sample.cleanCurrentPriceEligibleSamples),
+      geometryInputSamples: numOrNull(sample.geometryInputSamples),
+      geometryMissingSamples: numOrNull(sample.geometryMissingSamples),
+    },
+    eligibilityFilters: {
+      totalCandidates: num(filters.totalCandidates, 0),
+      freshCandidates: num(filters.freshCandidates, 0),
+      currentPriceInsideOrNearEntry: num(filters.currentPriceInsideOrNearEntry, 0),
+      missedCandidates: num(filters.missedCandidates, 0),
+      invalidatedCandidates: num(filters.invalidatedCandidates, 0),
+      targetTooCloseCandidates: num(filters.targetTooCloseCandidates, 0),
+      costTooHighCandidates: num(filters.costTooHighCandidates, 0),
+      cleanCandidates: num(filters.cleanCandidates, 0),
+    },
+    cleanSubsetGate: {
+      status: str(gate.status, "NOT_READY"),
+      passed: strArray(gate.passed),
+      failed: strArray(gate.failed),
+      thresholds: {
+        minCleanEligibleCandidates: num(thresholds.minCleanEligibleCandidates, 10),
+        maxTargetTooCloseRate: num(thresholds.maxTargetTooCloseRate, 0.4),
+        maxMissedFillRate: num(thresholds.maxMissedFillRate, 0.5),
+        minEntryTouchRate: num(thresholds.minEntryTouchRate, 0.35),
+        minTargetAfterTouchRate: num(thresholds.minTargetAfterTouchRate, 0.25),
+        maxInvalidationAfterTouchRate: num(thresholds.maxInvalidationAfterTouchRate, 0.5),
+        requireFreshCurrentPrice: thresholds.requireFreshCurrentPrice === false ? false : true,
+        requireStructuredGeometry: thresholds.requireStructuredGeometry === false ? false : true,
+      },
+    },
+    topCandidates,
+    requiredGeometryInputs: strArray(raw.requiredGeometryInputs),
+    warnings: strArray(raw.warnings),
+    nextAction: str(raw.nextAction, "continue collecting exact-zone diagnostics without activation"),
+  };
+}
+
 function mapShadowEvidenceCoverage(raw: AnyObj): PaperVM["shadowEvidenceCoverage"] {
   if (!Object.keys(raw).length) return null;
   const requirements = Array.isArray(raw.requirements)
@@ -581,6 +664,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     reviewReadinessScore: mapReviewReadinessScore(reviewReadinessScore),
     mtfEntryCandidatePipeline: mapMtfEntryCandidatePipeline(obj(loop.mtfEntryCandidatePipeline)),
     mtfExactZoneFailureAttribution: mapMtfExactZoneFailureAttribution(obj(loop.mtfExactZoneFailureAttribution)),
+    currentPriceEligibleExactSubset: mapCurrentPriceEligibleExactSubset(obj(loop.currentPriceEligibleExactSubset)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

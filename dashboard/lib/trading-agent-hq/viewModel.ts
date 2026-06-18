@@ -88,6 +88,7 @@ export interface PaperVM {
   reviewReadinessScore: ReviewReadinessScoreVM;
   mtfEntryCandidatePipeline: MtfEntryCandidatePipelineVM;
   mtfExactZoneFailureAttribution: MtfExactZoneFailureAttributionVM;
+  currentPriceEligibleExactSubset: CurrentPriceEligibleExactSubsetVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -324,6 +325,75 @@ export interface MtfExactZoneFailureAttributionVM {
     reviewTasks: string[];
     doNotDo: string[];
   };
+}
+
+export interface CurrentPriceEligibleExactSubsetVM {
+  schemaVersion: number;
+  source: string;
+  status: string;
+  readiness: string;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+  currentPrice: {
+    value: number | null;
+    source: string | null;
+    latestCandleAt: string | null;
+    freshnessStatus: string;
+    ageSeconds: number | null;
+  };
+  sampleAccounting: {
+    lifetimeExactSamples: number | null;
+    windowExactSamples: number | null;
+    currentPriceEligibleExactSamples: number | null;
+    cleanCurrentPriceEligibleSamples: number | null;
+    geometryInputSamples: number | null;
+    geometryMissingSamples: number | null;
+  };
+  eligibilityFilters: {
+    totalCandidates: number;
+    freshCandidates: number;
+    currentPriceInsideOrNearEntry: number;
+    missedCandidates: number;
+    invalidatedCandidates: number;
+    targetTooCloseCandidates: number;
+    costTooHighCandidates: number;
+    cleanCandidates: number;
+  };
+  cleanSubsetGate: {
+    status: string;
+    passed: string[];
+    failed: string[];
+    thresholds: {
+      minCleanEligibleCandidates: number;
+      maxTargetTooCloseRate: number;
+      maxMissedFillRate: number;
+      minEntryTouchRate: number;
+      minTargetAfterTouchRate: number;
+      maxInvalidationAfterTouchRate: number;
+      requireFreshCurrentPrice: boolean;
+      requireStructuredGeometry: boolean;
+    };
+  };
+  topCandidates: Array<{
+    id: string;
+    direction: string;
+    status: string;
+    entry: number | null;
+    entryLow: number | null;
+    entryHigh: number | null;
+    stopLoss: number | null;
+    target1: number | null;
+    target2: number | null;
+    netRR: number | null;
+    distanceToEntryPct: number | null;
+    reason: string;
+  }>;
+  requiredGeometryInputs: string[];
+  warnings: string[];
+  nextAction: string;
 }
 
 export interface EventRiskContextVM {

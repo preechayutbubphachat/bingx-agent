@@ -71,6 +71,7 @@ import RrDrilldownCard from "./RrDrilldownCard";
 import MtfObFvgShadowCard from "./MtfObFvgShadowCard";
 import MtfEntryCandidatePipelineCard from "./MtfEntryCandidatePipelineCard";
 import MtfExactZoneFailureAttributionCard from "./MtfExactZoneFailureAttributionCard";
+import CurrentPriceEligibleExactSubsetCard from "./CurrentPriceEligibleExactSubsetCard";
 import ShadowOutcomeSummaryCard from "./ShadowOutcomeSummaryCard";
 import ReviewReadinessNextStepCard from "./ReviewReadinessNextStepCard";
 import TradingCafeBottomPanels from "./TradingCafeBottomPanels";
@@ -528,6 +529,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           {/* D7.0: read-only MTF entry candidate review pipeline */}
           <MtfEntryCandidatePipelineCard paper={vm.paper} />
           <MtfExactZoneFailureAttributionCard paper={vm.paper} />
+          <CurrentPriceEligibleExactSubsetCard paper={vm.paper} />
           {/* D5.2-c: read-only shadow outcome (counterfactual reachability) evidence — not real trades */}
           <ShadowOutcomeSummaryCard paper={vm.paper} />
           <RiskManagerPanel paper={vm.paper} safety={vm.safety} log={vm.bottomLog} />

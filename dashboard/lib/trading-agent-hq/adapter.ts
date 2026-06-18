@@ -1,6 +1,6 @@
 // dashboard/lib/trading-agent-hq/adapter.ts
 // THQ-5 — map public-safe endpoint payloads → TradingAgentHQ ViewModel.
-// PURE mapping (no fetch, no side effects). SAFETY: read-only; never infers live-ready.
+// PURE mapping (no network calls, no side effects). SAFETY: read-only; never infers live-ready.
 // Sources (public-safe only): /api/public-health, /api/paper-status, /api/paper-performance.
 // Missing data degrades to UNKNOWN / idle / warning — NEVER fake PASS.
 
@@ -77,6 +77,70 @@ function mapReviewReadinessScore(raw: AnyObj): PaperVM["reviewReadinessScore"] {
       noTradeExplanation: Object.keys(obj(dims.noTradeExplanation)).length
         ? mapReviewDimension(obj(dims.noTradeExplanation))
         : emptyReviewDimension(10),
+    },
+  };
+}
+
+function mapMtfEntryCandidatePipeline(raw: AnyObj): PaperVM["mtfEntryCandidatePipeline"] {
+  const htf = obj(raw.htfBias);
+  const zone = obj(raw.zoneCandidate);
+  const trigger = obj(raw.triggerReview);
+  const geometry = obj(raw.geometry);
+  const verdict = obj(raw.verdict);
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "MTF_ENTRY_CANDIDATE_PIPELINE_V1"),
+    status: str(raw.status, "NO_CANDIDATE"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    activationAllowed: bool(raw.activationAllowed),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    reviewOnly: raw.reviewOnly === false ? false : true,
+    shadowOnly: raw.shadowOnly === false ? false : true,
+    htfBias: {
+      status: str(htf.status, "UNKNOWN"),
+      confidence: numOrNull(htf.confidence),
+      source: str(htf.source, "unknown"),
+      reasons: strArray(htf.reasons),
+      warnings: strArray(htf.warnings),
+    },
+    zoneCandidate: {
+      status: str(zone.status, "NO_EXACT_ZONE"),
+      exactSamples: num(zone.exactSamples, 0),
+      requiredExactSamples: num(zone.requiredExactSamples, 100),
+      samplesRemaining: num(zone.samplesRemaining, 100),
+      exactAvgNetRR: numOrNull(zone.exactAvgNetRR),
+      heuristicAvgNetRR: numOrNull(zone.heuristicAvgNetRR),
+      exactVsHeuristicDelta: numOrNull(zone.exactVsHeuristicDelta),
+      usesExactObFvgZonesCount: num(zone.usesExactObFvgZonesCount, 0),
+      dominantExactStatus: strOrNull(zone.dominantExactStatus),
+      dominantExactReadiness: strOrNull(zone.dominantExactReadiness),
+      warningFlags: strArray(zone.warningFlags),
+    },
+    triggerReview: {
+      status: str(trigger.status, "NO_TRIGGER"),
+      entryTouched: num(trigger.entryTouched, 0),
+      entryTouchRate: numOrNull(trigger.entryTouchRate),
+      entryNotReached: num(trigger.entryNotReached, 0),
+      entryNotReachedRate: numOrNull(trigger.entryNotReachedRate),
+      targetAfterEntryTouchRate: numOrNull(trigger.targetAfterEntryTouchRate),
+      invalidationAfterEntryTouchRate: numOrNull(trigger.invalidationAfterEntryTouchRate),
+      pending: num(trigger.pending, 0),
+    },
+    geometry: {
+      status: str(geometry.status, "NO_GEOMETRY"),
+      geometryReady: num(geometry.geometryReady, 0),
+      noGeometry: num(geometry.noGeometry, 0),
+      fillResolutionStatus: strOrNull(geometry.fillResolutionStatus),
+      missedFillRate: numOrNull(geometry.missedFillRate),
+      pending: num(geometry.pending, 0),
+      notes: strArray(geometry.notes),
+    },
+    verdict: {
+      status: str(verdict.status, "NO_CANDIDATE"),
+      summary: str(verdict.summary, "No MTF entry candidate diagnostics available."),
+      blockers: strArray(verdict.blockers),
+      nextAction: str(verdict.nextAction, "continue_collecting_shadow_diagnostics_without_activation"),
     },
   };
 }
@@ -400,6 +464,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendPaperArmIntentBridge: mapTrendPaperArmIntentBridge(obj(loop.trendPaperArmIntentBridge)),
     trendPaperEvidenceRunner: mapTrendPaperEvidenceRunner(obj(loop.trendPaperEvidenceRunner)),
     reviewReadinessScore: mapReviewReadinessScore(reviewReadinessScore),
+    mtfEntryCandidatePipeline: mapMtfEntryCandidatePipeline(obj(loop.mtfEntryCandidatePipeline)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

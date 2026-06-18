@@ -72,6 +72,10 @@ import {
   evaluateReviewReadinessScore,
   type ReviewReadinessScore,
 } from "./reviewReadinessScore.ts";
+import {
+  evaluateMtfEntryCandidatePipeline,
+  type MtfEntryCandidatePipeline,
+} from "../trend/mtfEntryCandidatePipeline.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
@@ -98,6 +102,7 @@ export interface PaperLoopDiagnostics {
   noTradeReasonCounts: Record<string, number>;
   noTradeReasonAnalysis: NoTradeReasonAnalysis;
   reviewReadinessScore: ReviewReadinessScore;
+  mtfEntryCandidatePipeline: MtfEntryCandidatePipeline;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -923,6 +928,21 @@ export function buildPaperLoopDiagnostics(
     trendEvidenceDecisionSummary: context.trendEvidenceDecisionSummary,
     noTradeReasonAnalysis,
   });
+  const trendEvidenceDecisionSummary = unknownObj(context.trendEvidenceDecisionSummary);
+  const mtfEntryCandidatePipeline = evaluateMtfEntryCandidatePipeline({
+    multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    trendStrategy,
+    trendManualPaperArmGate,
+    trendPaperExecutionPreflight,
+    mtfObFvgShadowSummary: trendEvidenceDecisionSummary.mtfObFvgShadowSummary,
+    exactZoneComparisonSummary: trendEvidenceDecisionSummary.exactZoneComparisonSummary,
+    shadowOutcomeSummary: trendEvidenceDecisionSummary.shadowOutcomeSummary,
+    shadowOutcomeQualityGate: trendEvidenceDecisionSummary.shadowOutcomeQualityGate,
+    shadowEvidenceCoverage: trendEvidenceDecisionSummary.shadowEvidenceCoverage,
+    noTradeReasonAnalysis,
+    reviewReadinessScore,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -946,6 +966,7 @@ export function buildPaperLoopDiagnostics(
     noTradeReasonCounts,
     noTradeReasonAnalysis,
     reviewReadinessScore,
+    mtfEntryCandidatePipeline,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

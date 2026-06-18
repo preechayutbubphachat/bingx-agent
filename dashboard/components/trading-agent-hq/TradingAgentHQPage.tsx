@@ -69,6 +69,7 @@ import EvidencePilotHealthCard from "./EvidencePilotHealthCard";
 import RejectionAnalysisCard from "./RejectionAnalysisCard";
 import RrDrilldownCard from "./RrDrilldownCard";
 import MtfObFvgShadowCard from "./MtfObFvgShadowCard";
+import MtfEntryCandidatePipelineCard from "./MtfEntryCandidatePipelineCard";
 import ShadowOutcomeSummaryCard from "./ShadowOutcomeSummaryCard";
 import ReviewReadinessNextStepCard from "./ReviewReadinessNextStepCard";
 import TradingCafeBottomPanels from "./TradingCafeBottomPanels";
@@ -523,6 +524,8 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           <RrDrilldownCard paper={vm.paper} />
           {/* T-3H-6-c: read-only MTF OB/FVG refinement shadow (observe only) */}
           <MtfObFvgShadowCard paper={vm.paper} />
+          {/* D7.0: read-only MTF entry candidate review pipeline */}
+          <MtfEntryCandidatePipelineCard paper={vm.paper} />
           {/* D5.2-c: read-only shadow outcome (counterfactual reachability) evidence — not real trades */}
           <ShadowOutcomeSummaryCard paper={vm.paper} />
           <RiskManagerPanel paper={vm.paper} safety={vm.safety} log={vm.bottomLog} />

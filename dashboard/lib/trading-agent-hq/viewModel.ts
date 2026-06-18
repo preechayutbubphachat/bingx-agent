@@ -86,6 +86,7 @@ export interface PaperVM {
   trendPaperArmIntentBridge: TrendPaperArmIntentBridgeVM;
   trendPaperEvidenceRunner: TrendPaperEvidenceRunnerVM;
   reviewReadinessScore: ReviewReadinessScoreVM;
+  mtfEntryCandidatePipeline: MtfEntryCandidatePipelineVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -173,6 +174,63 @@ export interface ReviewReadinessScoreVM {
   reviewOnly: boolean | null;
   disclaimer: string | null;
   dimensions: Record<"grid" | "shadow" | "trend" | "noTradeExplanation", ReviewReadinessDimensionVM>;
+}
+
+export interface MtfEntryCandidatePipelineVM {
+  schemaVersion: number;
+  source: string;
+  status: string;
+  readiness: string;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+  htfBias: {
+    status: string;
+    confidence: number | null;
+    source: string;
+    reasons: string[];
+    warnings: string[];
+  };
+  zoneCandidate: {
+    status: string;
+    exactSamples: number;
+    requiredExactSamples: number;
+    samplesRemaining: number;
+    exactAvgNetRR: number | null;
+    heuristicAvgNetRR: number | null;
+    exactVsHeuristicDelta: number | null;
+    usesExactObFvgZonesCount: number;
+    dominantExactStatus: string | null;
+    dominantExactReadiness: string | null;
+    warningFlags: string[];
+  };
+  triggerReview: {
+    status: string;
+    entryTouched: number;
+    entryTouchRate: number | null;
+    entryNotReached: number;
+    entryNotReachedRate: number | null;
+    targetAfterEntryTouchRate: number | null;
+    invalidationAfterEntryTouchRate: number | null;
+    pending: number;
+  };
+  geometry: {
+    status: string;
+    geometryReady: number;
+    noGeometry: number;
+    fillResolutionStatus: string | null;
+    missedFillRate: number | null;
+    pending: number;
+    notes: string[];
+  };
+  verdict: {
+    status: string;
+    summary: string;
+    blockers: string[];
+    nextAction: string;
+  };
 }
 
 // T-3H-6-a — aggregated view of the append-only decision log. Pure display data.

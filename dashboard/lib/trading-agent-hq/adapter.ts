@@ -178,6 +178,88 @@ function mapMtfEntryCandidatePipeline(raw: AnyObj): PaperVM["mtfEntryCandidatePi
   };
 }
 
+function mapMtfExactZoneFailureAttribution(raw: AnyObj): PaperVM["mtfExactZoneFailureAttribution"] {
+  const sample = obj(raw.sample);
+  const edge = obj(raw.geometryEdge);
+  const rates = obj(raw.failureRates);
+  const attribution = obj(raw.failureAttribution);
+  const gate = obj(raw.cleanSubsetGate);
+  const thresholds = obj(gate.thresholds);
+  const nextAction = obj(raw.nextAction);
+  const failures = Array.isArray(attribution.dominantFailures)
+    ? attribution.dominantFailures.map((item) => {
+        const failure = obj(item);
+        return {
+          code: str(failure.code, "NO_DOMINANT_FAILURE"),
+          severity: str(failure.severity, "INFO"),
+          evidence: strArray(failure.evidence),
+          interpretation: str(failure.interpretation, ""),
+        };
+      })
+    : [];
+
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "MTF_EXACT_ZONE_FAILURE_ATTRIBUTION_V1"),
+    status: str(raw.status, "NO_DATA"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    activationAllowed: bool(raw.activationAllowed),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    reviewOnly: raw.reviewOnly === false ? false : true,
+    shadowOnly: raw.shadowOnly === false ? false : true,
+    sample: {
+      lifetimeExactSamples: numOrNull(sample.lifetimeExactSamples),
+      windowExactSamples: numOrNull(sample.windowExactSamples),
+      currentPriceEligibleExactSamples: numOrNull(sample.currentPriceEligibleExactSamples),
+      reviewTargetSamples: num(sample.reviewTargetSamples, 100),
+      sampleGatePassed: bool(sample.sampleGatePassed),
+      sampleInterpretation: str(sample.sampleInterpretation, "No exact-zone sample accounting is available."),
+    },
+    geometryEdge: {
+      exactAvgNetRR: numOrNull(edge.exactAvgNetRR),
+      heuristicAvgNetRR: numOrNull(edge.heuristicAvgNetRR),
+      delta: numOrNull(edge.delta),
+      ratio: numOrNull(edge.ratio),
+      status: str(edge.status, "NO_GEOMETRY_EDGE"),
+    },
+    failureRates: {
+      targetTooCloseRate: numOrNull(rates.targetTooCloseRate),
+      missedFillRate: numOrNull(rates.missedFillRate),
+      entryTouchRate: numOrNull(rates.entryTouchRate),
+      targetAfterTouchRate: numOrNull(rates.targetAfterTouchRate),
+      invalidationAfterTouchRate: numOrNull(rates.invalidationAfterTouchRate),
+    },
+    failureAttribution: {
+      dominantFailures: failures.length ? failures : [{
+        code: "NO_DOMINANT_FAILURE",
+        severity: "INFO",
+        evidence: [],
+        interpretation: "No exact-zone failure attribution available.",
+      }],
+    },
+    cleanSubsetGate: {
+      status: str(gate.status, "NOT_READY"),
+      passed: strArray(gate.passed),
+      failed: strArray(gate.failed),
+      thresholds: {
+        minLifetimeExactSamples: num(thresholds.minLifetimeExactSamples, 100),
+        maxTargetTooCloseRate: num(thresholds.maxTargetTooCloseRate, 0.4),
+        maxMissedFillRate: num(thresholds.maxMissedFillRate, 0.5),
+        minEntryTouchRate: num(thresholds.minEntryTouchRate, 0.35),
+        minTargetAfterTouchRate: num(thresholds.minTargetAfterTouchRate, 0.25),
+        maxInvalidationAfterTouchRate: num(thresholds.maxInvalidationAfterTouchRate, 0.5),
+        currentPriceEligibleRequired: thresholds.currentPriceEligibleRequired === false ? false : true,
+      },
+    },
+    nextAction: {
+      primary: str(nextAction.primary, "continue collecting exact-zone diagnostics"),
+      reviewTasks: strArray(nextAction.reviewTasks),
+      doNotDo: strArray(nextAction.doNotDo),
+    },
+  };
+}
+
 function mapShadowEvidenceCoverage(raw: AnyObj): PaperVM["shadowEvidenceCoverage"] {
   if (!Object.keys(raw).length) return null;
   const requirements = Array.isArray(raw.requirements)
@@ -498,6 +580,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendPaperEvidenceRunner: mapTrendPaperEvidenceRunner(obj(loop.trendPaperEvidenceRunner)),
     reviewReadinessScore: mapReviewReadinessScore(reviewReadinessScore),
     mtfEntryCandidatePipeline: mapMtfEntryCandidatePipeline(obj(loop.mtfEntryCandidatePipeline)),
+    mtfExactZoneFailureAttribution: mapMtfExactZoneFailureAttribution(obj(loop.mtfExactZoneFailureAttribution)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

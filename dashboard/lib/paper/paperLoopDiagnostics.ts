@@ -76,6 +76,10 @@ import {
   evaluateMtfEntryCandidatePipeline,
   type MtfEntryCandidatePipeline,
 } from "../trend/mtfEntryCandidatePipeline.ts";
+import {
+  evaluateMtfExactZoneFailureAttribution,
+  type MtfExactZoneFailureAttribution,
+} from "../trend/mtfExactZoneFailureAttribution.ts";
 import { getCandlesFromSnapshot } from "../candleAdapter.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -104,6 +108,7 @@ export interface PaperLoopDiagnostics {
   noTradeReasonAnalysis: NoTradeReasonAnalysis;
   reviewReadinessScore: ReviewReadinessScore;
   mtfEntryCandidatePipeline: MtfEntryCandidatePipeline;
+  mtfExactZoneFailureAttribution: MtfExactZoneFailureAttribution;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -989,6 +994,17 @@ export function buildPaperLoopDiagnostics(
     noTradeReasonAnalysis,
     reviewReadinessScore,
   });
+  const mtfExactZoneFailureAttribution = evaluateMtfExactZoneFailureAttribution({
+    mtfEntryCandidatePipeline,
+    exactZoneComparisonSummary: trendEvidenceDecisionSummary.exactZoneComparisonSummary,
+    mtfObFvgShadowSummary: trendEvidenceDecisionSummary.mtfObFvgShadowSummary,
+    shadowOutcomeSummary: trendEvidenceDecisionSummary.shadowOutcomeSummary,
+    shadowOutcomeQualityGate: trendEvidenceDecisionSummary.shadowOutcomeQualityGate,
+    shadowEvidenceCoverage: trendEvidenceDecisionSummary.shadowEvidenceCoverage,
+    canonicalMarketRegime: context.canonicalMarketRegime ?? null,
+    currentPriceContext: mtfEntryCandidatePipeline.currentPriceContext,
+    currentCandidateReevaluation: mtfEntryCandidatePipeline.currentCandidateReevaluation,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -1013,6 +1029,7 @@ export function buildPaperLoopDiagnostics(
     noTradeReasonAnalysis,
     reviewReadinessScore,
     mtfEntryCandidatePipeline,
+    mtfExactZoneFailureAttribution,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

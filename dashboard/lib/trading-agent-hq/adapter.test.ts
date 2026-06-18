@@ -104,6 +104,63 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             nextAction: "continue_collecting_exact_zone_and_shadow_outcome_evidence",
           },
         },
+        mtfExactZoneFailureAttribution: {
+          schemaVersion: 1,
+          source: "MTF_EXACT_ZONE_FAILURE_ATTRIBUTION_V1",
+          status: "GEOMETRY_PROMISING_EXECUTION_WEAK",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+          sample: {
+            lifetimeExactSamples: 325,
+            windowExactSamples: 65,
+            currentPriceEligibleExactSamples: null,
+            reviewTargetSamples: 100,
+            sampleGatePassed: true,
+            sampleInterpretation: "sample gate passed",
+          },
+          geometryEdge: {
+            exactAvgNetRR: 5.06,
+            heuristicAvgNetRR: 1.62,
+            delta: 3.44,
+            ratio: 3.12,
+            status: "GEOMETRY_EDGE_STRONG",
+          },
+          failureRates: {
+            targetTooCloseRate: 0.615,
+            missedFillRate: 0.797,
+            entryTouchRate: 0.2,
+            targetAfterTouchRate: 0,
+            invalidationAfterTouchRate: 0.72,
+          },
+          failureAttribution: {
+            dominantFailures: [
+              { code: "TARGET_TOO_CLOSE_DOMINATES", severity: "BLOCKER", evidence: ["40/65"], interpretation: "Target too close dominates." },
+            ],
+          },
+          cleanSubsetGate: {
+            status: "NOT_READY",
+            passed: ["sample gate passed"],
+            failed: ["targetTooCloseRate > 0.4"],
+            thresholds: {
+              minLifetimeExactSamples: 100,
+              maxTargetTooCloseRate: 0.4,
+              maxMissedFillRate: 0.5,
+              minEntryTouchRate: 0.35,
+              minTargetAfterTouchRate: 0.25,
+              maxInvalidationAfterTouchRate: 0.5,
+              currentPriceEligibleRequired: true,
+            },
+          },
+          nextAction: {
+            primary: "isolate clean candidate subset before review",
+            reviewTasks: ["separate target-too-close cases"],
+            doNotDo: ["do not activate paper/live"],
+          },
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -130,4 +187,7 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.mtfEntryCandidatePipeline.activationAllowed, false);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.paperActivationAllowed, false);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.liveActivationAllowed, false);
+  assert.equal(vm.paper.mtfExactZoneFailureAttribution.status, "GEOMETRY_PROMISING_EXECUTION_WEAK");
+  assert.equal(vm.paper.mtfExactZoneFailureAttribution.sample.sampleGatePassed, true);
+  assert.equal(vm.paper.mtfExactZoneFailureAttribution.failureAttribution.dominantFailures[0]?.code, "TARGET_TOO_CLOSE_DOMINATES");
 });

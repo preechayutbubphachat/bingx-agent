@@ -87,6 +87,7 @@ export interface PaperVM {
   trendPaperEvidenceRunner: TrendPaperEvidenceRunnerVM;
   reviewReadinessScore: ReviewReadinessScoreVM;
   mtfEntryCandidatePipeline: MtfEntryCandidatePipelineVM;
+  mtfExactZoneFailureAttribution: MtfExactZoneFailureAttributionVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -264,6 +265,67 @@ export interface MtfEntryCandidatePipelineVM {
 }
 
 // T-3H-6-a — aggregated view of the append-only decision log. Pure display data.
+export interface MtfExactZoneFailureAttributionVM {
+  schemaVersion: number;
+  source: string;
+  status: string;
+  readiness: string;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+  sample: {
+    lifetimeExactSamples: number | null;
+    windowExactSamples: number | null;
+    currentPriceEligibleExactSamples: number | null;
+    reviewTargetSamples: number;
+    sampleGatePassed: boolean;
+    sampleInterpretation: string;
+  };
+  geometryEdge: {
+    exactAvgNetRR: number | null;
+    heuristicAvgNetRR: number | null;
+    delta: number | null;
+    ratio: number | null;
+    status: string;
+  };
+  failureRates: {
+    targetTooCloseRate: number | null;
+    missedFillRate: number | null;
+    entryTouchRate: number | null;
+    targetAfterTouchRate: number | null;
+    invalidationAfterTouchRate: number | null;
+  };
+  failureAttribution: {
+    dominantFailures: Array<{
+      code: string;
+      severity: string;
+      evidence: string[];
+      interpretation: string;
+    }>;
+  };
+  cleanSubsetGate: {
+    status: string;
+    passed: string[];
+    failed: string[];
+    thresholds: {
+      minLifetimeExactSamples: number;
+      maxTargetTooCloseRate: number;
+      maxMissedFillRate: number;
+      minEntryTouchRate: number;
+      minTargetAfterTouchRate: number;
+      maxInvalidationAfterTouchRate: number;
+      currentPriceEligibleRequired: boolean;
+    };
+  };
+  nextAction: {
+    primary: string;
+    reviewTasks: string[];
+    doNotDo: string[];
+  };
+}
+
 export interface EventRiskContextVM {
   status: "NO_DATA" | "STALE" | "NORMAL" | "WATCH" | "HIGH_EVENT_RISK" | "UNKNOWN";
   headlineCount: number;

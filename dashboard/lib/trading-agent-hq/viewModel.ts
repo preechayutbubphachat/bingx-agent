@@ -90,6 +90,7 @@ export interface PaperVM {
   mtfExactZoneFailureAttribution: MtfExactZoneFailureAttributionVM;
   currentPriceEligibleExactSubset: CurrentPriceEligibleExactSubsetVM;
   currentPriceConsistencyAudit: CurrentPriceConsistencyAuditVM;
+  regimeAwareExactCandidateWatchlist: RegimeAwareExactCandidateWatchlistVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -464,6 +465,66 @@ export interface CurrentPriceConsistencyAuditVM {
     paperActivationAllowed: boolean;
     liveActivationAllowed: boolean;
     orderAllowed: boolean;
+  };
+}
+
+export interface RegimeAwareExactCandidateWatchlistVM {
+  schemaVersion: number;
+  source: string;
+  status: string;
+  readiness: string;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+  currentMarket: {
+    currentPrice: number | null;
+    freshnessStatus: string;
+    regime: string | null;
+    direction: string | null;
+    confidence: number | null;
+    trendZoneStatus: string | null;
+    noZoneReason: string | null;
+  };
+  watchlistSummary: {
+    totalCandidates: number;
+    uniqueCandidates: number;
+    watchCandidates: number;
+    waitingPullbackCandidates: number;
+    regimeBlockedCandidates: number;
+    qualityRejectedCandidates: number;
+    missedCandidates: number;
+    invalidatedCandidates: number;
+    cleanReviewCandidates: number;
+  };
+  topWatchCandidates: Array<{
+    id: string;
+    direction: string;
+    actionability: string;
+    currentPriceStatus: string;
+    qualityStatus: string;
+    entry: number | null;
+    stopLoss: number | null;
+    target1: number | null;
+    netRR: number | null;
+    distanceToEntryPct: number | null;
+    priceMoveRequiredDirection: string;
+    blockers: string[];
+    watchCondition: string;
+    doNotDo: string[];
+  }>;
+  nextTriggerChecklist: {
+    regimeRequired: string[];
+    priceRequired: string[];
+    confirmationRequired: string[];
+    qualityRequired: string[];
+    dataRequired: string[];
+  };
+  verdict: {
+    status: string;
+    summary: string;
+    nextAction: string;
   };
 }
 

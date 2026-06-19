@@ -870,6 +870,46 @@ test("canonical current price propagates into trend diagnostics while old journa
       ageSeconds: 120,
       previousAnalysisPrice: 63_500.7,
     },
+    trendEvidenceDecisionSummary: {
+      exactCandidateGeometrySnapshot: {
+        schemaVersion: 1,
+        source: "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1",
+        capturedAt: "2026-06-19T01:45:00.000Z",
+        candidates: [{
+          id: "runtime-short-watch",
+          direction: "SHORT",
+          zoneType: "OB_FVG_OVERLAP",
+          readiness: "TARGET_TOO_CLOSE",
+          entry: 63_654.92,
+          entryLow: 63_600,
+          entryHigh: 63_700,
+          stopLoss: 64_200,
+          invalidation: 64_200,
+          target1: 62_900,
+          netRR: 1.1,
+          flags: [],
+        }],
+        summary: {
+          totalCandidates: 1,
+          structuredGeometryCount: 1,
+          missingGeometryCount: 0,
+          exactCount: 1,
+          fvgOnlyCount: 0,
+          targetTooCloseCount: 1,
+          costTooHighCount: 0,
+          conflictCount: 0,
+        },
+      },
+      shadowOutcomeSummary: {
+        shadowOutcomes: {
+          totalSetups: 65,
+          entryTouched: 13,
+          entryTouchRate: 0.2,
+          targetAfterEntryTouchRate: 0,
+          invalidationAfterEntryTouchRate: 0.72,
+        },
+      },
+    },
   });
 
   assert.equal(d.snapshotPrice, 63_500.7);
@@ -880,4 +920,8 @@ test("canonical current price propagates into trend diagnostics while old journa
   assert.equal(d.currentPriceConsistencyAudit.currentPriceReevaluation.priceMoveRequiredDirection, "NO_ZONE");
   assert.equal(d.currentPriceConsistencyAudit.pricePropagationAudit.staleConsumerCount, 1);
   assert.equal(d.currentPriceConsistencyAudit.safety.activationAllowed, false);
+  assert.equal(d.regimeAwareExactCandidateWatchlist.status, "REGIME_NOT_CONFIRMED");
+  assert.equal(d.regimeAwareExactCandidateWatchlist.currentMarket.currentPrice, 62_928.7);
+  assert.equal(d.regimeAwareExactCandidateWatchlist.watchlistSummary.cleanReviewCandidates, 0);
+  assert.equal(d.regimeAwareExactCandidateWatchlist.activationAllowed, false);
 });

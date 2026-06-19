@@ -433,6 +433,78 @@ function mapCurrentPriceConsistencyAudit(raw: AnyObj): PaperVM["currentPriceCons
   };
 }
 
+function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwareExactCandidateWatchlist"] {
+  const market = obj(raw.currentMarket);
+  const summary = obj(raw.watchlistSummary);
+  const checklist = obj(raw.nextTriggerChecklist);
+  const verdict = obj(raw.verdict);
+  const topWatchCandidates = Array.isArray(raw.topWatchCandidates)
+    ? raw.topWatchCandidates.map((item) => {
+        const candidate = obj(item);
+        return {
+          id: str(candidate.id, "unknown"),
+          direction: str(candidate.direction, "UNKNOWN"),
+          actionability: str(candidate.actionability, "NO_ACTION"),
+          currentPriceStatus: str(candidate.currentPriceStatus, "UNKNOWN"),
+          qualityStatus: str(candidate.qualityStatus, "UNKNOWN"),
+          entry: numOrNull(candidate.entry),
+          stopLoss: numOrNull(candidate.stopLoss),
+          target1: numOrNull(candidate.target1),
+          netRR: numOrNull(candidate.netRR),
+          distanceToEntryPct: numOrNull(candidate.distanceToEntryPct),
+          priceMoveRequiredDirection: str(candidate.priceMoveRequiredDirection, "UNKNOWN"),
+          blockers: strArray(candidate.blockers),
+          watchCondition: str(candidate.watchCondition, ""),
+          doNotDo: strArray(candidate.doNotDo),
+        };
+      })
+    : [];
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "REGIME_AWARE_EXACT_CANDIDATE_WATCHLIST_V1"),
+    status: str(raw.status, "NO_DATA"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    activationAllowed: bool(raw.activationAllowed),
+    paperActivationAllowed: bool(raw.paperActivationAllowed),
+    liveActivationAllowed: bool(raw.liveActivationAllowed),
+    reviewOnly: raw.reviewOnly === false ? false : true,
+    shadowOnly: raw.shadowOnly === false ? false : true,
+    currentMarket: {
+      currentPrice: numOrNull(market.currentPrice),
+      freshnessStatus: str(market.freshnessStatus, "UNKNOWN"),
+      regime: strOrNull(market.regime),
+      direction: strOrNull(market.direction),
+      confidence: numOrNull(market.confidence),
+      trendZoneStatus: strOrNull(market.trendZoneStatus),
+      noZoneReason: strOrNull(market.noZoneReason),
+    },
+    watchlistSummary: {
+      totalCandidates: num(summary.totalCandidates, 0),
+      uniqueCandidates: num(summary.uniqueCandidates, 0),
+      watchCandidates: num(summary.watchCandidates, 0),
+      waitingPullbackCandidates: num(summary.waitingPullbackCandidates, 0),
+      regimeBlockedCandidates: num(summary.regimeBlockedCandidates, 0),
+      qualityRejectedCandidates: num(summary.qualityRejectedCandidates, 0),
+      missedCandidates: num(summary.missedCandidates, 0),
+      invalidatedCandidates: num(summary.invalidatedCandidates, 0),
+      cleanReviewCandidates: num(summary.cleanReviewCandidates, 0),
+    },
+    topWatchCandidates,
+    nextTriggerChecklist: {
+      regimeRequired: strArray(checklist.regimeRequired),
+      priceRequired: strArray(checklist.priceRequired),
+      confirmationRequired: strArray(checklist.confirmationRequired),
+      qualityRequired: strArray(checklist.qualityRequired),
+      dataRequired: strArray(checklist.dataRequired),
+    },
+    verdict: {
+      status: str(verdict.status, "WATCH_ONLY"),
+      summary: str(verdict.summary, ""),
+      nextAction: str(verdict.nextAction, ""),
+    },
+  };
+}
+
 function mapShadowEvidenceCoverage(raw: AnyObj): PaperVM["shadowEvidenceCoverage"] {
   if (!Object.keys(raw).length) return null;
   const requirements = Array.isArray(raw.requirements)
@@ -756,6 +828,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     mtfExactZoneFailureAttribution: mapMtfExactZoneFailureAttribution(obj(loop.mtfExactZoneFailureAttribution)),
     currentPriceEligibleExactSubset: mapCurrentPriceEligibleExactSubset(obj(loop.currentPriceEligibleExactSubset)),
     currentPriceConsistencyAudit: mapCurrentPriceConsistencyAudit(obj(loop.currentPriceConsistencyAudit)),
+    regimeAwareExactCandidateWatchlist: mapRegimeAwareExactCandidateWatchlist(obj(loop.regimeAwareExactCandidateWatchlist)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

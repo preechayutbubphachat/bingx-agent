@@ -302,6 +302,65 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             orderAllowed: false,
           },
         },
+        regimeAwareExactCandidateWatchlist: {
+          schemaVersion: 1,
+          source: "REGIME_AWARE_EXACT_CANDIDATE_WATCHLIST_V1",
+          status: "REGIME_NOT_CONFIRMED",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+          currentMarket: {
+            currentPrice: 101.5,
+            freshnessStatus: "FRESH",
+            regime: "NO_TRADE",
+            direction: "UNKNOWN",
+            confidence: 35,
+            trendZoneStatus: "NO_ACTIVE_TREND_ZONE",
+            noZoneReason: "No active trend zone exists.",
+          },
+          watchlistSummary: {
+            totalCandidates: 65,
+            uniqueCandidates: 48,
+            watchCandidates: 1,
+            waitingPullbackCandidates: 0,
+            regimeBlockedCandidates: 1,
+            qualityRejectedCandidates: 0,
+            missedCandidates: 44,
+            invalidatedCandidates: 4,
+            cleanReviewCandidates: 0,
+          },
+          topWatchCandidates: [{
+            id: "short-watch-63654",
+            direction: "SHORT",
+            actionability: "WAIT_FOR_REGIME_CONFIRMATION",
+            currentPriceStatus: "WAITING_PULLBACK_TO_ENTRY",
+            qualityStatus: "TARGET_TOO_CLOSE",
+            entry: 63654.92,
+            stopLoss: 64200,
+            target1: 62900,
+            netRR: 1.1,
+            distanceToEntryPct: 1.49,
+            priceMoveRequiredDirection: "UP_TO_ENTRY",
+            blockers: ["regime not confirmed", "price not near entry", "TARGET_TOO_CLOSE"],
+            watchCondition: "รอราคาเข้าใกล้ 63654.92 และต้องเห็น regime/trend confirmation ใหม่ก่อน review",
+            doNotDo: ["do not treat as entry signal", "do not activate paper/live", "do not place order"],
+          }],
+          nextTriggerChecklist: {
+            regimeRequired: ["confirm trend regime"],
+            priceRequired: ["wait for price near entry"],
+            confirmationRequired: ["wait for 5m confirmation"],
+            qualityRequired: ["clear target-too-close"],
+            dataRequired: [],
+          },
+          verdict: {
+            status: "WAIT_FOR_REGIME_AND_PRICE",
+            summary: "Watchlist only.",
+            nextAction: "wait for regime and price",
+          },
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -355,4 +414,9 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.currentPriceConsistencyAudit.pricePropagationAudit.previousAnalysisPriceCount, 1);
   assert.equal(vm.paper.currentPriceConsistencyAudit.safety.activationAllowed, false);
   assert.equal(vm.paper.currentPriceConsistencyAudit.safety.orderAllowed, false);
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.status, "REGIME_NOT_CONFIRMED");
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.currentMarket.regime, "NO_TRADE");
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.watchlistSummary.cleanReviewCandidates, 0);
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.topWatchCandidates[0]?.actionability, "WAIT_FOR_REGIME_CONFIRMATION");
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.activationAllowed, false);
 });

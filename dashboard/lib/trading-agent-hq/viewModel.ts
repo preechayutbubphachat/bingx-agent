@@ -200,8 +200,13 @@ export interface MtfEntryCandidatePipelineVM {
   zoneCandidate: {
     status: string;
     exactSamples: number;
+    windowExactSamples: number | null;
+    lifetimeExactSamples: number | null;
+    reviewSamplesUsed: number | null;
     requiredExactSamples: number;
     samplesRemaining: number;
+    sampleCountMeaning: string;
+    reviewSampleGatePassed: boolean;
     exactAvgNetRR: number | null;
     heuristicAvgNetRR: number | null;
     exactVsHeuristicDelta: number | null;
@@ -401,6 +406,7 @@ export interface CurrentPriceEligibleExactSubsetVM {
     flags: string[];
     reason: string;
   }>;
+  compactTopCandidates: CurrentPriceEligibleExactSubsetVM["topCandidates"];
   dedupSummary: {
     rawCandidates: number;
     uniqueCandidates: number;
@@ -411,6 +417,9 @@ export interface CurrentPriceEligibleExactSubsetVM {
     snapshotPriceSource: string | null;
     subsetCurrentPrice: number | null;
     snapshotCurrentPrice: number | null;
+    previousAnalysisPriceSource: string | null;
+    previousAnalysisPrice: number | null;
+    previousAnalysisDriftPct: number | null;
     priceSourceConsistent: boolean;
     notes: string[];
   };

@@ -46,8 +46,13 @@ export interface MtfEntryCandidatePipeline {
   zoneCandidate: {
     status: "NO_EXACT_ZONE" | "EXACT_ZONE_AVAILABLE" | "EXACT_ZONE_CONFLICT" | "FVG_ONLY" | "TARGET_TOO_CLOSE" | "COST_TOO_HIGH" | "WARNING_DEGRADED";
     exactSamples: number;
+    windowExactSamples: number | null;
+    lifetimeExactSamples: number | null;
+    reviewSamplesUsed: number | null;
     requiredExactSamples: 100;
     samplesRemaining: number;
+    sampleCountMeaning: "WINDOW_FOR_RECENT_PATTERN";
+    reviewSampleGatePassed: boolean;
     exactAvgNetRR: number | null;
     heuristicAvgNetRR: number | null;
     exactVsHeuristicDelta: number | null;
@@ -195,8 +200,13 @@ function emptyPipeline(): MtfEntryCandidatePipeline {
     zoneCandidate: {
       status: "NO_EXACT_ZONE",
       exactSamples: 0,
+      windowExactSamples: null,
+      lifetimeExactSamples: null,
+      reviewSamplesUsed: null,
       requiredExactSamples: REQUIRED_EXACT_SAMPLES,
       samplesRemaining: REQUIRED_EXACT_SAMPLES,
+      sampleCountMeaning: "WINDOW_FOR_RECENT_PATTERN",
+      reviewSampleGatePassed: false,
       exactAvgNetRR: null,
       heuristicAvgNetRR: null,
       exactVsHeuristicDelta: null,
@@ -708,8 +718,13 @@ export function evaluateMtfEntryCandidatePipeline(input: MtfEntryCandidatePipeli
     zoneCandidate: {
       status: zoneStatus(exact, exactSamples),
       exactSamples,
+      windowExactSamples: accounting.windowExactSamples ?? (exactSamples > 0 ? exactSamples : null),
+      lifetimeExactSamples: accounting.lifetimeExactSamples,
+      reviewSamplesUsed: accounting.reviewSamplesUsed,
       requiredExactSamples: REQUIRED_EXACT_SAMPLES,
       samplesRemaining,
+      sampleCountMeaning: "WINDOW_FOR_RECENT_PATTERN",
+      reviewSampleGatePassed: reviewSamplesUsed >= REQUIRED_EXACT_SAMPLES,
       exactAvgNetRR,
       heuristicAvgNetRR,
       exactVsHeuristicDelta,

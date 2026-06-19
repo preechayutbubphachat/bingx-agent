@@ -120,6 +120,7 @@ export interface CurrentPriceEligibleExactSubset {
     flags?: string[];
     reason: string;
   }>;
+  compactTopCandidates: CurrentPriceEligibleExactSubset["topCandidates"];
   dedupSummary: {
     rawCandidates: number;
     uniqueCandidates: number;
@@ -130,6 +131,9 @@ export interface CurrentPriceEligibleExactSubset {
     snapshotPriceSource: string | null;
     subsetCurrentPrice: number | null;
     snapshotCurrentPrice: number | null;
+    previousAnalysisPriceSource: string | null;
+    previousAnalysisPrice: number | null;
+    previousAnalysisDriftPct: number | null;
     priceSourceConsistent: boolean;
     notes: string[];
   };
@@ -276,6 +280,11 @@ function absDistance(price: number, low: number | null, high: number | null, ent
 
 function rate(count: number, total: number): number | null {
   return total > 0 ? round4(count / total) : null;
+}
+
+function driftPct(current: number | null, previous: number | null): number | null {
+  if (current == null || previous == null || previous === 0) return null;
+  return round4((current - previous) / Math.abs(previous) * 100);
 }
 
 function normalizeDirection(value: unknown): "LONG" | "SHORT" | "UNKNOWN" {
@@ -637,6 +646,7 @@ function baseResult(
       thresholds: THRESHOLDS,
     },
     topCandidates: [],
+    compactTopCandidates: [],
     dedupSummary: {
       rawCandidates: 0,
       uniqueCandidates: 0,
@@ -647,6 +657,9 @@ function baseResult(
       snapshotPriceSource: null,
       subsetCurrentPrice: currentPrice.value,
       snapshotCurrentPrice: null,
+      previousAnalysisPriceSource: null,
+      previousAnalysisPrice: null,
+      previousAnalysisDriftPct: null,
       priceSourceConsistent: false,
       notes: ["No exact candidate geometry snapshot price source is available."],
     },
@@ -685,8 +698,16 @@ function priceSourceAudit(
   price: CurrentPriceEligibleExactSubset["currentPrice"],
 ): CurrentPriceEligibleExactSubset["priceSourceAudit"] {
   const snapshot = obj(input.exactCandidateGeometrySnapshot);
+  const reevaluation = obj(input.currentCandidateReevaluation ?? obj(input.mtfEntryCandidatePipeline).currentCandidateReevaluation);
   const snapshotCurrentPrice = firstNumber(snapshot.currentPrice);
-  const snapshotPriceSource = firstText(snapshot.priceSource, snapshot.source === "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1" ? null : snapshot.source) ?? "not_available_at_snapshot_build";
+  const rawSnapshotPriceSource = firstText(snapshot.priceSource, snapshot.source === "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1" ? null : snapshot.source);
+  const previousAnalysisPrice = snapshotCurrentPrice ?? firstNumber(reevaluation.previousAnalysisPrice);
+  const previousAnalysisPriceSource = previousAnalysisPrice != null
+    ? firstText(snapshot.previousAnalysisPriceSource, reevaluation.previousAnalysisPriceSource) ?? (snapshotCurrentPrice != null ? "paperLoopDiagnostics.snapshotPrice" : "previousAnalysisPrice")
+    : null;
+  const snapshotPriceSource = snapshotCurrentPrice != null && price.value != null && snapshotCurrentPrice !== price.value
+    ? previousAnalysisPriceSource ?? "paperLoopDiagnostics.snapshotPrice"
+    : rawSnapshotPriceSource ?? "not_available_at_snapshot_build";
   const priceSourceConsistent =
     price.value != null &&
     snapshotCurrentPrice != null &&
@@ -699,7 +720,7 @@ function priceSourceAudit(
   } else if (snapshotCurrentPrice == null) {
     notes.push("Snapshot currentPrice is missing; subset uses currentPriceContext as source of truth.");
   } else if (!priceSourceConsistent) {
-    notes.push("Snapshot price context differs from subset currentPriceContext; subset uses currentPriceContext for eligibility.");
+    notes.push("Snapshot/previous price differs from current price but is not current truth; subset uses currentPriceContext for eligibility.");
   } else {
     notes.push("Snapshot price context matches subset currentPriceContext.");
   }
@@ -708,6 +729,9 @@ function priceSourceAudit(
     snapshotPriceSource,
     subsetCurrentPrice: price.value,
     snapshotCurrentPrice,
+    previousAnalysisPriceSource,
+    previousAnalysisPrice,
+    previousAnalysisDriftPct: driftPct(price.value, previousAnalysisPrice),
     priceSourceConsistent,
     notes,
   };
@@ -786,16 +810,18 @@ export function evaluateCurrentPriceEligibleExactSubset(
   }
 
   const topCandidates = uniqueStructured.map((candidate) => statusForCandidate(candidate, price.value!, price.latestCandleAt));
-  const cleanCandidates = topCandidates.filter((candidate) => candidate.status === "CLEAN_REVIEW_ONLY").length;
-  const insideOrNear = topCandidates.filter((candidate) => (
+  const sortedTopCandidates = topCandidates
+    .sort((a, b) => (a.distanceToEntryPct ?? Number.POSITIVE_INFINITY) - (b.distanceToEntryPct ?? Number.POSITIVE_INFINITY));
+  const cleanCandidates = sortedTopCandidates.filter((candidate) => candidate.status === "CLEAN_REVIEW_ONLY").length;
+  const insideOrNear = sortedTopCandidates.filter((candidate) => (
     candidate.currentPriceStatus === "INSIDE_ENTRY_ZONE" ||
     candidate.currentPriceStatus === "NEAR_ENTRY"
   )).length;
-  const freshCandidates = topCandidates.filter((candidate) => candidate.status !== "STALE").length;
-  const targetTooCloseCandidates = topCandidates.filter((candidate) => candidate.qualityStatus === "TARGET_TOO_CLOSE").length;
-  const missedCandidates = topCandidates.filter((candidate) => candidate.currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY" || candidate.currentPriceStatus === "PRICE_MOVED_AWAY_FROM_ENTRY" || candidate.currentPriceStatus === "PAST_TARGET").length;
-  const invalidatedCandidates = topCandidates.filter((candidate) => candidate.currentPriceStatus === "ALREADY_INVALIDATED").length;
-  const costTooHighCandidates = topCandidates.filter((candidate) => candidate.qualityStatus === "COST_TOO_HIGH").length;
+  const freshCandidates = sortedTopCandidates.filter((candidate) => candidate.status !== "STALE").length;
+  const targetTooCloseCandidates = sortedTopCandidates.filter((candidate) => candidate.qualityStatus === "TARGET_TOO_CLOSE").length;
+  const missedCandidates = sortedTopCandidates.filter((candidate) => candidate.currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY" || candidate.currentPriceStatus === "PRICE_MOVED_AWAY_FROM_ENTRY" || candidate.currentPriceStatus === "PAST_TARGET").length;
+  const invalidatedCandidates = sortedTopCandidates.filter((candidate) => candidate.currentPriceStatus === "ALREADY_INVALIDATED").length;
+  const costTooHighCandidates = sortedTopCandidates.filter((candidate) => candidate.qualityStatus === "COST_TOO_HIGH").length;
   const rates = failureRates(input);
   const targetTooCloseRate = rates.targetTooCloseRate ?? rate(targetTooCloseCandidates, uniqueStructured.length);
   const missedFillRate = rates.missedFillRate ?? rate(missedCandidates, uniqueStructured.length);
@@ -858,9 +884,8 @@ export function evaluateCurrentPriceEligibleExactSubset(
       failed,
       thresholds: THRESHOLDS,
     },
-    topCandidates: topCandidates
-      .sort((a, b) => (a.distanceToEntryPct ?? Number.POSITIVE_INFINITY) - (b.distanceToEntryPct ?? Number.POSITIVE_INFINITY))
-      .slice(0, 10),
+    topCandidates: sortedTopCandidates.slice(0, 10),
+    compactTopCandidates: sortedTopCandidates.slice(0, 3),
     requiredGeometryInputs: missingCount > 0 ? [...REQUIRED_GEOMETRY_INPUTS] : [],
     warnings: missingCount > 0 ? [`${missingCount} candidate(s) were excluded because structured geometry is incomplete.`] : [],
     nextAction: gateStatus === "REVIEW_READY_NOT_ACTIVATION"

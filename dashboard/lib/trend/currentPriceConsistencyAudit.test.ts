@@ -100,6 +100,22 @@ test("stale trend price flags mismatched consumers and current-price gate downgr
   assert.equal(result.safety.activationAllowed, false);
 });
 
+test("snapshot-only drift is not treated as active current-price mismatch", () => {
+  const result = buildCurrentPriceConsistencyAudit({
+    ...consistentInput(),
+    snapshotPrice: 63_500.7,
+  });
+
+  const snapshotConsumer = result.detectedConsumers.find((item) => item.path === "snapshotPrice");
+
+  assert.equal(result.status, "CONSISTENT_WITH_SNAPSHOT_DRIFT");
+  assert.equal(snapshotConsumer?.status, "MISMATCH");
+  assert.equal(result.pricePropagationAudit.staleConsumerCount, 0);
+  assert.equal(result.pricePropagationAudit.previousAnalysisPriceCount, 1);
+  assert.ok(result.pricePropagationAudit.notes.some((note) => /not current truth/i.test(note)));
+  assert.equal(result.safety.activationAllowed, false);
+});
+
 test("price mismatch with no trend regime reports explicit no-zone semantics", () => {
   const result = buildCurrentPriceConsistencyAudit({
     mtfEntryCandidatePipeline: {
@@ -154,8 +170,8 @@ test("price mismatch with no trend regime reports explicit no-zone semantics", (
   assert.equal(condition?.currentPriceBasedValue, false);
   assert.equal(condition?.impact, "NO_CHANGE");
   assert.match(condition?.explanation ?? "", /No active trend zone|regime/i);
-  assert.equal(result.pricePropagationAudit.staleConsumerCount, 3);
-  assert.equal(result.pricePropagationAudit.previousAnalysisPriceCount, 3);
+  assert.equal(result.pricePropagationAudit.staleConsumerCount, 2);
+  assert.equal(result.pricePropagationAudit.previousAnalysisPriceCount, 1);
   assert.equal(result.safety.activationAllowed, false);
   assert.equal(result.safety.paperActivationAllowed, false);
   assert.equal(result.safety.liveActivationAllowed, false);

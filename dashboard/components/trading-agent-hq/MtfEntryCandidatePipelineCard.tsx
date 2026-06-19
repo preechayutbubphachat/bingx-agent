@@ -155,6 +155,8 @@ export default function MtfEntryCandidatePipelineCard({ paper }: { paper: PaperV
         <Row label="Exact Zone quality" value={z.status} tone={toneFor(z.status)} />
         <Row label="Review samples (cumulative)" value={a.reviewSamplesUsed != null ? `${a.reviewSamplesUsed} / ${a.reviewTargetSamples} สะสม` : NA} tone={a.reviewSamplesRemaining != null && a.reviewSamplesRemaining > 0 ? "amber" : "green"} />
         <Row label="Window samples (latest)" value={countText(a.windowExactSamples)} tone={a.canDecrease ? "amber" : "neutral"} />
+        <Row label="Zone window samples" value={countText(z.windowExactSamples)} tone="neutral" />
+        <Row label="Zone sample meaning" value={z.sampleCountMeaning} tone="neutral" />
         <Row label="Current-price eligible" value={countText(a.currentPriceEligibleExactSamples)} />
         <Row label="Remaining" value={a.reviewSamplesRemaining != null && a.reviewSamplesRemaining > 0 ? `ขาดอีก ${a.reviewSamplesRemaining} cumulative samples` : "ครบ sample ขั้นต่ำ"} tone={a.reviewSamplesRemaining != null && a.reviewSamplesRemaining > 0 ? "amber" : "green"} />
         <Row label="Exact avg netRR" value={fmt(z.exactAvgNetRR)} tone={z.exactAvgNetRR != null && z.heuristicAvgNetRR != null && z.exactAvgNetRR > z.heuristicAvgNetRR ? "green" : "neutral"} />

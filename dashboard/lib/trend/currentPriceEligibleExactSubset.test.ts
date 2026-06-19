@@ -60,6 +60,8 @@ test("fresh current price and valid LONG candidate near entry produces clean rev
   assert.equal(result.eligibilityFilters.cleanCandidates, 1);
   assert.match(result.status, /CLEAN_SUBSET_FOUND_REVIEW_ONLY|CLEAN_SUBSET_REVIEW_READY_NOT_ACTIVATION/);
   assert.equal(result.topCandidates[0]?.status, "CLEAN_REVIEW_ONLY");
+  assert.equal(result.compactTopCandidates.length, 1);
+  assert.equal(result.compactTopCandidates[0]?.id, "long-clean");
   assert.equal(result.activationAllowed, false);
   assert.equal(result.paperActivationAllowed, false);
   assert.equal(result.liveActivationAllowed, false);
@@ -314,7 +316,27 @@ test("deduplicates repeated candidate geometry for presentation and counts occur
   assert.equal(result.dedupSummary.uniqueCandidates, 1);
   assert.equal(result.dedupSummary.duplicateCandidates, 2);
   assert.equal(result.topCandidates.length, 1);
+  assert.equal(result.compactTopCandidates.length, 1);
   assert.equal(result.topCandidates[0]?.occurrenceCount, 3);
+});
+
+test("compact top candidates defaults to top three while raw top candidates remain available", () => {
+  const records = Array.from({ length: 5 }, (_, index) => ({
+    id: `candidate-${index + 1}`,
+    direction: "LONG",
+    entry: 100 + index,
+    stopLoss: 98 + index,
+    target1: 104 + index,
+    netRR: 1.6,
+  }));
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    exactCandidateRecords: records,
+  }));
+
+  assert.equal(result.dedupSummary.rawCandidates, 5);
+  assert.equal(result.topCandidates.length, 5);
+  assert.equal(result.compactTopCandidates.length, 3);
+  assert.deepEqual(result.compactTopCandidates.map((candidate) => candidate.id), ["candidate-1", "candidate-2", "candidate-3"]);
 });
 
 test("audits when subset price source differs from geometry snapshot price source", () => {
@@ -341,8 +363,37 @@ test("audits when subset price source differs from geometry snapshot price sourc
   assert.equal(result.priceSourceAudit.snapshotPriceSource, "not_available_at_snapshot_build");
   assert.equal(result.priceSourceAudit.subsetCurrentPrice, 100);
   assert.equal(result.priceSourceAudit.snapshotCurrentPrice, null);
+  assert.equal(result.priceSourceAudit.previousAnalysisPriceSource, null);
+  assert.equal(result.priceSourceAudit.previousAnalysisPrice, null);
+  assert.equal(result.priceSourceAudit.previousAnalysisDriftPct, null);
   assert.equal(result.priceSourceAudit.priceSourceConsistent, false);
   assert.ok(result.priceSourceAudit.notes.some((note) => note.includes("currentPriceContext")));
+});
+
+test("snapshot price drift is labeled as previous analysis context, not current truth", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    currentPriceContext: { ...freshContext, currentPrice: 100, priceSource: "runtime.currentPriceContext" },
+    exactCandidateGeometrySnapshot: {
+      schemaVersion: 1,
+      source: "EXACT_CANDIDATE_GEOMETRY_SNAPSHOT_V1",
+      currentPrice: 103,
+      priceSource: "trendStrategy.currentPrice",
+      candidates: [{
+        id: "snapshot-drift",
+        direction: "LONG",
+        entry: 100,
+        stopLoss: 98,
+        target1: 103,
+        netRR: 1.6,
+      }],
+    },
+  }));
+
+  assert.equal(result.priceSourceAudit.snapshotPriceSource, "paperLoopDiagnostics.snapshotPrice");
+  assert.equal(result.priceSourceAudit.previousAnalysisPriceSource, "paperLoopDiagnostics.snapshotPrice");
+  assert.equal(result.priceSourceAudit.previousAnalysisPrice, 103);
+  assert.equal(result.priceSourceAudit.previousAnalysisDriftPct, -2.9126);
+  assert.ok(result.priceSourceAudit.notes.some((note) => /not current truth/i.test(note)));
 });
 
 test("clean near-entry candidate exposes clean quality and current-price status separately", () => {

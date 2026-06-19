@@ -38,8 +38,13 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
           zoneCandidate: {
             status: "TARGET_TOO_CLOSE",
             exactSamples: 75,
+            windowExactSamples: 70,
+            lifetimeExactSamples: 352,
+            reviewSamplesUsed: 352,
             requiredExactSamples: 100,
             samplesRemaining: 25,
+            sampleCountMeaning: "WINDOW_FOR_RECENT_PATTERN",
+            reviewSampleGatePassed: true,
             exactAvgNetRR: 6.1932,
             heuristicAvgNetRR: 1.7058,
             exactVsHeuristicDelta: 4.8687,
@@ -233,6 +238,28 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             flags: ["REVIEW_ONLY"],
             reason: "Current price is inside the exact entry area.",
           }],
+          compactTopCandidates: [{
+            id: "snapshot-long-clean",
+            direction: "LONG",
+            zoneType: "OB_FVG_OVERLAP",
+            readiness: "READY",
+            status: "CLEAN_REVIEW_ONLY",
+            currentPriceStatus: "INSIDE_ENTRY_ZONE",
+            qualityStatus: "CLEAN",
+            entry: 101.5,
+            entryLow: 101.2,
+            entryHigh: 101.8,
+            stopLoss: 99.5,
+            target1: 104.5,
+            target2: null,
+            netRR: 1.6,
+            distanceToEntryPct: 0,
+            distanceToEntryAbs: 0,
+            priceMoveRequiredDirection: "INSIDE_ENTRY",
+            occurrenceCount: 2,
+            flags: ["REVIEW_ONLY"],
+            reason: "Current price is inside the exact entry area.",
+          }],
           dedupSummary: {
             rawCandidates: 3,
             uniqueCandidates: 2,
@@ -243,6 +270,9 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             snapshotPriceSource: "not_available_at_snapshot_build",
             subsetCurrentPrice: 101.5,
             snapshotCurrentPrice: null,
+            previousAnalysisPriceSource: null,
+            previousAnalysisPrice: null,
+            previousAnalysisDriftPct: null,
             priceSourceConsistent: false,
             notes: ["Snapshot currentPrice is missing; subset uses currentPriceContext as source of truth."],
           },
@@ -393,6 +423,11 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
 
   assert.equal(vm.paper.mtfEntryCandidatePipeline.status, "WARNING_DEGRADED");
   assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.exactSamples, 75);
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.windowExactSamples, 70);
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.lifetimeExactSamples, 352);
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.reviewSamplesUsed, 352);
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.sampleCountMeaning, "WINDOW_FOR_RECENT_PATTERN");
+  assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.reviewSampleGatePassed, true);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.requiredExactSamples, 100);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.samplesRemaining, 25);
   assert.equal(vm.paper.mtfEntryCandidatePipeline.zoneCandidate.exactAvgNetRR, 6.1932);
@@ -420,9 +455,12 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.priceMoveRequiredDirection, "INSIDE_ENTRY");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.occurrenceCount, 2);
   assert.equal(vm.paper.currentPriceEligibleExactSubset.topCandidates[0]?.flags[0], "REVIEW_ONLY");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.compactTopCandidates.length, 1);
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.compactTopCandidates[0]?.id, "snapshot-long-clean");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.dedupSummary.duplicateCandidates, 1);
   assert.equal(vm.paper.currentPriceEligibleExactSubset.priceSourceAudit.priceSourceConsistent, false);
   assert.equal(vm.paper.currentPriceEligibleExactSubset.priceSourceAudit.snapshotPriceSource, "not_available_at_snapshot_build");
+  assert.equal(vm.paper.currentPriceEligibleExactSubset.priceSourceAudit.previousAnalysisPriceSource, null);
   assert.equal(vm.paper.currentPriceEligibleExactSubset.requiredGeometryInputs[0], "direction");
   assert.equal(vm.paper.currentPriceEligibleExactSubset.activationAllowed, false);
   assert.equal(vm.paper.currentPriceConsistencyAudit.status, "PRICE_MISMATCH_DETECTED");

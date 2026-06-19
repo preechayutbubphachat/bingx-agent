@@ -7,6 +7,8 @@
 
 export type CurrentPriceConsistencyStatus =
   | "CONSISTENT"
+  | "CONSISTENT_WITH_SNAPSHOT_DRIFT"
+  | "ACTIVE_CONSUMERS_CONSISTENT_PREVIOUS_CONTEXT_DIFFERS"
   | "PRICE_MISMATCH_DETECTED"
   | "STALE_TREND_PRICE_CONSUMERS"
   | "MISSING_CURRENT_PRICE";
@@ -370,15 +372,21 @@ function pricePropagationAudit(
   status: CurrentPriceConsistencyStatus,
   consumers: CurrentPriceConsistencyAudit["detectedConsumers"],
 ): CurrentPriceConsistencyAudit["pricePropagationAudit"] {
-  const staleConsumerCount = consumers.filter((item) => item.status === "MISMATCH" || item.status === "STALE").length;
+  const previousContextPaths = new Set(["snapshotPrice", "decisionPrice"]);
+  const activeConsumers = consumers.filter((item) => !previousContextPaths.has(item.path));
+  const previousConsumers = consumers.filter((item) => previousContextPaths.has(item.path));
+  const staleConsumerCount = activeConsumers.filter((item) => item.status === "MISMATCH" || item.status === "STALE").length;
   const propagatedConsumerCount = consumers.filter((item) => item.status === "MATCH").length;
-  const previousAnalysisPriceCount = consumers.filter((item) => item.status === "MISMATCH" && item.value != null).length;
+  const previousAnalysisPriceCount = previousConsumers.filter((item) => item.status === "MISMATCH" && item.value != null).length;
   const notes = staleConsumerCount > 0
     ? [
-        "Some diagnostics still contain a price different from the canonical current price.",
-        "Treat mismatched values as previous analysis or snapshot context, not current price.",
+        "Some active current-price consumers still contain a price different from the canonical current price.",
+        "Re-check active trend diagnostics before interpreting readiness.",
       ]
-    : ["All available current-price consumers match the canonical current price."];
+    : ["All active current-price consumers match the canonical current price."];
+  if (previousAnalysisPriceCount > 0) {
+    notes.push("Snapshot/previous analysis price differs from current price, but it is previous context and not current truth.");
+  }
   if (status === "STALE_TREND_PRICE_CONSUMERS") {
     notes.push("Canonical current price source is stale; refresh market snapshot before interpreting readiness.");
   }
@@ -415,15 +423,21 @@ export function buildCurrentPriceConsistencyAudit(input: CurrentPriceConsistency
     consumer(canonicalPrice, "snapshotPrice", input.snapshotPrice, "paperLoopDiagnostics.snapshotPrice"),
     consumer(canonicalPrice, "decisionPrice", input.decisionPrice, "paperLoopDiagnostics.decisionPrice"),
   ];
-  const mismatches = consumers.filter((item) => item.status === "MISMATCH");
+  const previousContextPaths = new Set(["snapshotPrice", "decisionPrice"]);
+  const activeMismatches = consumers.filter((item) => item.status === "MISMATCH" && !previousContextPaths.has(item.path));
+  const previousMismatches = consumers.filter((item) => item.status === "MISMATCH" && previousContextPaths.has(item.path));
   const status: CurrentPriceConsistencyStatus = canonicalPrice == null || canonical.freshnessStatus === "MISSING"
     ? "MISSING_CURRENT_PRICE"
     : canonical.freshnessStatus === "STALE"
       ? "STALE_TREND_PRICE_CONSUMERS"
-      : mismatches.length > 0
+      : activeMismatches.length > 0
         ? "PRICE_MISMATCH_DETECTED"
+        : previousMismatches.length > 0 && previousMismatches.every((item) => item.path === "snapshotPrice")
+          ? "CONSISTENT_WITH_SNAPSHOT_DRIFT"
+          : previousMismatches.length > 0
+            ? "ACTIVE_CONSUMERS_CONSISTENT_PREVIOUS_CONTEXT_DIFFERS"
         : "CONSISTENT";
-  const recommendations = status === "CONSISTENT"
+  const recommendations = status === "CONSISTENT" || status === "CONSISTENT_WITH_SNAPSHOT_DRIFT" || status === "ACTIVE_CONSUMERS_CONSISTENT_PREVIOUS_CONTEXT_DIFFERS"
     ? ["Continue using canonical current price for trend gate diagnostics."]
     : ["Use canonical current price for all trend gate diagnostics before interpreting readiness."];
   return {

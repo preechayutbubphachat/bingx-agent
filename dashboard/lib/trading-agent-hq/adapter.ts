@@ -110,8 +110,13 @@ function mapMtfEntryCandidatePipeline(raw: AnyObj): PaperVM["mtfEntryCandidatePi
     zoneCandidate: {
       status: str(zone.status, "NO_EXACT_ZONE"),
       exactSamples: num(zone.exactSamples, 0),
+      windowExactSamples: numOrNull(zone.windowExactSamples),
+      lifetimeExactSamples: numOrNull(zone.lifetimeExactSamples),
+      reviewSamplesUsed: numOrNull(zone.reviewSamplesUsed),
       requiredExactSamples: num(zone.requiredExactSamples, 100),
       samplesRemaining: num(zone.samplesRemaining, 100),
+      sampleCountMeaning: str(zone.sampleCountMeaning, "WINDOW_FOR_RECENT_PATTERN"),
+      reviewSampleGatePassed: bool(zone.reviewSampleGatePassed),
       exactAvgNetRR: numOrNull(zone.exactAvgNetRR),
       heuristicAvgNetRR: numOrNull(zone.heuristicAvgNetRR),
       exactVsHeuristicDelta: numOrNull(zone.exactVsHeuristicDelta),
@@ -268,33 +273,35 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
   const thresholds = obj(gate.thresholds);
   const dedup = obj(raw.dedupSummary);
   const audit = obj(raw.priceSourceAudit);
-  const topCandidates = Array.isArray(raw.topCandidates)
-    ? raw.topCandidates.map((item) => {
-        const candidate = obj(item);
-        return {
-          id: str(candidate.id, "unknown"),
-          direction: str(candidate.direction, "UNKNOWN"),
-          zoneType: strOrNull(candidate.zoneType),
-          readiness: strOrNull(candidate.readiness),
-          status: str(candidate.status, "MISSED"),
-          currentPriceStatus: str(candidate.currentPriceStatus, "UNKNOWN"),
-          qualityStatus: str(candidate.qualityStatus, "UNKNOWN"),
-          entry: numOrNull(candidate.entry),
-          entryLow: numOrNull(candidate.entryLow),
-          entryHigh: numOrNull(candidate.entryHigh),
-          stopLoss: numOrNull(candidate.stopLoss),
-          target1: numOrNull(candidate.target1),
-          target2: numOrNull(candidate.target2),
-          netRR: numOrNull(candidate.netRR),
-          distanceToEntryPct: numOrNull(candidate.distanceToEntryPct),
-          distanceToEntryAbs: numOrNull(candidate.distanceToEntryAbs),
-          priceMoveRequiredDirection: str(candidate.priceMoveRequiredDirection, "UNKNOWN"),
-          occurrenceCount: num(candidate.occurrenceCount, 1),
-          flags: strArray(candidate.flags),
-          reason: str(candidate.reason, ""),
-        };
-      })
-    : [];
+  const mapCandidate = (item: unknown) => {
+    const candidate = obj(item);
+    return {
+      id: str(candidate.id, "unknown"),
+      direction: str(candidate.direction, "UNKNOWN"),
+      zoneType: strOrNull(candidate.zoneType),
+      readiness: strOrNull(candidate.readiness),
+      status: str(candidate.status, "MISSED"),
+      currentPriceStatus: str(candidate.currentPriceStatus, "UNKNOWN"),
+      qualityStatus: str(candidate.qualityStatus, "UNKNOWN"),
+      entry: numOrNull(candidate.entry),
+      entryLow: numOrNull(candidate.entryLow),
+      entryHigh: numOrNull(candidate.entryHigh),
+      stopLoss: numOrNull(candidate.stopLoss),
+      target1: numOrNull(candidate.target1),
+      target2: numOrNull(candidate.target2),
+      netRR: numOrNull(candidate.netRR),
+      distanceToEntryPct: numOrNull(candidate.distanceToEntryPct),
+      distanceToEntryAbs: numOrNull(candidate.distanceToEntryAbs),
+      priceMoveRequiredDirection: str(candidate.priceMoveRequiredDirection, "UNKNOWN"),
+      occurrenceCount: num(candidate.occurrenceCount, 1),
+      flags: strArray(candidate.flags),
+      reason: str(candidate.reason, ""),
+    };
+  };
+  const topCandidates = Array.isArray(raw.topCandidates) ? raw.topCandidates.map(mapCandidate) : [];
+  const compactTopCandidates = Array.isArray(raw.compactTopCandidates)
+    ? raw.compactTopCandidates.map(mapCandidate).slice(0, 3)
+    : topCandidates.slice(0, 3);
 
   return {
     schemaVersion: num(raw.schemaVersion, 1),
@@ -347,6 +354,7 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
       },
     },
     topCandidates,
+    compactTopCandidates,
     dedupSummary: {
       rawCandidates: num(dedup.rawCandidates, 0),
       uniqueCandidates: num(dedup.uniqueCandidates, 0),
@@ -357,6 +365,9 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
       snapshotPriceSource: strOrNull(audit.snapshotPriceSource),
       subsetCurrentPrice: numOrNull(audit.subsetCurrentPrice),
       snapshotCurrentPrice: numOrNull(audit.snapshotCurrentPrice),
+      previousAnalysisPriceSource: strOrNull(audit.previousAnalysisPriceSource),
+      previousAnalysisPrice: numOrNull(audit.previousAnalysisPrice),
+      previousAnalysisDriftPct: numOrNull(audit.previousAnalysisDriftPct),
       priceSourceConsistent: bool(audit.priceSourceConsistent),
       notes: strArray(audit.notes),
     },

@@ -145,6 +145,11 @@ test("current-runtime-like fixture is promising geometry but execution not ready
   assert.notEqual(result.status, "REVIEW_READY");
   assert.equal(result.status, "WARNING_DEGRADED");
   assert.equal(result.zoneCandidate.exactSamples, 75);
+  assert.equal(result.zoneCandidate.windowExactSamples, 75);
+  assert.equal(result.zoneCandidate.lifetimeExactSamples, null);
+  assert.equal(result.zoneCandidate.reviewSamplesUsed, 75);
+  assert.equal(result.zoneCandidate.sampleCountMeaning, "WINDOW_FOR_RECENT_PATTERN");
+  assert.equal(result.zoneCandidate.reviewSampleGatePassed, false);
   assert.equal(result.zoneCandidate.requiredExactSamples, 100);
   assert.equal(result.zoneCandidate.samplesRemaining, 25);
   assert.equal(result.zoneCandidate.exactAvgNetRR, 6.19);
@@ -262,6 +267,11 @@ test("sample accounting uses lifetime exact samples for review progress when ava
   assert.equal(result.sampleAccounting.sampleSource, "LIFETIME_CUMULATIVE");
   assert.equal(result.sampleAccounting.isMonotonicExpected, true);
   assert.equal(result.sampleAccounting.canDecrease, false);
+  assert.equal(result.zoneCandidate.exactSamples, 70);
+  assert.equal(result.zoneCandidate.windowExactSamples, 70);
+  assert.equal(result.zoneCandidate.lifetimeExactSamples, 75);
+  assert.equal(result.zoneCandidate.reviewSamplesUsed, 75);
+  assert.equal(result.zoneCandidate.reviewSampleGatePassed, false);
 });
 
 test("window-only exact samples are labeled as rolling and may decrease", () => {
@@ -292,6 +302,10 @@ test("current-price eligible exact samples are separate from review progress", (
   assert.equal(result.sampleAccounting.reviewSamplesRemaining, 0);
   assert.equal(result.sampleAccounting.currentPriceEligibleExactSamples, 12);
   assert.equal(result.sampleAccounting.sampleSource, "LIFETIME_CUMULATIVE");
+  assert.equal(result.zoneCandidate.exactSamples, 70);
+  assert.equal(result.zoneCandidate.windowExactSamples, 70);
+  assert.equal(result.zoneCandidate.reviewSamplesUsed, 100);
+  assert.equal(result.zoneCandidate.reviewSampleGatePassed, true);
   assert.equal(result.activationAllowed, false);
 });
 

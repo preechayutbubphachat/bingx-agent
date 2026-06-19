@@ -915,10 +915,11 @@ test("canonical current price propagates into trend diagnostics while old journa
   assert.equal(d.snapshotPrice, 63_500.7);
   assert.equal(d.trendStrategy.currentPrice, 62_928.7);
   assert.equal(d.trendTransitionMonitor.watchedFields.currentPrice, 62_928.7);
-  assert.equal(d.currentPriceConsistencyAudit.status, "PRICE_MISMATCH_DETECTED");
+  assert.equal(d.currentPriceConsistencyAudit.status, "CONSISTENT_WITH_SNAPSHOT_DRIFT");
   assert.equal(d.currentPriceConsistencyAudit.currentPriceReevaluation.trendZoneStatus, "REGIME_NOT_TREND");
   assert.equal(d.currentPriceConsistencyAudit.currentPriceReevaluation.priceMoveRequiredDirection, "NO_ZONE");
-  assert.equal(d.currentPriceConsistencyAudit.pricePropagationAudit.staleConsumerCount, 1);
+  assert.equal(d.currentPriceConsistencyAudit.pricePropagationAudit.staleConsumerCount, 0);
+  assert.equal(d.currentPriceConsistencyAudit.pricePropagationAudit.previousAnalysisPriceCount, 1);
   assert.equal(d.currentPriceConsistencyAudit.safety.activationAllowed, false);
   assert.equal(d.currentPriceEligibleExactSubset.currentPrice.freshnessStatus, "FRESH");
   assert.equal(d.currentPriceEligibleExactSubset.currentPrice.ageSeconds, 120);

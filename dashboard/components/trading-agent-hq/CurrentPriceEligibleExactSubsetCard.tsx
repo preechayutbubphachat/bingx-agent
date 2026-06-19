@@ -75,10 +75,13 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
   const gate = s.cleanSubsetGate;
   const audit = paper.currentPriceConsistencyAudit;
   const watchlist = paper.regimeAwareExactCandidateWatchlist;
-  const mismatchedConsumers = audit.detectedConsumers.filter((consumer) => consumer.status === "MISMATCH" || consumer.status === "STALE");
+  const previousContextPaths = new Set(["snapshotPrice", "decisionPrice"]);
+  const mismatchedConsumers = audit.detectedConsumers.filter((consumer) => (consumer.status === "MISMATCH" || consumer.status === "STALE") && !previousContextPaths.has(consumer.path));
+  const previousPriceConsumers = audit.detectedConsumers.filter((consumer) => consumer.status === "MISMATCH" && previousContextPaths.has(consumer.path));
   const affectedCondition = audit.affectedConditions[0] ?? null;
   const noActiveTrendZone = audit.currentPriceReevaluation.priceMoveRequiredDirection === "NO_ZONE";
-  const firstCandidate = s.topCandidates[0] ?? null;
+  const compactCandidates = s.compactTopCandidates.length ? s.compactTopCandidates.slice(0, 3) : s.topCandidates.slice(0, 3);
+  const firstCandidate = compactCandidates[0] ?? null;
   const geometryMissing = s.status === "GEOMETRY_INPUTS_MISSING";
   const hasWaitingCandidate = s.topCandidates.some((candidate) => candidate.currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY");
   const watchCompact = watchlist.compactSummary;
@@ -131,6 +134,16 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
         <div>Current Price: {fmt(audit.canonicalCurrentPrice.value)} · source {audit.canonicalCurrentPrice.source ?? NA}</div>
         <div>Latest candle: {audit.canonicalCurrentPrice.latestCandleAt ?? NA} · age {count(audit.canonicalCurrentPrice.ageSeconds)}s</div>
         <div>Stale consumers: {audit.pricePropagationAudit.staleConsumerCount} · previous analysis price: {audit.pricePropagationAudit.previousAnalysisPriceCount}</div>
+        {previousPriceConsumers.length ? (
+          <div className="mt-1 rounded-md border border-cyan-200 bg-white/80 p-1.5 text-cyan-950">
+            <div className="font-black">snapshot/previous price ต่างจาก current price แต่ไม่ใช่ current truth</div>
+            {previousPriceConsumers.slice(0, 2).map((consumer) => (
+              <div key={consumer.path}>
+                {consumer.source ?? consumer.path}: {fmt(consumer.value)} Â· delta {fmt(consumer.priceDelta)} ({fmt(consumer.priceDeltaPct, 4)}%)
+              </div>
+            ))}
+          </div>
+        ) : null}
         {mismatchedConsumers.length ? (
           <div className="mt-1 rounded-md border border-amber-200 bg-white/80 p-1.5 text-amber-950">
             <div className="font-black">พบ consumer บางตัวใช้ราคาเก่า</div>
@@ -228,6 +241,8 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
         <Row label="Freshness" value={price.freshnessStatus} rowTone={price.freshnessStatus === "FRESH" ? "green" : "amber"} />
         <Row label="Subset price source" value={s.priceSourceAudit.subsetPriceSource ?? price.source ?? NA} />
         <Row label="Snapshot price source" value={s.priceSourceAudit.snapshotPriceSource ?? NA} rowTone={s.priceSourceAudit.priceSourceConsistent ? "green" : "amber"} />
+        <Row label="Previous price source" value={s.priceSourceAudit.previousAnalysisPriceSource ?? NA} rowTone={s.priceSourceAudit.previousAnalysisPriceSource ? "amber" : "neutral"} />
+        <Row label="Previous price drift" value={s.priceSourceAudit.previousAnalysisDriftPct != null ? `${fmt(s.priceSourceAudit.previousAnalysisDriftPct, 4)}%` : NA} rowTone={s.priceSourceAudit.previousAnalysisDriftPct != null ? "amber" : "neutral"} />
         <Row label="Latest candle" value={price.latestCandleAt ?? NA} />
         <Row label="Lifetime exact samples" value={count(sample.lifetimeExactSamples)} />
         <Row label="Window exact samples" value={count(sample.windowExactSamples)} />
@@ -248,7 +263,7 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
 
       {firstCandidate ? (
         <div className="space-y-1.5">
-          {s.topCandidates.slice(0, 3).map((candidate) => (
+          {compactCandidates.map((candidate) => (
             <div key={candidate.id} className="rounded-lg border border-sky-200 bg-sky-50/70 p-2 text-[11px] font-bold leading-relaxed text-sky-950">
               <div className="mb-1 font-black">Top candidate: {candidate.id} · {candidate.status}</div>
               <div>{candidate.direction} · current {candidate.currentPriceStatus} · quality {candidate.qualityStatus}</div>
@@ -259,6 +274,19 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
               <div>{candidate.reason}</div>
             </div>
           ))}
+          {s.topCandidates.length > compactCandidates.length ? (
+            <details className="rounded-lg border border-sky-200 bg-white/80 p-2 text-[11px] font-bold leading-relaxed text-sky-950">
+              <summary className="cursor-pointer font-black">Raw candidates debug Â· {s.topCandidates.length}</summary>
+              <div className="mt-1 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                {s.topCandidates.map((candidate) => (
+                  <div key={candidate.id} className="rounded-md border border-sky-100 bg-sky-50/50 p-1.5">
+                    <div className="font-black">{candidate.id} Â· {candidate.status}</div>
+                    <div>{candidate.currentPriceStatus} Â· {candidate.qualityStatus} Â· occurrence {candidate.occurrenceCount}</div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : (
         <div className="rounded-lg border border-amber-200 bg-white/80 p-2 text-[11px] font-bold leading-relaxed text-amber-950">

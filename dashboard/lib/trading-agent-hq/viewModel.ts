@@ -452,6 +452,12 @@ export interface CurrentPriceConsistencyAuditVM {
     explanation: string;
   };
   recommendations: string[];
+  pricePropagationAudit: {
+    staleConsumerCount: number;
+    propagatedConsumerCount: number;
+    previousAnalysisPriceCount: number;
+    notes: string[];
+  };
   safety: {
     reviewOnly: boolean;
     activationAllowed: boolean;

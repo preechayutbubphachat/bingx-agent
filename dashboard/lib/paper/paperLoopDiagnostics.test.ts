@@ -847,3 +847,37 @@ test("current-price eligible exact subset consumes exact candidate geometry snap
   assert.equal(d.currentPriceConsistencyAudit.detectedConsumers.find((item) => item.path === "currentPriceEligibleExactSubset.currentPrice.value")?.status, "MATCH");
   assert.equal(d.currentPriceConsistencyAudit.safety.activationAllowed, false);
 });
+
+test("canonical current price propagates into trend diagnostics while old journal price remains snapshotPrice", () => {
+  const d = buildPaperLoopDiagnostics(summary({
+    recentEvents: [
+      ev({ currentPrice: 63_500.7, noTradeReason: "stale_decision_or_price_mismatch" }),
+    ],
+  }), null, {
+    canonicalMarketRegime: canonicalRegime({
+      regime: "VOLATILITY_COMPRESSION",
+      direction: "NEUTRAL",
+      allowedModes: ["NO_TRADE"],
+      blockedModes: ["TREND_CHECK"],
+    }),
+    trendZoneCandidate: null,
+    mtfEntryCurrentPriceContext: {
+      currentPrice: 62_928.7,
+      priceSource: "market_snapshot.15m.close",
+      latestCandleAt: "2026-06-19T01:45:00.000Z",
+      snapshotGeneratedAt: "2026-06-19T01:46:00.000Z",
+      freshnessStatus: "FRESH",
+      ageSeconds: 120,
+      previousAnalysisPrice: 63_500.7,
+    },
+  });
+
+  assert.equal(d.snapshotPrice, 63_500.7);
+  assert.equal(d.trendStrategy.currentPrice, 62_928.7);
+  assert.equal(d.trendTransitionMonitor.watchedFields.currentPrice, 62_928.7);
+  assert.equal(d.currentPriceConsistencyAudit.status, "PRICE_MISMATCH_DETECTED");
+  assert.equal(d.currentPriceConsistencyAudit.currentPriceReevaluation.trendZoneStatus, "REGIME_NOT_TREND");
+  assert.equal(d.currentPriceConsistencyAudit.currentPriceReevaluation.priceMoveRequiredDirection, "NO_ZONE");
+  assert.equal(d.currentPriceConsistencyAudit.pricePropagationAudit.staleConsumerCount, 1);
+  assert.equal(d.currentPriceConsistencyAudit.safety.activationAllowed, false);
+});

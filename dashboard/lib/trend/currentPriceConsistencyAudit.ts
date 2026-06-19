@@ -21,9 +21,19 @@ export type CurrentPriceTrendZoneStatus =
   | "PRICE_ABOVE_ENTRY_ZONE"
   | "PAST_TARGET"
   | "INVALIDATED"
+  | "NO_ACTIVE_TREND_ZONE"
+  | "REGIME_NOT_TREND"
+  | "MISSING_ZONE_GEOMETRY"
   | "UNKNOWN";
 
-export type CurrentPriceMoveDirection = "UP_TO_ENTRY" | "DOWN_TO_ENTRY" | "INSIDE_ENTRY" | "UNKNOWN";
+export type CurrentPriceMoveDirection = "UP_TO_ENTRY" | "DOWN_TO_ENTRY" | "INSIDE_ENTRY" | "NO_ZONE" | "UNKNOWN";
+
+export type CurrentPriceConditionImpact =
+  | "NO_CHANGE"
+  | "PASS_TO_FAIL"
+  | "FAIL_TO_PASS"
+  | "NOT_EVALUABLE_NO_ZONE"
+  | "UNKNOWN";
 
 export interface CurrentPriceConsistencyAudit {
   schemaVersion: 1;
@@ -48,7 +58,7 @@ export interface CurrentPriceConsistencyAudit {
     condition: string;
     previousValue: boolean | null;
     currentPriceBasedValue: boolean | null;
-    impact: "NO_CHANGE" | "PASS_TO_FAIL" | "FAIL_TO_PASS" | "UNKNOWN";
+    impact: CurrentPriceConditionImpact;
     explanation: string;
   }>;
   currentPriceReevaluation: {
@@ -59,6 +69,12 @@ export interface CurrentPriceConsistencyAudit {
     explanation: string;
   };
   recommendations: string[];
+  pricePropagationAudit: {
+    staleConsumerCount: number;
+    propagatedConsumerCount: number;
+    previousAnalysisPriceCount: number;
+    notes: string[];
+  };
   safety: {
     reviewOnly: true;
     activationAllowed: false;
@@ -218,6 +234,45 @@ function distanceToZone(price: number | null, zone: [number, number] | null): { 
   };
 }
 
+function regimeDescription(input: CurrentPriceConsistencyAuditInput): { regime: string | null; direction: string | null; notTrend: boolean } {
+  const regime = obj(input.canonicalMarketRegime);
+  const regimeName = str(regime.regime);
+  const direction = str(regime.direction);
+  const trendRegime = regimeName === "UPTREND" || regimeName === "DOWNTREND";
+  const trendDirection = direction === "BULLISH" || direction === "BEARISH";
+  return {
+    regime: regimeName,
+    direction,
+    notTrend: Boolean(regimeName) && (!trendRegime || !trendDirection),
+  };
+}
+
+function noZoneStatus(input: CurrentPriceConsistencyAuditInput, zone: [number, number] | null): CurrentPriceTrendZoneStatus | null {
+  const regime = regimeDescription(input);
+  if (regime.notTrend) return "REGIME_NOT_TREND";
+  if (zone) return null;
+  const trendZone = obj(input.trendZoneCandidate);
+  const canonicalZone = obj(obj(input.canonicalMarketRegime).trendZoneCandidate);
+  const hasZoneCandidate = Object.keys(trendZone).length > 0 || Object.keys(canonicalZone).length > 0;
+  if (!hasZoneCandidate) return "NO_ACTIVE_TREND_ZONE";
+  return "MISSING_ZONE_GEOMETRY";
+}
+
+function noZoneExplanation(input: CurrentPriceConsistencyAuditInput, status: CurrentPriceTrendZoneStatus): string {
+  const regime = regimeDescription(input);
+  const regimeText = `${regime.regime ?? "UNKNOWN"} / ${regime.direction ?? "UNKNOWN"}`;
+  if (status === "REGIME_NOT_TREND") {
+    return `Canonical regime is ${regimeText}; no trend entry zone is built, so price_inside_entry_zone_or_edge cannot be evaluated as a current trend setup.`;
+  }
+  if (status === "NO_ACTIVE_TREND_ZONE") {
+    return `No active trend zone exists under the current regime ${regimeText}, so there is no entry zone to re-evaluate against current price.`;
+  }
+  if (status === "MISSING_ZONE_GEOMETRY") {
+    return `Trend context exists but entry-zone geometry is missing under ${regimeText}, so current price cannot be compared to a trend entry zone.`;
+  }
+  return "Current price cannot confirm entry zone status.";
+}
+
 function reevaluateTrendZone(input: CurrentPriceConsistencyAuditInput, canonicalPrice: number | null): CurrentPriceConsistencyAudit["currentPriceReevaluation"] {
   const trend = obj(input.trendStrategy);
   const trendZone = obj(input.trendZoneCandidate);
@@ -228,7 +283,10 @@ function reevaluateTrendZone(input: CurrentPriceConsistencyAuditInput, canonical
   const invalidation = num(trend.invalidation ?? trendZone.invalidation);
   const distance = distanceToZone(canonicalPrice, zone);
   let status: CurrentPriceTrendZoneStatus = "UNKNOWN";
-  if (canonicalPrice == null || !zone) {
+  const explicitNoZone = canonicalPrice != null ? noZoneStatus(input, zone) : null;
+  if (explicitNoZone) {
+    status = explicitNoZone;
+  } else if (canonicalPrice == null || !zone) {
     status = "UNKNOWN";
   } else if (direction === "LONG" && invalidation != null && canonicalPrice <= invalidation) {
     status = "INVALIDATED";
@@ -258,13 +316,15 @@ function reevaluateTrendZone(input: CurrentPriceConsistencyAuditInput, canonical
       : status === "INSIDE_ENTRY_ZONE"
         ? "Current price is inside the entry zone."
         : status === "NEAR_ENTRY_ZONE"
-          ? "Current price is near the entry zone."
-          : "Current price cannot confirm entry zone status.";
+        ? "Current price is near the entry zone."
+          : noZoneExplanation(input, status);
   return {
     trendZoneStatus: status,
     distanceToEntryZonePct: distance.pct,
     distanceToEntryZoneAbs: distance.abs,
-    priceMoveRequiredDirection: distance.move,
+    priceMoveRequiredDirection: status === "REGIME_NOT_TREND" || status === "NO_ACTIVE_TREND_ZONE" || status === "MISSING_ZONE_GEOMETRY"
+      ? "NO_ZONE"
+      : distance.move,
     explanation,
   };
 }
@@ -276,7 +336,7 @@ function currentPriceInsideOrEdge(price: number | null, zone: [number, number] |
   return Math.abs(edge - price) / Math.max(Math.abs(price), Number.EPSILON) * 100 <= EDGE_TOLERANCE_PCT;
 }
 
-function impact(previous: boolean | null, current: boolean | null): "NO_CHANGE" | "PASS_TO_FAIL" | "FAIL_TO_PASS" | "UNKNOWN" {
+function impact(previous: boolean | null, current: boolean | null): CurrentPriceConditionImpact {
   if (previous == null || current == null) return "UNKNOWN";
   if (previous === current) return "NO_CHANGE";
   return previous && !current ? "PASS_TO_FAIL" : "FAIL_TO_PASS";
@@ -289,17 +349,45 @@ function affectedConditions(input: CurrentPriceConsistencyAuditInput, canonicalP
   const failed = [...strArray(rawGate.failedConditions), ...strArray(effectiveGate.failedConditions)];
   const condition = "price_inside_entry_zone_or_edge";
   const previousValue = passed.includes(condition) ? true : failed.includes(condition) ? false : null;
-  const currentPriceBasedValue = currentPriceInsideOrEdge(canonicalPrice, entryZoneFrom(input));
+  const zone = entryZoneFrom(input);
+  const explicitNoZone = canonicalPrice != null ? noZoneStatus(input, zone) : null;
+  const currentPriceBasedValue = explicitNoZone ? false : currentPriceInsideOrEdge(canonicalPrice, zone);
   const currentImpact = impact(previousValue, currentPriceBasedValue);
   return [{
     condition,
     previousValue,
     currentPriceBasedValue,
     impact: currentImpact,
-    explanation: currentImpact === "PASS_TO_FAIL"
+    explanation: explicitNoZone
+      ? `${noZoneExplanation(input, explicitNoZone)} No active trend zone exists, so this condition cannot pass.`
+      : currentImpact === "PASS_TO_FAIL"
       ? "A previous in-zone state is not current truth after re-evaluation with canonical current price."
       : "Current price re-evaluation does not downgrade this condition.",
   }];
+}
+
+function pricePropagationAudit(
+  status: CurrentPriceConsistencyStatus,
+  consumers: CurrentPriceConsistencyAudit["detectedConsumers"],
+): CurrentPriceConsistencyAudit["pricePropagationAudit"] {
+  const staleConsumerCount = consumers.filter((item) => item.status === "MISMATCH" || item.status === "STALE").length;
+  const propagatedConsumerCount = consumers.filter((item) => item.status === "MATCH").length;
+  const previousAnalysisPriceCount = consumers.filter((item) => item.status === "MISMATCH" && item.value != null).length;
+  const notes = staleConsumerCount > 0
+    ? [
+        "Some diagnostics still contain a price different from the canonical current price.",
+        "Treat mismatched values as previous analysis or snapshot context, not current price.",
+      ]
+    : ["All available current-price consumers match the canonical current price."];
+  if (status === "STALE_TREND_PRICE_CONSUMERS") {
+    notes.push("Canonical current price source is stale; refresh market snapshot before interpreting readiness.");
+  }
+  return {
+    staleConsumerCount,
+    propagatedConsumerCount,
+    previousAnalysisPriceCount,
+    notes,
+  };
 }
 
 function safety(): CurrentPriceConsistencyAudit["safety"] {
@@ -347,6 +435,7 @@ export function buildCurrentPriceConsistencyAudit(input: CurrentPriceConsistency
     affectedConditions: affectedConditions(input, canonicalPrice),
     currentPriceReevaluation: reevaluateTrendZone(input, canonicalPrice),
     recommendations,
+    pricePropagationAudit: pricePropagationAudit(status, consumers),
     safety: safety(),
   };
 }

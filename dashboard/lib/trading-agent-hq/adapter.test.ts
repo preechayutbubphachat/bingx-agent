@@ -281,13 +281,19 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             },
           ],
           currentPriceReevaluation: {
-            trendZoneStatus: "WAITING_PULLBACK_TO_ENTRY",
-            distanceToEntryZonePct: 0.94,
-            distanceToEntryZoneAbs: 1,
-            priceMoveRequiredDirection: "UP_TO_ENTRY",
-            explanation: "Current price is below the SHORT entry zone.",
+            trendZoneStatus: "REGIME_NOT_TREND",
+            distanceToEntryZonePct: null,
+            distanceToEntryZoneAbs: null,
+            priceMoveRequiredDirection: "NO_ZONE",
+            explanation: "Canonical regime is VOLATILITY_COMPRESSION / NEUTRAL; no trend entry zone is built.",
           },
           recommendations: ["Use canonical current price for all trend gate diagnostics before interpreting readiness."],
+          pricePropagationAudit: {
+            staleConsumerCount: 1,
+            propagatedConsumerCount: 2,
+            previousAnalysisPriceCount: 1,
+            notes: ["Treat mismatched values as previous analysis or snapshot context, not current price."],
+          },
           safety: {
             reviewOnly: true,
             activationAllowed: false,
@@ -343,7 +349,10 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.currentPriceConsistencyAudit.canonicalCurrentPrice.value, 101.5);
   assert.equal(vm.paper.currentPriceConsistencyAudit.detectedConsumers[0]?.status, "MISMATCH");
   assert.equal(vm.paper.currentPriceConsistencyAudit.affectedConditions[0]?.impact, "PASS_TO_FAIL");
-  assert.equal(vm.paper.currentPriceConsistencyAudit.currentPriceReevaluation.trendZoneStatus, "WAITING_PULLBACK_TO_ENTRY");
+  assert.equal(vm.paper.currentPriceConsistencyAudit.currentPriceReevaluation.trendZoneStatus, "REGIME_NOT_TREND");
+  assert.equal(vm.paper.currentPriceConsistencyAudit.currentPriceReevaluation.priceMoveRequiredDirection, "NO_ZONE");
+  assert.equal(vm.paper.currentPriceConsistencyAudit.pricePropagationAudit.staleConsumerCount, 1);
+  assert.equal(vm.paper.currentPriceConsistencyAudit.pricePropagationAudit.previousAnalysisPriceCount, 1);
   assert.equal(vm.paper.currentPriceConsistencyAudit.safety.activationAllowed, false);
   assert.equal(vm.paper.currentPriceConsistencyAudit.safety.orderAllowed, false);
 });

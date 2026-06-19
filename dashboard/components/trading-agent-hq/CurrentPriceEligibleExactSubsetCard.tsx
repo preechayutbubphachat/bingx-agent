@@ -76,6 +76,7 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
   const audit = paper.currentPriceConsistencyAudit;
   const mismatchedConsumers = audit.detectedConsumers.filter((consumer) => consumer.status === "MISMATCH" || consumer.status === "STALE");
   const affectedCondition = audit.affectedConditions[0] ?? null;
+  const noActiveTrendZone = audit.currentPriceReevaluation.priceMoveRequiredDirection === "NO_ZONE";
   const firstCandidate = s.topCandidates[0] ?? null;
   const geometryMissing = s.status === "GEOMETRY_INPUTS_MISSING";
   const hasWaitingCandidate = s.topCandidates.some((candidate) => candidate.currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY");
@@ -125,14 +126,23 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
         <div>ราคาปัจจุบันต้องมาก่อน: {audit.canonicalCurrentPrice.freshnessStatus}</div>
         <div>Current Price: {fmt(audit.canonicalCurrentPrice.value)} · source {audit.canonicalCurrentPrice.source ?? NA}</div>
         <div>Latest candle: {audit.canonicalCurrentPrice.latestCandleAt ?? NA} · age {count(audit.canonicalCurrentPrice.ageSeconds)}s</div>
+        <div>Stale consumers: {audit.pricePropagationAudit.staleConsumerCount} · previous analysis price: {audit.pricePropagationAudit.previousAnalysisPriceCount}</div>
         {mismatchedConsumers.length ? (
           <div className="mt-1 rounded-md border border-amber-200 bg-white/80 p-1.5 text-amber-950">
-            <div className="font-black">พบ gate บางส่วนยังใช้ราคาเก่า</div>
+            <div className="font-black">พบ consumer บางตัวใช้ราคาเก่า</div>
             {mismatchedConsumers.slice(0, 3).map((consumer) => (
               <div key={consumer.path}>
                 {consumer.path}: {fmt(consumer.value)} · delta {fmt(consumer.priceDelta)} ({fmt(consumer.priceDeltaPct, 4)}%)
               </div>
             ))}
+          </div>
+        ) : null}
+        {noActiveTrendZone ? (
+          <div className="mt-1 rounded-md border border-amber-200 bg-amber-50 p-1.5 text-amber-950">
+            <div className="font-black">ตอนนี้ไม่มี active trend zone ให้ประเมิน</div>
+            <div>Regime ปัจจุบันไม่ใช่ trend หรือไม่มี zone geometry ที่ใช้ได้</div>
+            <div>{audit.currentPriceReevaluation.explanation}</div>
+            <div>ไม่ถือว่า price_inside_entry_zone ผ่าน</div>
           </div>
         ) : null}
         {affectedCondition ? (

@@ -811,6 +811,10 @@ export function buildPaperLoopDiagnostics(
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
     latestCanonicalMarketRegimeDiagnostic: context.latestCanonicalMarketRegimeDiagnostic,
   });
+  const mtfEntryCurrentPriceContext = context.mtfEntryCurrentPriceContext ?? buildMtfEntryCurrentPriceContext(context, currentPrice, summary.checkedAt);
+  const trendDiagnosticCurrentPrice = finiteOrNull(
+    unknownObj(mtfEntryCurrentPriceContext).currentPrice ?? unknownObj(mtfEntryCurrentPriceContext).value
+  ) ?? currentPrice;
   const volBaselineDiagnostic = buildVolBaselineDiagnostic(context.marketSnapshot);
   const eventRiskContext = buildEventRiskContextDiagnostic(context.newsContext);
   const regimeTransitionDiagnostic = buildRegimeTransitionDiagnostic();
@@ -844,7 +848,7 @@ export function buildPaperLoopDiagnostics(
     indicatorGate,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
-    currentPrice,
+    currentPrice: trendDiagnosticCurrentPrice,
     priceVsGrid,
     session: context.session ?? null,
     derivatives: regimeEvidence.derivatives,
@@ -864,7 +868,7 @@ export function buildPaperLoopDiagnostics(
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
     indicatorGate,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
-    currentPrice,
+    currentPrice: trendDiagnosticCurrentPrice,
     checkedAt: summary.lastPaperEventAt ?? null,
   });
   const trendManualPaperArmGate = evaluateTrendManualPaperArmGate({
@@ -872,7 +876,7 @@ export function buildPaperLoopDiagnostics(
     trendZoneCandidate: context.trendZoneCandidate ?? null,
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
     indicatorGate,
-    currentPrice,
+    currentPrice: trendDiagnosticCurrentPrice,
     freshness: {
       stale: context.canonicalMarketRegime?.sourceFreshness?.status === "stale",
     },
@@ -883,7 +887,7 @@ export function buildPaperLoopDiagnostics(
     trendStrategy,
     trendZoneCandidate: context.trendZoneCandidate ?? null,
     canonicalMarketRegime: context.canonicalMarketRegime ?? null,
-    currentPrice,
+    currentPrice: trendDiagnosticCurrentPrice,
     freshness: {
       stale: context.canonicalMarketRegime?.sourceFreshness?.status === "stale",
     },
@@ -994,7 +998,7 @@ export function buildPaperLoopDiagnostics(
     trendStrategy,
     trendManualPaperArmGate,
     trendPaperExecutionPreflight,
-    currentPriceContext: context.mtfEntryCurrentPriceContext ?? buildMtfEntryCurrentPriceContext(context, currentPrice, summary.checkedAt),
+    currentPriceContext: mtfEntryCurrentPriceContext,
     mtfObFvgShadowSummary: trendEvidenceDecisionSummary.mtfObFvgShadowSummary,
     exactZoneComparisonSummary: trendEvidenceDecisionSummary.exactZoneComparisonSummary,
     sampleAccounting: trendEvidenceDecisionSummary.sampleAccounting,
@@ -1022,7 +1026,7 @@ export function buildPaperLoopDiagnostics(
     exactZoneComparisonSummary: trendEvidenceDecisionSummary.exactZoneComparisonSummary,
     mtfObFvgShadowSummary: trendEvidenceDecisionSummary.mtfObFvgShadowSummary,
     shadowOutcomeSummary: trendEvidenceDecisionSummary.shadowOutcomeSummary,
-    currentPriceContext: context.mtfEntryCurrentPriceContext ?? mtfEntryCandidatePipeline.currentPriceContext,
+    currentPriceContext: mtfEntryCurrentPriceContext ?? mtfEntryCandidatePipeline.currentPriceContext,
     currentCandidateReevaluation: mtfEntryCandidatePipeline.currentCandidateReevaluation,
     exactCandidateRecords: trendEvidenceDecisionSummary.exactCandidateRecords,
   });

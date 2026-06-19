@@ -369,6 +369,7 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
 function mapCurrentPriceConsistencyAudit(raw: AnyObj): PaperVM["currentPriceConsistencyAudit"] {
   const canonical = obj(raw.canonicalCurrentPrice);
   const reevaluation = obj(raw.currentPriceReevaluation);
+  const propagation = obj(raw.pricePropagationAudit);
   const safety = obj(raw.safety);
   const detectedConsumers = Array.isArray(raw.detectedConsumers)
     ? raw.detectedConsumers.map((item) => {
@@ -416,6 +417,12 @@ function mapCurrentPriceConsistencyAudit(raw: AnyObj): PaperVM["currentPriceCons
       explanation: str(reevaluation.explanation, ""),
     },
     recommendations: strArray(raw.recommendations),
+    pricePropagationAudit: {
+      staleConsumerCount: num(propagation.staleConsumerCount, 0),
+      propagatedConsumerCount: num(propagation.propagatedConsumerCount, 0),
+      previousAnalysisPriceCount: num(propagation.previousAnalysisPriceCount, 0),
+      notes: strArray(propagation.notes),
+    },
     safety: {
       reviewOnly: safety.reviewOnly === false ? false : true,
       activationAllowed: bool(safety.activationAllowed),

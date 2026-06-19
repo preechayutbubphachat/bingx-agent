@@ -100,6 +100,98 @@ test("stale trend price flags mismatched consumers and current-price gate downgr
   assert.equal(result.safety.activationAllowed, false);
 });
 
+test("price mismatch with no trend regime reports explicit no-zone semantics", () => {
+  const result = buildCurrentPriceConsistencyAudit({
+    mtfEntryCandidatePipeline: {
+      currentPriceContext: {
+        currentPrice: 62_928.7,
+        priceSource: "market_snapshot.15m.close",
+        latestCandleAt: "2026-06-19T01:45:00.000Z",
+        freshnessStatus: "FRESH",
+        ageSeconds: 120,
+      },
+    },
+    currentPriceEligibleExactSubset: {
+      currentPrice: {
+        value: 62_928.7,
+        source: "market_snapshot.15m.close",
+        latestCandleAt: "2026-06-19T01:45:00.000Z",
+        freshnessStatus: "FRESH",
+        ageSeconds: 120,
+      },
+    },
+    canonicalMarketRegime: {
+      regime: "VOLATILITY_COMPRESSION",
+      direction: "NEUTRAL",
+    },
+    trendZoneCandidate: null,
+    trendStrategy: {
+      currentPrice: 63_500.7,
+      status: "NO_TRADE",
+      entryZone: null,
+      reasons: ["missing_pullback_zone", "missing_invalidation", "missing_target1"],
+    },
+    trendTransitionMonitor: {
+      watchedFields: {
+        currentPrice: 63_500.7,
+      },
+    },
+    trendManualPaperArmGate: {
+      passedConditions: [],
+      failedConditions: ["price_inside_entry_zone_or_edge"],
+    },
+    snapshotPrice: 63_500.7,
+  });
+
+  const condition = result.affectedConditions.find((item) => item.condition === "price_inside_entry_zone_or_edge");
+
+  assert.equal(result.status, "PRICE_MISMATCH_DETECTED");
+  assert.equal(result.currentPriceReevaluation.trendZoneStatus, "REGIME_NOT_TREND");
+  assert.equal(result.currentPriceReevaluation.priceMoveRequiredDirection, "NO_ZONE");
+  assert.match(result.currentPriceReevaluation.explanation, /VOLATILITY_COMPRESSION/);
+  assert.match(result.currentPriceReevaluation.explanation, /NEUTRAL/);
+  assert.equal(condition?.previousValue, false);
+  assert.equal(condition?.currentPriceBasedValue, false);
+  assert.equal(condition?.impact, "NO_CHANGE");
+  assert.match(condition?.explanation ?? "", /No active trend zone|regime/i);
+  assert.equal(result.pricePropagationAudit.staleConsumerCount, 3);
+  assert.equal(result.pricePropagationAudit.previousAnalysisPriceCount, 3);
+  assert.equal(result.safety.activationAllowed, false);
+  assert.equal(result.safety.paperActivationAllowed, false);
+  assert.equal(result.safety.liveActivationAllowed, false);
+  assert.equal(result.safety.orderAllowed, false);
+});
+
+test("previous in-zone condition fails when current regime has no active trend zone", () => {
+  const result = buildCurrentPriceConsistencyAudit({
+    mtfEntryCandidatePipeline: {
+      currentPriceContext: {
+        currentPrice: 62_928.7,
+        priceSource: "market_snapshot.15m.close",
+        latestCandleAt: "2026-06-19T01:45:00.000Z",
+        freshnessStatus: "FRESH",
+        ageSeconds: 120,
+      },
+    },
+    canonicalMarketRegime: {
+      regime: "VOLATILITY_COMPRESSION",
+      direction: "NEUTRAL",
+    },
+    trendManualPaperArmGate: {
+      passedConditions: ["price_inside_entry_zone_or_edge"],
+      failedConditions: [],
+    },
+  });
+
+  const condition = result.affectedConditions.find((item) => item.condition === "price_inside_entry_zone_or_edge");
+
+  assert.equal(result.currentPriceReevaluation.trendZoneStatus, "REGIME_NOT_TREND");
+  assert.equal(condition?.previousValue, true);
+  assert.equal(condition?.currentPriceBasedValue, false);
+  assert.equal(condition?.impact, "PASS_TO_FAIL");
+  assert.match(condition?.explanation ?? "", /No active trend zone|regime/i);
+});
+
 test("missing canonical current price reports missing current price", () => {
   const result = buildCurrentPriceConsistencyAudit({
     trendStrategy: { currentPrice: 63_500.7 },

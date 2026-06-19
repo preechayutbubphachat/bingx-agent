@@ -667,6 +667,12 @@ export const MOCK_VIEW_MODEL: TradingAgentHQViewModel = {
         explanation: "Current price cannot confirm entry zone status.",
       },
       recommendations: ["Continue using canonical current price for trend gate diagnostics."],
+      pricePropagationAudit: {
+        staleConsumerCount: 0,
+        propagatedConsumerCount: 2,
+        previousAnalysisPriceCount: 0,
+        notes: ["All available current-price consumers match the canonical current price."],
+      },
       safety: {
         reviewOnly: true,
         activationAllowed: false,

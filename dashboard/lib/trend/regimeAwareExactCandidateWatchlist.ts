@@ -16,6 +16,7 @@ export type RegimeAwareWatchlistStatus =
 
 export type RegimeAwareWatchlistActionability =
   | "WAIT_FOR_PULLBACK"
+  | "WAIT_FOR_PULLBACK_DEGRADED"
   | "WAIT_FOR_REGIME_CONFIRMATION"
   | "WAIT_FOR_5M_CONFIRMATION"
   | "QUALITY_REJECTED"
@@ -49,6 +50,8 @@ export interface RegimeAwareExactCandidateWatchlist {
     confidence: number | null;
     trendZoneStatus: string | null;
     noZoneReason: string | null;
+    latestCandleAt: string | null;
+    ageSeconds: number | null;
   };
   watchlistSummary: {
     totalCandidates: number;
@@ -57,9 +60,27 @@ export interface RegimeAwareExactCandidateWatchlist {
     waitingPullbackCandidates: number;
     regimeBlockedCandidates: number;
     qualityRejectedCandidates: number;
+    degradedWatchCandidates: number;
     missedCandidates: number;
     invalidatedCandidates: number;
     cleanReviewCandidates: number;
+  };
+  watchlistDedupSummary: {
+    rawWatchCandidates: number;
+    uniqueWatchCandidates: number;
+    duplicateWatchCandidates: number;
+    clusteringTolerance: string;
+  };
+  compactSummary: {
+    currentPrice: number | null;
+    freshnessStatus: string;
+    regime: string | null;
+    direction: string | null;
+    watchlistStatus: RegimeAwareWatchlistStatus;
+    cleanReviewCandidates: number;
+    nextAction: string;
+    topCandidateDisplayLimit: 3;
+    detailsCollapsedByDefault: true;
   };
   topWatchCandidates: Array<{
     id: string;
@@ -73,6 +94,9 @@ export interface RegimeAwareExactCandidateWatchlist {
     netRR: number | null;
     distanceToEntryPct: number | null;
     priceMoveRequiredDirection: string;
+    occurrenceCount: number;
+    representativeStopLoss: number | null;
+    stopLossRange: [number, number] | null;
     blockers: string[];
     watchCondition: string;
     doNotDo: string[];
@@ -140,6 +164,24 @@ function cleanNumber(value: number | null): string {
   return value == null ? "unknown" : value.toFixed(2);
 }
 
+function round1(value: number | null): string {
+  return value == null ? "unknown" : String(Math.round(value * 10) / 10);
+}
+
+function roundStopBucket(value: number | null): string {
+  return value == null ? "unknown" : String(Math.round(value));
+}
+
+function firstFreshness(...values: unknown[]): string {
+  const valid = new Set(["FRESH", "STALE", "MISSING", "UNKNOWN"]);
+  for (const value of values) {
+    const s = str(value);
+    if (s && valid.has(s) && s !== "UNKNOWN" && s !== "MISSING") return s;
+  }
+  if (values.some((value) => str(value) === "MISSING")) return "MISSING";
+  return "UNKNOWN";
+}
+
 function isRegimeConfirmed(regime: string | null, direction: string | null): boolean {
   if (regime === "DOWNTREND") return direction === "BEARISH";
   if (regime === "UPTREND") return direction === "BULLISH";
@@ -155,13 +197,14 @@ function classifyCandidate(candidate: Record<string, unknown>, regimeConfirmed: 
   const currentPriceStatus = str(candidate.currentPriceStatus) ?? "UNKNOWN";
   const qualityStatus = str(candidate.qualityStatus) ?? "UNKNOWN";
   const distance = num(candidate.distanceToEntryPct);
+  const qualityRejected = QUALITY_REJECTED.has(qualityStatus) || QUALITY_REJECTED.has(status);
   if (status === "INVALIDATED" || currentPriceStatus === "ALREADY_INVALIDATED") return "INVALIDATED";
   if (status === "MISSED" || currentPriceStatus === "PAST_TARGET") return "MISSED";
   if (!regimeConfirmed) return "WAIT_FOR_REGIME_CONFIRMATION";
   if (WAITING_PRICE_STATUSES.has(currentPriceStatus) || (distance != null && distance > 0.25 && !NEAR_PRICE_STATUSES.has(currentPriceStatus))) {
-    return "WAIT_FOR_PULLBACK";
+    return qualityRejected ? "WAIT_FOR_PULLBACK_DEGRADED" : "WAIT_FOR_PULLBACK";
   }
-  if (QUALITY_REJECTED.has(qualityStatus) || QUALITY_REJECTED.has(status)) return "QUALITY_REJECTED";
+  if (qualityRejected) return "QUALITY_REJECTED";
   if (status === "CLEAN_REVIEW_ONLY" || (qualityStatus === "CLEAN" && NEAR_PRICE_STATUSES.has(currentPriceStatus))) {
     return "CLEAN_REVIEW_ONLY";
   }
@@ -191,7 +234,7 @@ function watchCondition(candidate: Record<string, unknown>, actionability: Regim
   if (actionability === "WAIT_FOR_REGIME_CONFIRMATION") {
     return `รอราคาเข้าใกล้ ${cleanNumber(entry)} และต้องเห็น regime/trend confirmation ใหม่ก่อน review`;
   }
-  if (actionability === "WAIT_FOR_PULLBACK") {
+  if (actionability === "WAIT_FOR_PULLBACK" || actionability === "WAIT_FOR_PULLBACK_DEGRADED") {
     return `รอราคา${direction === "SHORT" ? "ดีดขึ้น" : direction === "LONG" ? "ย่อลง" : "กลับ"}เข้าใกล้ ${cleanNumber(entry)} ก่อน review`;
   }
   if (actionability === "QUALITY_REJECTED") return "รอคุณภาพ candidate ดีขึ้นก่อน ยังติด quality blocker";
@@ -218,9 +261,59 @@ function mapCandidate(candidateInput: unknown, regimeConfirmed: boolean): Regime
     netRR: num(candidate.netRR),
     distanceToEntryPct: num(candidate.distanceToEntryPct),
     priceMoveRequiredDirection: str(candidate.priceMoveRequiredDirection) ?? "UNKNOWN",
+    occurrenceCount: 1,
+    representativeStopLoss: num(candidate.stopLoss),
+    stopLossRange: null,
     blockers: blockersForCandidate(candidate, actionability, regimeConfirmed),
     watchCondition: watchCondition(candidate, actionability),
     doNotDo: doNotDo(),
+  };
+}
+
+function watchCandidateDedupKey(candidate: RegimeAwareExactCandidateWatchlist["topWatchCandidates"][number]): string {
+  return [
+    candidate.direction,
+    "UNKNOWN_TF",
+    round1(candidate.entry),
+    round1(candidate.target1),
+    roundStopBucket(candidate.stopLoss),
+    candidate.qualityStatus,
+    candidate.currentPriceStatus,
+  ].join("|");
+}
+
+function dedupeWatchCandidates(
+  candidates: RegimeAwareExactCandidateWatchlist["topWatchCandidates"],
+): {
+  candidates: RegimeAwareExactCandidateWatchlist["topWatchCandidates"];
+  summary: RegimeAwareExactCandidateWatchlist["watchlistDedupSummary"];
+} {
+  const groups = new Map<string, RegimeAwareExactCandidateWatchlist["topWatchCandidates"]>();
+  for (const candidate of candidates) {
+    const key = watchCandidateDedupKey(candidate);
+    groups.set(key, [...(groups.get(key) ?? []), candidate]);
+  }
+  const unique = [...groups.values()].map((items) => {
+    const representative = items[0]!;
+    const stops = items.map((item) => item.stopLoss).filter((item): item is number => item != null);
+    const minStop = stops.length ? Math.min(...stops) : null;
+    const maxStop = stops.length ? Math.max(...stops) : null;
+    return {
+      ...representative,
+      occurrenceCount: items.length,
+      representativeStopLoss: representative.stopLoss,
+      stopLossRange: minStop != null && maxStop != null && minStop !== maxStop ? [minStop, maxStop] as [number, number] : null,
+      blockers: Array.from(new Set(items.flatMap((item) => item.blockers))),
+    };
+  });
+  return {
+    candidates: unique,
+    summary: {
+      rawWatchCandidates: candidates.length,
+      uniqueWatchCandidates: unique.length,
+      duplicateWatchCandidates: Math.max(0, candidates.length - unique.length),
+      clusteringTolerance: "entry/target rounded to 0.1 USDT; stop grouped within 1 USDT",
+    },
   };
 }
 
@@ -235,9 +328,10 @@ function summaryFromCandidates(
     totalCandidates: num(filters.totalCandidates) ?? num(dedup.rawCandidates) ?? candidates.length,
     uniqueCandidates: num(dedup.uniqueCandidates) ?? candidates.length,
     watchCandidates: candidates.filter((item) => item.actionability !== "INVALIDATED" && item.actionability !== "MISSED").length,
-    waitingPullbackCandidates: candidates.filter((item) => item.actionability === "WAIT_FOR_PULLBACK").length,
+    waitingPullbackCandidates: candidates.filter((item) => item.actionability === "WAIT_FOR_PULLBACK" || item.actionability === "WAIT_FOR_PULLBACK_DEGRADED").length,
     regimeBlockedCandidates: candidates.filter((item) => item.actionability === "WAIT_FOR_REGIME_CONFIRMATION").length,
-    qualityRejectedCandidates: candidates.filter((item) => item.actionability === "QUALITY_REJECTED").length,
+    qualityRejectedCandidates: candidates.filter((item) => item.actionability === "QUALITY_REJECTED" || QUALITY_REJECTED.has(item.qualityStatus)).length,
+    degradedWatchCandidates: candidates.filter((item) => item.actionability === "WAIT_FOR_PULLBACK_DEGRADED").length,
     missedCandidates: num(filters.missedCandidates) ?? candidates.filter((item) => item.actionability === "MISSED").length,
     invalidatedCandidates: num(filters.invalidatedCandidates) ?? candidates.filter((item) => item.actionability === "INVALIDATED").length,
     cleanReviewCandidates: cleanSamples ?? num(filters.cleanCandidates) ?? candidates.filter((item) => item.actionability === "CLEAN_REVIEW_ONLY").length,
@@ -251,11 +345,11 @@ function checklist(
 ): RegimeAwareExactCandidateWatchlist["nextTriggerChecklist"] {
   return {
     regimeRequired: regimeConfirmed ? [] : ["confirm UPTREND/BULLISH or DOWNTREND/BEARISH regime before review"],
-    priceRequired: candidates.some((item) => item.actionability === "WAIT_FOR_PULLBACK" || item.actionability === "WAIT_FOR_REGIME_CONFIRMATION")
+    priceRequired: candidates.some((item) => item.actionability === "WAIT_FOR_PULLBACK" || item.actionability === "WAIT_FOR_PULLBACK_DEGRADED" || item.actionability === "WAIT_FOR_REGIME_CONFIRMATION")
       ? ["wait for price to move near or inside the candidate entry zone"]
       : [],
     confirmationRequired: ["wait for fresh 5m confirmation after price reaches the candidate zone"],
-    qualityRequired: cleanGateFailed.length ? cleanGateFailed : candidates.some((item) => item.actionability === "QUALITY_REJECTED")
+    qualityRequired: cleanGateFailed.length ? cleanGateFailed : candidates.some((item) => item.actionability === "QUALITY_REJECTED" || item.actionability === "WAIT_FOR_PULLBACK_DEGRADED")
       ? ["clear target-too-close, cost-too-high, and conflicting-MTF blockers"]
       : [],
     dataRequired: candidates.length ? [] : ["collect structured exact candidate geometry"],
@@ -283,8 +377,12 @@ function verdict(
   if (status === "WAITING_PULLBACK") {
     return {
       status: "WAIT_FOR_PULLBACK_ONLY",
-      summary: "Regime context is acceptable but price is not near the candidate entry zone.",
-      nextAction: "wait for price to reach candidate entry zone",
+      summary: summary.degradedWatchCandidates > 0
+        ? "Regime context is acceptable but price is not near entry and candidate quality is degraded."
+        : "Regime context is acceptable but price is not near the candidate entry zone.",
+      nextAction: summary.degradedWatchCandidates > 0
+        ? "wait for pullback and require quality improvement before clean subset review"
+        : "wait for price to reach candidate entry zone",
     };
   }
   if (summary.watchCandidates === 0) {
@@ -324,20 +422,27 @@ export function evaluateRegimeAwareExactCandidateWatchlist(
   const subset = obj(input.currentPriceEligibleExactSubset);
   const consistency = obj(input.currentPriceConsistencyAudit);
   const canonical = obj(consistency.canonicalCurrentPrice);
+  const pipelineCurrentPriceContext = obj(obj(input.mtfEntryCandidatePipeline).currentPriceContext);
+  const subsetCurrentPrice = obj(subset.currentPrice);
   const reevaluation = obj(consistency.currentPriceReevaluation);
   const regime = obj(input.canonicalMarketRegime);
-  const currentPrice = num(obj(subset.currentPrice).value) ?? num(canonical.value);
-  const freshnessStatus = str(obj(subset.currentPrice).freshnessStatus) ?? str(canonical.freshnessStatus) ?? "UNKNOWN";
+  const currentPrice = num(pipelineCurrentPriceContext.currentPrice) ?? num(pipelineCurrentPriceContext.value) ?? num(canonical.value) ?? num(subsetCurrentPrice.value);
+  const freshnessStatus = firstFreshness(pipelineCurrentPriceContext.freshnessStatus, canonical.freshnessStatus, subsetCurrentPrice.freshnessStatus);
+  const latestCandleAt = str(pipelineCurrentPriceContext.latestCandleAt) ?? str(canonical.latestCandleAt) ?? str(subsetCurrentPrice.latestCandleAt);
+  const ageSeconds = num(pipelineCurrentPriceContext.ageSeconds) ?? num(canonical.ageSeconds) ?? num(subsetCurrentPrice.ageSeconds);
   const regimeName = str(regime.regime);
   const direction = str(regime.direction);
   const confidence = num(regime.confidence);
   const trendZoneStatus = str(reevaluation.trendZoneStatus);
   const noZoneReason = isNoActiveZoneStatus(trendZoneStatus) ? str(reevaluation.explanation) : null;
   const regimeConfirmed = isRegimeConfirmed(regimeName, direction);
-  const candidates = arr(subset.topCandidates).slice(0, 6).map((candidate) => mapCandidate(candidate, regimeConfirmed));
+  const rawCandidates = arr(subset.topCandidates).slice(0, 10).map((candidate) => mapCandidate(candidate, regimeConfirmed));
+  const deduped = dedupeWatchCandidates(rawCandidates);
+  const candidates = deduped.candidates;
   const watchlistSummary = summaryFromCandidates(subset, candidates);
   const cleanGate = obj(subset.cleanSubsetGate);
   const status = statusFor(regimeConfirmed, trendZoneStatus, candidates, watchlistSummary);
+  const verdictResult = verdict(status, watchlistSummary);
   return {
     schemaVersion: 1,
     source: SOURCE,
@@ -356,10 +461,24 @@ export function evaluateRegimeAwareExactCandidateWatchlist(
       confidence,
       trendZoneStatus,
       noZoneReason,
+      latestCandleAt,
+      ageSeconds,
     },
     watchlistSummary,
+    watchlistDedupSummary: deduped.summary,
+    compactSummary: {
+      currentPrice,
+      freshnessStatus,
+      regime: regimeName,
+      direction,
+      watchlistStatus: status,
+      cleanReviewCandidates: watchlistSummary.cleanReviewCandidates,
+      nextAction: verdictResult.nextAction,
+      topCandidateDisplayLimit: 3,
+      detailsCollapsedByDefault: true,
+    },
     topWatchCandidates: candidates.slice(0, 3),
     nextTriggerChecklist: checklist(regimeConfirmed, candidates, strArray(cleanGate.failed)),
-    verdict: verdict(status, watchlistSummary),
+    verdict: verdictResult,
   };
 }

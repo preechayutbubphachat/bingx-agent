@@ -328,9 +328,27 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             waitingPullbackCandidates: 0,
             regimeBlockedCandidates: 1,
             qualityRejectedCandidates: 0,
+            degradedWatchCandidates: 0,
             missedCandidates: 44,
             invalidatedCandidates: 4,
             cleanReviewCandidates: 0,
+          },
+          watchlistDedupSummary: {
+            rawWatchCandidates: 1,
+            uniqueWatchCandidates: 1,
+            duplicateWatchCandidates: 0,
+            clusteringTolerance: "entry/target rounded to 0.1 USDT; stop grouped within 1 USDT",
+          },
+          compactSummary: {
+            currentPrice: 101.5,
+            freshnessStatus: "FRESH",
+            regime: "NO_TRADE",
+            direction: "UNKNOWN",
+            watchlistStatus: "REGIME_NOT_CONFIRMED",
+            cleanReviewCandidates: 0,
+            nextAction: "wait for regime and price",
+            topCandidateDisplayLimit: 3,
+            detailsCollapsedByDefault: true,
           },
           topWatchCandidates: [{
             id: "short-watch-63654",
@@ -344,6 +362,9 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             netRR: 1.1,
             distanceToEntryPct: 1.49,
             priceMoveRequiredDirection: "UP_TO_ENTRY",
+            occurrenceCount: 2,
+            representativeStopLoss: 64200,
+            stopLossRange: [64199.8, 64200.3],
             blockers: ["regime not confirmed", "price not near entry", "TARGET_TOO_CLOSE"],
             watchCondition: "รอราคาเข้าใกล้ 63654.92 และต้องเห็น regime/trend confirmation ใหม่ก่อน review",
             doNotDo: ["do not treat as entry signal", "do not activate paper/live", "do not place order"],
@@ -417,6 +438,12 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.status, "REGIME_NOT_CONFIRMED");
   assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.currentMarket.regime, "NO_TRADE");
   assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.watchlistSummary.cleanReviewCandidates, 0);
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.watchlistSummary.degradedWatchCandidates, 0);
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.watchlistDedupSummary.rawWatchCandidates, 1);
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.compactSummary.topCandidateDisplayLimit, 3);
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.compactSummary.detailsCollapsedByDefault, true);
   assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.topWatchCandidates[0]?.actionability, "WAIT_FOR_REGIME_CONFIRMATION");
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.topWatchCandidates[0]?.occurrenceCount, 2);
+  assert.deepEqual(vm.paper.regimeAwareExactCandidateWatchlist.topWatchCandidates[0]?.stopLossRange, [64199.8, 64200.3]);
   assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.activationAllowed, false);
 });

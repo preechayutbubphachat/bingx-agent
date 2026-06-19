@@ -118,6 +118,38 @@ test("stale current price requires re-evaluation and produces no clean subset", 
   assert.equal(result.activationAllowed, false);
 });
 
+test("uses pipeline currentPriceContext freshness when runtime context omits freshness fields", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    currentPriceContext: {
+      currentPrice: 100,
+      priceSource: "market_snapshot.15m.close",
+      latestCandleAt: "2026-06-18T05:00:00.000Z",
+    },
+    mtfEntryCandidatePipeline: {
+      sampleAccounting: {
+        lifetimeExactSamples: 325,
+        windowExactSamples: 65,
+      },
+      currentPriceContext: {
+        ...freshContext,
+        ageSeconds: 75,
+      },
+    },
+    exactCandidateRecords: [{
+      id: "freshness-passthrough",
+      direction: "LONG",
+      entry: 100,
+      stopLoss: 98,
+      target1: 103,
+      netRR: 1.6,
+    }],
+  }));
+
+  assert.equal(result.currentPrice.freshnessStatus, "FRESH");
+  assert.equal(result.currentPrice.ageSeconds, 75);
+  assert.equal(result.status !== "STALE_REEVALUATION_REQUIRED", true);
+});
+
 test("missing structured geometry reports required inputs instead of fake eligible count", () => {
   const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
     exactZoneComparisonSummary: {

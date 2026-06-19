@@ -436,11 +436,20 @@ function mapCurrentPriceConsistencyAudit(raw: AnyObj): PaperVM["currentPriceCons
 function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwareExactCandidateWatchlist"] {
   const market = obj(raw.currentMarket);
   const summary = obj(raw.watchlistSummary);
+  const dedup = obj(raw.watchlistDedupSummary);
+  const compact = obj(raw.compactSummary);
   const checklist = obj(raw.nextTriggerChecklist);
   const verdict = obj(raw.verdict);
   const topWatchCandidates = Array.isArray(raw.topWatchCandidates)
     ? raw.topWatchCandidates.map((item) => {
         const candidate = obj(item);
+        const stopLossRange: [number, number] | null =
+          Array.isArray(candidate.stopLossRange) &&
+          candidate.stopLossRange.length === 2 &&
+          numOrNull(candidate.stopLossRange[0]) != null &&
+          numOrNull(candidate.stopLossRange[1]) != null
+            ? [numOrNull(candidate.stopLossRange[0])!, numOrNull(candidate.stopLossRange[1])!]
+            : null;
         return {
           id: str(candidate.id, "unknown"),
           direction: str(candidate.direction, "UNKNOWN"),
@@ -453,6 +462,9 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwar
           netRR: numOrNull(candidate.netRR),
           distanceToEntryPct: numOrNull(candidate.distanceToEntryPct),
           priceMoveRequiredDirection: str(candidate.priceMoveRequiredDirection, "UNKNOWN"),
+          occurrenceCount: num(candidate.occurrenceCount, 1),
+          representativeStopLoss: numOrNull(candidate.representativeStopLoss),
+          stopLossRange,
           blockers: strArray(candidate.blockers),
           watchCondition: str(candidate.watchCondition, ""),
           doNotDo: strArray(candidate.doNotDo),
@@ -477,6 +489,8 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwar
       confidence: numOrNull(market.confidence),
       trendZoneStatus: strOrNull(market.trendZoneStatus),
       noZoneReason: strOrNull(market.noZoneReason),
+      latestCandleAt: strOrNull(market.latestCandleAt),
+      ageSeconds: numOrNull(market.ageSeconds),
     },
     watchlistSummary: {
       totalCandidates: num(summary.totalCandidates, 0),
@@ -485,9 +499,27 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwar
       waitingPullbackCandidates: num(summary.waitingPullbackCandidates, 0),
       regimeBlockedCandidates: num(summary.regimeBlockedCandidates, 0),
       qualityRejectedCandidates: num(summary.qualityRejectedCandidates, 0),
+      degradedWatchCandidates: num(summary.degradedWatchCandidates, 0),
       missedCandidates: num(summary.missedCandidates, 0),
       invalidatedCandidates: num(summary.invalidatedCandidates, 0),
       cleanReviewCandidates: num(summary.cleanReviewCandidates, 0),
+    },
+    watchlistDedupSummary: {
+      rawWatchCandidates: num(dedup.rawWatchCandidates, 0),
+      uniqueWatchCandidates: num(dedup.uniqueWatchCandidates, 0),
+      duplicateWatchCandidates: num(dedup.duplicateWatchCandidates, 0),
+      clusteringTolerance: str(dedup.clusteringTolerance, ""),
+    },
+    compactSummary: {
+      currentPrice: numOrNull(compact.currentPrice),
+      freshnessStatus: str(compact.freshnessStatus, str(market.freshnessStatus, "UNKNOWN")),
+      regime: strOrNull(compact.regime) ?? strOrNull(market.regime),
+      direction: strOrNull(compact.direction) ?? strOrNull(market.direction),
+      watchlistStatus: str(compact.watchlistStatus, str(raw.status, "NO_DATA")),
+      cleanReviewCandidates: num(compact.cleanReviewCandidates, num(summary.cleanReviewCandidates, 0)),
+      nextAction: str(compact.nextAction, str(verdict.nextAction, "")),
+      topCandidateDisplayLimit: num(compact.topCandidateDisplayLimit, 3),
+      detailsCollapsedByDefault: compact.detailsCollapsedByDefault === false ? false : true,
     },
     topWatchCandidates,
     nextTriggerChecklist: {

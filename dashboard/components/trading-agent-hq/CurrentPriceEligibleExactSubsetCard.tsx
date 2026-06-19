@@ -81,6 +81,9 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
   const firstCandidate = s.topCandidates[0] ?? null;
   const geometryMissing = s.status === "GEOMETRY_INPUTS_MISSING";
   const hasWaitingCandidate = s.topCandidates.some((candidate) => candidate.currentPriceStatus === "WAITING_PULLBACK_TO_ENTRY");
+  const watchCompact = watchlist.compactSummary;
+  const watchCandidateLimit = Math.min(Math.max(watchCompact.topCandidateDisplayLimit, 1), 3);
+  const watchTopCandidates = watchlist.topWatchCandidates.slice(0, watchCandidateLimit);
 
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-[#d7e4df] bg-[#f7fbf8] p-3 shadow-sm">
@@ -161,6 +164,14 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
             {watchlist.status}
           </span>
         </div>
+        <div className="rounded-md border border-violet-200 bg-white/85 p-1.5">
+          <div className="font-black">สรุปก่อน</div>
+          <div>Current price {fmt(watchCompact.currentPrice ?? watchlist.currentMarket.currentPrice)} · freshness {watchCompact.freshnessStatus}</div>
+          <div>Regime {watchCompact.regime ?? NA} / {watchCompact.direction ?? NA} · status {watchCompact.watchlistStatus}</div>
+          <div>Clean candidates {watchCompact.cleanReviewCandidates} · ยังไม่ใช่สัญญาณเข้าไม้</div>
+          <div className="break-words">Next action: {watchCompact.nextAction || watchlist.verdict.nextAction || NA}</div>
+          <div>ไม่ส่ง Order / ไม่ Activation</div>
+        </div>
         <div>ใช้เฝ้าดูเท่านั้น · ยังไม่ใช่สัญญาณเข้าไม้</div>
         <div>Regime: {watchlist.currentMarket.regime ?? NA} / {watchlist.currentMarket.direction ?? NA} · confidence {count(watchlist.currentMarket.confidence)}</div>
         <div>Trend zone: {watchlist.currentMarket.trendZoneStatus ?? NA}</div>
@@ -169,27 +180,38 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
           <Row label="Watch / pullback" value={`${watchlist.watchlistSummary.watchCandidates} / ${watchlist.watchlistSummary.waitingPullbackCandidates}`} />
           <Row label="Regime blocked" value={String(watchlist.watchlistSummary.regimeBlockedCandidates)} rowTone={watchlist.watchlistSummary.regimeBlockedCandidates > 0 ? "amber" : "green"} />
           <Row label="Quality rejected" value={String(watchlist.watchlistSummary.qualityRejectedCandidates)} rowTone={watchlist.watchlistSummary.qualityRejectedCandidates > 0 ? "amber" : "green"} />
+          <Row label="Degraded watch" value={String(watchlist.watchlistSummary.degradedWatchCandidates)} rowTone={watchlist.watchlistSummary.degradedWatchCandidates > 0 ? "amber" : "green"} />
           <Row label="Clean review" value={String(watchlist.watchlistSummary.cleanReviewCandidates)} rowTone={watchlist.watchlistSummary.cleanReviewCandidates > 0 ? "green" : "amber"} />
-          <Row label="Missed" value={String(watchlist.watchlistSummary.missedCandidates)} rowTone={watchlist.watchlistSummary.missedCandidates > 0 ? "amber" : "neutral"} />
-          <Row label="Invalidated" value={String(watchlist.watchlistSummary.invalidatedCandidates)} rowTone={watchlist.watchlistSummary.invalidatedCandidates > 0 ? "red" : "neutral"} />
+          <Row label="Raw / unique / dup" value={`${watchlist.watchlistDedupSummary.rawWatchCandidates} / ${watchlist.watchlistDedupSummary.uniqueWatchCandidates} / ${watchlist.watchlistDedupSummary.duplicateWatchCandidates}`} rowTone={watchlist.watchlistDedupSummary.duplicateWatchCandidates > 0 ? "amber" : "green"} />
         </div>
-        {watchlist.topWatchCandidates.slice(0, 3).map((candidate) => (
+        {watchlist.watchlistSummary.degradedWatchCandidates > 0 ? (
+          <div className="mt-1 rounded-md border border-amber-200 bg-amber-50 p-1.5 text-amber-950">
+            รอ pullback แต่ยังติด quality issue
+          </div>
+        ) : null}
+        <details className="mt-1 rounded-md border border-violet-200 bg-white/80 p-1.5">
+          <summary className="cursor-pointer font-black">รายละเอียด candidate · top {watchTopCandidates.length}</summary>
+          <div className="mt-1 max-h-80 space-y-1.5 overflow-y-auto pr-1">
+        {watchTopCandidates.map((candidate) => (
           <div key={candidate.id} className="mt-1 rounded-md border border-violet-200 bg-white/80 p-1.5">
             <div className="font-black">{candidate.id} · {candidate.direction} · {candidate.actionability}</div>
-            <div>entry {fmt(candidate.entry)} · stop {fmt(candidate.stopLoss)} · target {fmt(candidate.target1)} · RR {fmt(candidate.netRR)}</div>
+            <div>entry {fmt(candidate.entry)} · stop {fmt(candidate.representativeStopLoss ?? candidate.stopLoss)} · target {fmt(candidate.target1)} · RR {fmt(candidate.netRR)}</div>
+            {candidate.stopLossRange ? <div>stop range {fmt(candidate.stopLossRange[0])}-{fmt(candidate.stopLossRange[1])} · occurrence {candidate.occurrenceCount}</div> : <div>occurrence {candidate.occurrenceCount}</div>}
             <div>distance {fmt(candidate.distanceToEntryPct)}% · move {candidate.priceMoveRequiredDirection}</div>
             <div>status {candidate.currentPriceStatus} · quality {candidate.qualityStatus}</div>
-            <div>blockers: {candidate.blockers.length ? candidate.blockers.join(", ") : NA}</div>
-            <div>{candidate.watchCondition}</div>
+            <div className="break-words">blockers: {candidate.blockers.length ? candidate.blockers.join(", ") : NA}</div>
+            <div className="break-words">{candidate.watchCondition}</div>
           </div>
         ))}
         <div className="mt-1 rounded-md border border-violet-200 bg-white/80 p-1.5">
           <div className="font-black">Next trigger checklist</div>
-          <div>regime: {watchlist.nextTriggerChecklist.regimeRequired.join(", ") || NA}</div>
-          <div>price: {watchlist.nextTriggerChecklist.priceRequired.join(", ") || NA}</div>
-          <div>confirm: {watchlist.nextTriggerChecklist.confirmationRequired.join(", ") || NA}</div>
-          <div>quality: {watchlist.nextTriggerChecklist.qualityRequired.join(", ") || NA}</div>
+          <div className="break-words">regime: {watchlist.nextTriggerChecklist.regimeRequired.join(", ") || NA}</div>
+          <div className="break-words">price: {watchlist.nextTriggerChecklist.priceRequired.join(", ") || NA}</div>
+          <div className="break-words">confirm: {watchlist.nextTriggerChecklist.confirmationRequired.join(", ") || NA}</div>
+          <div className="break-words">quality: {watchlist.nextTriggerChecklist.qualityRequired.join(", ") || NA}</div>
         </div>
+          </div>
+        </details>
         <div>ถ้า regime เป็น NO_TRADE จะไม่ถือว่า candidate actionable · ไม่ส่ง Order / ไม่ Activation</div>
       </div>
 

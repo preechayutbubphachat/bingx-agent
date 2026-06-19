@@ -195,6 +195,14 @@ const MIN_NET_RR = 1.2;
 const NEAR_ENTRY_PCT = 0.25;
 const TARGET_TOO_CLOSE_PCT = 0.25;
 const CANDIDATE_STALE_SECONDS = 45 * 60;
+const CURRENT_PRICE_STALE_SECONDS: Record<string, number> = {
+  "5m": 15 * 60,
+  "5M": 15 * 60,
+  "15m": 45 * 60,
+  "15M": 45 * 60,
+  "1h": 2 * 60 * 60,
+  "1H": 2 * 60 * 60,
+};
 
 function obj(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -277,6 +285,32 @@ function normalizeDirection(value: unknown): "LONG" | "SHORT" | "UNKNOWN" {
 
 function freshnessStatus(value: unknown): CurrentPriceEligibleExactSubset["currentPrice"]["freshnessStatus"] {
   return value === "FRESH" || value === "STALE" || value === "MISSING" || value === "UNKNOWN" ? value : "UNKNOWN";
+}
+
+function parseTimeMs(value: unknown): number | null {
+  const s = text(value);
+  if (!s) return null;
+  const ms = Date.parse(s);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function deriveFreshnessFromContext(
+  context: Record<string, unknown>,
+): Pick<CurrentPriceEligibleExactSubset["currentPrice"], "freshnessStatus" | "ageSeconds"> {
+  const currentPrice = firstNumber(context.currentPrice, context.value);
+  const latestCandleAt = firstText(context.latestCandleAt, context.calculatedAt);
+  if (currentPrice == null || !latestCandleAt) return { freshnessStatus: "MISSING", ageSeconds: null };
+  const explicitAge = firstNumber(context.ageSeconds);
+  const latestMs = parseTimeMs(latestCandleAt);
+  const evaluatedMs = parseTimeMs(context.evaluatedAt) ?? parseTimeMs(context.snapshotGeneratedAt) ?? parseTimeMs(context.generatedAt);
+  const ageSeconds = explicitAge ?? (latestMs != null && evaluatedMs != null ? Math.max(0, Math.round((evaluatedMs - latestMs) / 1000)) : null);
+  if (ageSeconds == null) return { freshnessStatus: "UNKNOWN", ageSeconds: null };
+  const timeframe = firstText(context.timeframe) ?? "15m";
+  const threshold = CURRENT_PRICE_STALE_SECONDS[timeframe] ?? 45 * 60;
+  return {
+    freshnessStatus: ageSeconds > threshold ? "STALE" : "FRESH",
+    ageSeconds,
+  };
 }
 
 function candidateFromRaw(rawValue: unknown, fallbackId: string): CandidateGeometry | null {
@@ -627,12 +661,22 @@ function currentPriceContext(input: CurrentPriceEligibleExactSubsetInput): Curre
   const pipelineContext = obj(pipeline.currentPriceContext);
   const raw = obj(input.currentPriceContext);
   const selected = Object.keys(raw).length ? raw : pipelineContext;
+  const selectedFreshness = freshnessStatus(selected.freshnessStatus);
+  const pipelineFreshness = freshnessStatus(pipelineContext.freshnessStatus);
+  const derivedFreshness = selectedFreshness === "UNKNOWN" || selectedFreshness === "MISSING"
+    ? deriveFreshnessFromContext(selected)
+    : null;
+  const freshness = selectedFreshness === "UNKNOWN" && pipelineFreshness !== "UNKNOWN" && pipelineFreshness !== "MISSING"
+    ? pipelineFreshness
+    : selectedFreshness === "UNKNOWN" || selectedFreshness === "MISSING"
+      ? derivedFreshness?.freshnessStatus ?? selectedFreshness
+      : selectedFreshness;
   return {
-    value: firstNumber(selected.currentPrice, selected.value),
-    source: firstText(selected.priceSource, selected.source),
-    latestCandleAt: firstText(selected.latestCandleAt),
-    freshnessStatus: freshnessStatus(selected.freshnessStatus),
-    ageSeconds: firstNumber(selected.ageSeconds),
+    value: firstNumber(selected.currentPrice, selected.value, pipelineContext.currentPrice, pipelineContext.value),
+    source: firstText(selected.priceSource, selected.source, pipelineContext.priceSource, pipelineContext.source),
+    latestCandleAt: firstText(selected.latestCandleAt, pipelineContext.latestCandleAt),
+    freshnessStatus: freshness,
+    ageSeconds: firstNumber(selected.ageSeconds, pipelineContext.ageSeconds, derivedFreshness?.ageSeconds),
   };
 }
 

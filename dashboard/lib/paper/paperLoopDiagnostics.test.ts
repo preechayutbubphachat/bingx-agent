@@ -920,8 +920,13 @@ test("canonical current price propagates into trend diagnostics while old journa
   assert.equal(d.currentPriceConsistencyAudit.currentPriceReevaluation.priceMoveRequiredDirection, "NO_ZONE");
   assert.equal(d.currentPriceConsistencyAudit.pricePropagationAudit.staleConsumerCount, 1);
   assert.equal(d.currentPriceConsistencyAudit.safety.activationAllowed, false);
+  assert.equal(d.currentPriceEligibleExactSubset.currentPrice.freshnessStatus, "FRESH");
+  assert.equal(d.currentPriceEligibleExactSubset.currentPrice.ageSeconds, 120);
   assert.equal(d.regimeAwareExactCandidateWatchlist.status, "REGIME_NOT_CONFIRMED");
   assert.equal(d.regimeAwareExactCandidateWatchlist.currentMarket.currentPrice, 62_928.7);
+  assert.equal(d.regimeAwareExactCandidateWatchlist.currentMarket.freshnessStatus, "FRESH");
+  assert.equal(d.regimeAwareExactCandidateWatchlist.currentMarket.latestCandleAt, "2026-06-19T01:45:00.000Z");
+  assert.equal(d.regimeAwareExactCandidateWatchlist.watchlistSummary.qualityRejectedCandidates, 1);
   assert.equal(d.regimeAwareExactCandidateWatchlist.watchlistSummary.cleanReviewCandidates, 0);
   assert.equal(d.regimeAwareExactCandidateWatchlist.activationAllowed, false);
 });

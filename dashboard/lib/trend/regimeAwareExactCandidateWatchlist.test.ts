@@ -124,7 +124,77 @@ test("confirmed trend regime with price far from entry waits for pullback", () =
 
   assert.equal(result.status, "WAITING_PULLBACK");
   assert.equal(result.verdict.status, "WAIT_FOR_PULLBACK_ONLY");
-  assert.equal(result.topWatchCandidates[0]?.actionability, "WAIT_FOR_PULLBACK");
+  assert.equal(result.topWatchCandidates[0]?.actionability, "WAIT_FOR_PULLBACK_DEGRADED");
+  assert.equal(result.watchlistSummary.degradedWatchCandidates > 0, true);
+  assert.equal(result.watchlistSummary.qualityRejectedCandidates > 0, true);
+  assert.equal(result.watchlistSummary.cleanReviewCandidates, 0);
+});
+
+test("passes canonical freshness from pipeline context when subset and audit are unknown", () => {
+  const result = evaluateRegimeAwareExactCandidateWatchlist(baseInput({
+    mtfEntryCandidatePipeline: {
+      currentPriceContext: {
+        currentPrice: 62_752,
+        priceSource: "market_snapshot.15m.close",
+        latestCandleAt: "2026-06-19T03:45:00.000Z",
+        freshnessStatus: "FRESH",
+        ageSeconds: 180,
+      },
+    },
+    currentPriceConsistencyAudit: {
+      canonicalCurrentPrice: {
+        value: 62_752,
+        freshnessStatus: "UNKNOWN",
+      },
+      currentPriceReevaluation: {
+        trendZoneStatus: "PRICE_BELOW_ENTRY_ZONE",
+      },
+    },
+    currentPriceEligibleExactSubset: subset({
+      currentPrice: {
+        value: 62_752,
+        source: "market_snapshot.15m.close",
+        latestCandleAt: "2026-06-19T03:45:00.000Z",
+        freshnessStatus: "UNKNOWN",
+        ageSeconds: null,
+      },
+    }),
+  }));
+
+  assert.equal(result.currentMarket.currentPrice, 62_752);
+  assert.equal(result.currentMarket.freshnessStatus, "FRESH");
+  assert.equal(result.currentMarket.latestCandleAt, "2026-06-19T03:45:00.000Z");
+  assert.equal(result.currentMarket.ageSeconds, 180);
+});
+
+test("clusters duplicate watch candidates and exposes stop loss range", () => {
+  const candidate = subset().topCandidates[0];
+  const result = evaluateRegimeAwareExactCandidateWatchlist(baseInput({
+    canonicalMarketRegime: {
+      regime: "DOWNTREND",
+      direction: "BEARISH",
+      confidence: 78,
+    },
+    currentPriceConsistencyAudit: {
+      canonicalCurrentPrice: { value: 62_752, freshnessStatus: "FRESH" },
+      currentPriceReevaluation: { trendZoneStatus: "PRICE_BELOW_ENTRY_ZONE", explanation: "" },
+    },
+    currentPriceEligibleExactSubset: subset({
+      topCandidates: [
+        { ...candidate, id: "dup-a", stopLoss: 64_200 },
+        { ...candidate, id: "dup-b", stopLoss: 64_200.3 },
+        { ...candidate, id: "dup-c", stopLoss: 64_199.8 },
+      ],
+    }),
+  }));
+
+  assert.equal(result.watchlistDedupSummary.rawWatchCandidates, 3);
+  assert.equal(result.watchlistDedupSummary.uniqueWatchCandidates, 1);
+  assert.equal(result.watchlistDedupSummary.duplicateWatchCandidates, 2);
+  assert.equal(result.topWatchCandidates.length, 1);
+  assert.equal(result.topWatchCandidates[0]?.occurrenceCount, 3);
+  assert.deepEqual(result.topWatchCandidates[0]?.stopLossRange, [64_199.8, 64_200.3]);
+  assert.equal(result.topWatchCandidates[0]?.representativeStopLoss, 64_200);
 });
 
 test("near entry candidate with target-too-close quality is quality rejected", () => {
@@ -193,6 +263,8 @@ test("clean near-entry candidate is review-only and never activation-ready", () 
   assert.equal(result.status, "CLEAN_REVIEW_CANDIDATE_AVAILABLE_NOT_ACTIVATION");
   assert.equal(result.verdict.status, "CLEAN_REVIEW_READY_NOT_ACTIVATION");
   assert.equal(result.topWatchCandidates[0]?.actionability, "CLEAN_REVIEW_ONLY");
+  assert.equal(result.compactSummary.cleanReviewCandidates, 1);
+  assert.equal(result.compactSummary.detailsCollapsedByDefault, true);
   assert.equal(result.activationAllowed, false);
   assert.equal(result.paperActivationAllowed, false);
   assert.equal(result.liveActivationAllowed, false);

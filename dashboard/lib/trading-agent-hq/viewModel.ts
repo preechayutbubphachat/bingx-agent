@@ -486,6 +486,8 @@ export interface RegimeAwareExactCandidateWatchlistVM {
     confidence: number | null;
     trendZoneStatus: string | null;
     noZoneReason: string | null;
+    latestCandleAt: string | null;
+    ageSeconds: number | null;
   };
   watchlistSummary: {
     totalCandidates: number;
@@ -494,9 +496,27 @@ export interface RegimeAwareExactCandidateWatchlistVM {
     waitingPullbackCandidates: number;
     regimeBlockedCandidates: number;
     qualityRejectedCandidates: number;
+    degradedWatchCandidates: number;
     missedCandidates: number;
     invalidatedCandidates: number;
     cleanReviewCandidates: number;
+  };
+  watchlistDedupSummary: {
+    rawWatchCandidates: number;
+    uniqueWatchCandidates: number;
+    duplicateWatchCandidates: number;
+    clusteringTolerance: string;
+  };
+  compactSummary: {
+    currentPrice: number | null;
+    freshnessStatus: string;
+    regime: string | null;
+    direction: string | null;
+    watchlistStatus: string;
+    cleanReviewCandidates: number;
+    nextAction: string;
+    topCandidateDisplayLimit: number;
+    detailsCollapsedByDefault: boolean;
   };
   topWatchCandidates: Array<{
     id: string;
@@ -510,6 +530,9 @@ export interface RegimeAwareExactCandidateWatchlistVM {
     netRR: number | null;
     distanceToEntryPct: number | null;
     priceMoveRequiredDirection: string;
+    occurrenceCount: number;
+    representativeStopLoss: number | null;
+    stopLossRange: [number, number] | null;
     blockers: string[];
     watchCondition: string;
     doNotDo: string[];

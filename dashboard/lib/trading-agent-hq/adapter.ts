@@ -659,6 +659,33 @@ function mapEntryCandidateResolution(raw: AnyObj): PaperVM["entryCandidateResolu
   };
 }
 
+function mapResolverDrivenPullbackGate(raw: AnyObj): PaperVM["resolverDrivenPullbackGate"] {
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "RESOLVER_DRIVEN_PULLBACK_GATE_V1"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    status: str(raw.status, "NO_ALIGNED_RESOLUTION"),
+    alignedDirection: str(raw.alignedDirection, "UNKNOWN"),
+    currentPrice: numOrNull(raw.currentPrice),
+    zone: numberPair(raw.zone),
+    zoneTolerance: numOrNull(raw.zoneTolerance),
+    priceDistanceToZonePct: numOrNull(raw.priceDistanceToZonePct),
+    bestRR: numOrNull(raw.bestRR),
+    rrThreshold: numOrNull(raw.rrThreshold),
+    rrStatus: str(raw.rrStatus, "UNKNOWN"),
+    confirmationStatus: str(raw.confirmationStatus, "UNKNOWN"),
+    blockers: strArray(raw.blockers),
+    nextAction: str(raw.nextAction, "wait for a valid D8.0 aligned entry resolution"),
+    doNotDo: strArray(raw.doNotDo),
+    detailsCollapsedByDefault: true,
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+  };
+}
+
 function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pipeline = obj(loop.mtfEntryCandidatePipeline);
   const pipelinePrice = obj(pipeline.currentPriceContext);
@@ -679,6 +706,7 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const watchVerdict = obj(watchlist.verdict);
   const firstWatchCandidate = obj(arr(watchlist.topWatchCandidates)[0]);
   const trendStrategy = obj(loop.trendStrategy);
+  const pullbackGate = obj(loop.resolverDrivenPullbackGate);
   const trendEntryZone = numberPair(trendStrategy.entryZone);
   const trendCurrentPrice = firstNumber(trendStrategy.currentPrice, pipelinePrice.currentPrice, pipelinePrice.value);
   const trendPriceMoveRequiredDirection = trendEntryZone == null || trendCurrentPrice == null
@@ -756,6 +784,15 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
     candidateInterpretation,
     mainBlocker: blocker || "no current blocker available",
     nextAction: contextualNextAction ?? str(compact.nextAction ?? watchVerdict.nextAction ?? subset.nextAction ?? pipelineVerdict.nextAction, "continue diagnostics review without activation"),
+    pullbackGate: {
+      pullbackGateStatus: str(pullbackGate.status, "NO_ALIGNED_RESOLUTION"),
+      alignedDirection: str(pullbackGate.alignedDirection, "UNKNOWN"),
+      priceDistanceToZonePct: numOrNull(pullbackGate.priceDistanceToZonePct),
+      bestRR: numOrNull(pullbackGate.bestRR),
+      rrThreshold: numOrNull(pullbackGate.rrThreshold),
+      confirmationStatus: str(pullbackGate.confirmationStatus, "UNKNOWN"),
+      nextAction: str(pullbackGate.nextAction, "wait for a valid D8.0 aligned entry resolution"),
+    },
     safety: {
       reviewOnly: auditSafety.reviewOnly === false ? false : true,
       activationAllowed: bool(auditSafety.activationAllowed ?? subset.activationAllowed ?? watchlist.activationAllowed ?? pipeline.activationAllowed),
@@ -1096,6 +1133,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       obj(loop.currentPriceEligibleExactSubset),
     ),
     entryCandidateResolution: mapEntryCandidateResolution(obj(loop.entryCandidateResolution)),
+    resolverDrivenPullbackGate: mapResolverDrivenPullbackGate(obj(loop.resolverDrivenPullbackGate)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

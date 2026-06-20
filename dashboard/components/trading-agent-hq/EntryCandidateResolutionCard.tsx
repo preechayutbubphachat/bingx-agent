@@ -1,6 +1,6 @@
 "use client";
 
-// D8.0 - compact read-only resolver summary. No trading actions.
+// D8.0/D8.1 - compact read-only resolver and pullback-gate summary.
 
 import type { PaperVM } from "@/lib/trading-agent-hq/viewModel";
 
@@ -8,6 +8,10 @@ const NA = "ไม่มีข้อมูล";
 
 function fmt(value: number | null | undefined, digits = 2): string {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : NA;
+}
+
+function pct(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(3)}%` : NA;
 }
 
 function tone(status: string): string {
@@ -31,6 +35,8 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM }) {
   const resolution = paper.entryCandidateResolution;
+  const gate = paper.operatorSummary.pullbackGate;
+  const gateRaw = paper.resolverDrivenPullbackGate;
 
   return (
     <section className="rounded-lg border border-cyan-300/20 bg-slate-950/85 p-3 shadow-[0_12px_28px_rgba(2,8,23,0.44)]">
@@ -56,6 +62,23 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
         <div className="break-words">{resolution.nextAction || NA}</div>
       </div>
 
+      <div className="mt-2 rounded-md border border-amber-300/20 bg-amber-950/15 p-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-[10px] font-black uppercase text-amber-200">Pullback &amp; Confirmation Gate</div>
+          <span className={`max-w-[150px] break-words rounded-md border px-1.5 py-0.5 text-right text-[9px] font-black ${tone(gate.pullbackGateStatus)}`}>
+            {gate.pullbackGateStatus}
+          </span>
+        </div>
+        <div className="mt-1.5 border-t border-white/5 pt-1">
+          <Row label="Aligned / Distance" value={`${gate.alignedDirection} / ${pct(gate.priceDistanceToZonePct)}`} />
+          <Row label="Best RR / Threshold" value={`${fmt(gate.bestRR)} / ${fmt(gate.rrThreshold)}`} />
+          <Row label="Confirmation" value={gate.confirmationStatus} />
+        </div>
+        <div className="mt-1.5 break-words text-[10px] font-bold leading-relaxed text-amber-100">
+          Next action: {gate.nextAction || NA}
+        </div>
+      </div>
+
       <div className="mt-2 flex flex-wrap gap-1 text-[9px] font-black text-emerald-100">
         <span className="rounded-md border border-emerald-300/25 bg-emerald-950/35 px-1.5 py-0.5">review-only</span>
         <span className="rounded-md border border-emerald-300/25 bg-emerald-950/35 px-1.5 py-0.5">no activation</span>
@@ -63,8 +86,13 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
       </div>
 
       <details className="mt-2 rounded-md border border-white/10 bg-slate-950/45 p-2 text-[10px] text-slate-300">
-        <summary className="cursor-pointer font-black text-slate-200">Raw RR scenarios and rejected candidates</summary>
+        <summary className="cursor-pointer font-black text-slate-200">Raw RR, pullback gate and rejected candidates</summary>
         <div className="mt-2 space-y-1.5">
+          <div className="rounded-md border border-amber-300/15 bg-amber-950/15 p-1.5">
+            <div className="font-black text-amber-100">{gateRaw.status} / {gateRaw.confirmationStatus}</div>
+            <div className="break-words text-amber-200">Blockers: {gateRaw.blockers.join(", ") || NA}</div>
+            <div className="break-words text-slate-400">Do not: {gateRaw.doNotDo.join("; ") || NA}</div>
+          </div>
           {resolution.rrScenarios.map((scenario) => (
             <div key={scenario.name} className="rounded-md border border-white/5 bg-black/15 p-1.5">
               <div className="font-black text-cyan-100">{scenario.name}</div>

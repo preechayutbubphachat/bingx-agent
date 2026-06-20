@@ -471,6 +471,29 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
           reviewOnly: true,
           shadowOnly: true,
         },
+        resolverDrivenPullbackGate: {
+          schemaVersion: 1,
+          source: "RESOLVER_DRIVEN_PULLBACK_GATE_V1",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          status: "WAITING_PULLBACK",
+          alignedDirection: "LONG",
+          currentPrice: 105,
+          zone: [99, 101],
+          zoneTolerance: 0.0525,
+          priceDistanceToZonePct: 3.8095,
+          bestRR: 1.8,
+          rrThreshold: 1.2,
+          rrStatus: "PASS",
+          confirmationStatus: "NOT_EVALUATED_OUTSIDE_ZONE",
+          blockers: ["CURRENT_PRICE_OUTSIDE_ALIGNED_ZONE"],
+          nextAction: "wait for current price to enter the aligned LONG zone",
+          doNotDo: ["do not place or cancel orders"],
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -556,6 +579,19 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.entryCandidateResolution.activationAllowed, false);
   assert.equal(vm.paper.entryCandidateResolution.paperActivationAllowed, false);
   assert.equal(vm.paper.entryCandidateResolution.liveActivationAllowed, false);
+  assert.equal(vm.paper.resolverDrivenPullbackGate.status, "WAITING_PULLBACK");
+  assert.equal(vm.paper.resolverDrivenPullbackGate.alignedDirection, "LONG");
+  assert.equal(vm.paper.resolverDrivenPullbackGate.priceDistanceToZonePct, 3.8095);
+  assert.equal(vm.paper.resolverDrivenPullbackGate.bestRR, 1.8);
+  assert.equal(vm.paper.resolverDrivenPullbackGate.rrThreshold, 1.2);
+  assert.equal(vm.paper.resolverDrivenPullbackGate.confirmationStatus, "NOT_EVALUATED_OUTSIDE_ZONE");
+  assert.equal(vm.paper.resolverDrivenPullbackGate.activationAllowed, false);
+  assert.equal(vm.paper.resolverDrivenPullbackGate.paperActivationAllowed, false);
+  assert.equal(vm.paper.resolverDrivenPullbackGate.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.pullbackGate.pullbackGateStatus, "WAITING_PULLBACK");
+  assert.equal(vm.paper.operatorSummary.pullbackGate.alignedDirection, "LONG");
+  assert.equal(vm.paper.operatorSummary.pullbackGate.bestRR, 1.8);
+  assert.equal(vm.paper.operatorSummary.pullbackGate.confirmationStatus, "NOT_EVALUATED_OUTSIDE_ZONE");
   assert.equal(vm.paper.operatorSummary.currentPrice, 101.5);
   assert.equal(vm.paper.operatorSummary.freshnessStatus, "FRESH");
   assert.equal(vm.paper.operatorSummary.regime, "NO_TRADE");

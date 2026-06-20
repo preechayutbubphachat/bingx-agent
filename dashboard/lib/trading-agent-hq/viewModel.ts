@@ -93,6 +93,7 @@ export interface PaperVM {
   currentPriceConsistencyAudit: CurrentPriceConsistencyAuditVM;
   regimeAwareExactCandidateWatchlist: RegimeAwareExactCandidateWatchlistVM;
   entryCandidateResolution: EntryCandidateResolutionVM;
+  resolverDrivenPullbackGate: ResolverDrivenPullbackGateVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -135,6 +136,15 @@ export interface OperatorSummaryVM {
   candidateInterpretation: string;
   mainBlocker: string;
   nextAction: string;
+  pullbackGate: {
+    pullbackGateStatus: string;
+    alignedDirection: string;
+    priceDistanceToZonePct: number | null;
+    bestRR: number | null;
+    rrThreshold: number | null;
+    confirmationStatus: string;
+    nextAction: string;
+  };
   safety: {
     reviewOnly: boolean;
     activationAllowed: boolean;
@@ -187,6 +197,31 @@ export interface EntryCandidateResolutionVM {
     blockers: string[];
     doNotUseAsEntry: boolean;
   }>;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+}
+
+export interface ResolverDrivenPullbackGateVM {
+  schemaVersion: number;
+  source: string;
+  readiness: string;
+  status: string;
+  alignedDirection: string;
+  currentPrice: number | null;
+  zone: [number, number] | null;
+  zoneTolerance: number | null;
+  priceDistanceToZonePct: number | null;
+  bestRR: number | null;
+  rrThreshold: number | null;
+  rrStatus: string;
+  confirmationStatus: string;
+  blockers: string[];
+  nextAction: string;
+  doNotDo: string[];
+  detailsCollapsedByDefault: true;
   activationAllowed: boolean;
   paperActivationAllowed: boolean;
   liveActivationAllowed: boolean;

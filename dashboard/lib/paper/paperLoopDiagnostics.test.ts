@@ -335,6 +335,11 @@ test("old paper diagnostics payload remains valid with R1 Pack B defaults", () =
   assert.equal(d.entryCandidateResolution.activationAllowed, false);
   assert.equal(d.entryCandidateResolution.paperActivationAllowed, false);
   assert.equal(d.entryCandidateResolution.liveActivationAllowed, false);
+  assert.equal(d.resolverDrivenPullbackGate.source, "RESOLVER_DRIVEN_PULLBACK_GATE_V1");
+  assert.equal(d.resolverDrivenPullbackGate.status, "NO_ALIGNED_RESOLUTION");
+  assert.equal(d.resolverDrivenPullbackGate.activationAllowed, false);
+  assert.equal(d.resolverDrivenPullbackGate.paperActivationAllowed, false);
+  assert.equal(d.resolverDrivenPullbackGate.liveActivationAllowed, false);
 });
 
 test("D5.4 no-trade reason analysis surfaces diagnostics gap and runtime counters", () => {

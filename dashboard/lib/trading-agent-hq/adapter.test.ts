@@ -494,6 +494,33 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
           reviewOnly: true,
           shadowOnly: true,
         },
+        pullbackTriggerThresholds: {
+          schemaVersion: 1,
+          source: "PULLBACK_TRIGGER_THRESHOLDS_V1",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          status: "WAITING_FOR_TRIGGER_PRICE",
+          alignedDirection: "LONG",
+          currentPrice: 63845.6,
+          rawZoneLow: 63623.198,
+          rawZoneHigh: 63763.5,
+          expandedZoneLow: 63591.2752,
+          expandedZoneHigh: 63795.4228,
+          triggerPrice: 63795.4228,
+          rawZoneTriggerPrice: 63763.5,
+          distanceToTriggerAbs: 50.1772,
+          distanceToTriggerPct: 0.078591,
+          bestRR: 4.227,
+          rrThreshold: 1.2,
+          rrReady: true,
+          confirmationRequired: true,
+          promotionBlockedBy: ["PRICE_NOT_AT_TRIGGER", "CONFIRMATION_NOT_EVALUATED"],
+          nextAction: "wait for price to reach 63795.42 or lower, then evaluate confirmation",
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -592,6 +619,20 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.operatorSummary.pullbackGate.alignedDirection, "LONG");
   assert.equal(vm.paper.operatorSummary.pullbackGate.bestRR, 1.8);
   assert.equal(vm.paper.operatorSummary.pullbackGate.confirmationStatus, "NOT_EVALUATED_OUTSIDE_ZONE");
+  assert.equal(vm.paper.pullbackTriggerThresholds.status, "WAITING_FOR_TRIGGER_PRICE");
+  assert.equal(vm.paper.pullbackTriggerThresholds.triggerPrice, 63795.4228);
+  assert.equal(vm.paper.pullbackTriggerThresholds.rawZoneTriggerPrice, 63763.5);
+  assert.equal(vm.paper.pullbackTriggerThresholds.rrReady, true);
+  assert.equal(vm.paper.pullbackTriggerThresholds.activationAllowed, false);
+  assert.equal(vm.paper.pullbackTriggerThresholds.paperActivationAllowed, false);
+  assert.equal(vm.paper.pullbackTriggerThresholds.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.pullbackTrigger.status, "WAITING_FOR_TRIGGER_PRICE");
+  assert.equal(vm.paper.operatorSummary.pullbackTrigger.triggerPrice, 63795.4228);
+  assert.equal(vm.paper.operatorSummary.pullbackTrigger.rrReady, true);
+  assert.deepEqual(vm.paper.operatorSummary.pullbackTrigger.promotionBlockedBy, [
+    "PRICE_NOT_AT_TRIGGER",
+    "CONFIRMATION_NOT_EVALUATED",
+  ]);
   assert.equal(vm.paper.operatorSummary.currentPrice, 101.5);
   assert.equal(vm.paper.operatorSummary.freshnessStatus, "FRESH");
   assert.equal(vm.paper.operatorSummary.regime, "NO_TRADE");

@@ -15,10 +15,10 @@ function pct(value: number | null | undefined): string {
 }
 
 function tone(status: string): string {
-  if (status === "CLEAN_REVIEW_CANDIDATE" || status === "RR_REPAIRED_REVIEW_ONLY") {
+  if (status === "CLEAN_REVIEW_CANDIDATE" || status === "RR_REPAIRED_REVIEW_ONLY" || status === "READY_FOR_CONFIRMATION_REVIEW") {
     return "border-emerald-300/35 bg-emerald-950/35 text-emerald-100";
   }
-  if (status === "NO_TRADE_BAD_RR" || status === "COUNTER_REGIME_ONLY") {
+  if (status === "NO_TRADE_BAD_RR" || status === "COUNTER_REGIME_ONLY" || status === "BEYOND_ZONE_INVALIDATION_RISK") {
     return "border-rose-300/35 bg-rose-950/35 text-rose-100";
   }
   return "border-amber-300/35 bg-amber-950/35 text-amber-100";
@@ -37,6 +37,8 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
   const resolution = paper.entryCandidateResolution;
   const gate = paper.operatorSummary.pullbackGate;
   const gateRaw = paper.resolverDrivenPullbackGate;
+  const trigger = paper.operatorSummary.pullbackTrigger;
+  const triggerRaw = paper.pullbackTriggerThresholds;
 
   return (
     <section className="rounded-lg border border-cyan-300/20 bg-slate-950/85 p-3 shadow-[0_12px_28px_rgba(2,8,23,0.44)]">
@@ -73,9 +75,14 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
           <Row label="Aligned / Distance" value={`${gate.alignedDirection} / ${pct(gate.priceDistanceToZonePct)}`} />
           <Row label="Best RR / Threshold" value={`${fmt(gate.bestRR)} / ${fmt(gate.rrThreshold)}`} />
           <Row label="Confirmation" value={gate.confirmationStatus} />
+          <Row label="Trigger status" value={trigger.status} />
+          <Row label="Trigger / Raw zone" value={`${fmt(trigger.triggerPrice)} / ${fmt(trigger.rawZoneTriggerPrice)}`} />
+          <Row label="Distance to trigger" value={`${fmt(trigger.distanceToTriggerAbs)} / ${pct(trigger.distanceToTriggerPct)}`} />
+          <Row label="RR ready" value={trigger.rrReady ? "YES" : "NO"} />
+          <Row label="Promotion blockers" value={trigger.promotionBlockedBy.join(", ") || "NONE"} />
         </div>
         <div className="mt-1.5 break-words text-[10px] font-bold leading-relaxed text-amber-100">
-          Next action: {gate.nextAction || NA}
+          Next action: {trigger.nextAction || gate.nextAction || NA}
         </div>
       </div>
 
@@ -92,6 +99,18 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
             <div className="font-black text-amber-100">{gateRaw.status} / {gateRaw.confirmationStatus}</div>
             <div className="break-words text-amber-200">Blockers: {gateRaw.blockers.join(", ") || NA}</div>
             <div className="break-words text-slate-400">Do not: {gateRaw.doNotDo.join("; ") || NA}</div>
+          </div>
+          <div className="rounded-md border border-cyan-300/15 bg-cyan-950/15 p-1.5">
+            <div className="font-black text-cyan-100">{triggerRaw.status}</div>
+            <div className="break-words text-cyan-200">
+              Expanded: {fmt(triggerRaw.expandedZoneLow)} - {fmt(triggerRaw.expandedZoneHigh)}
+            </div>
+            <div className="break-words text-cyan-200">
+              Raw: {fmt(triggerRaw.rawZoneLow)} - {fmt(triggerRaw.rawZoneHigh)}
+            </div>
+            <div className="break-words text-slate-400">
+              Promotion blockers: {triggerRaw.promotionBlockedBy.join(", ") || "NONE"}
+            </div>
           </div>
           {resolution.rrScenarios.map((scenario) => (
             <div key={scenario.name} className="rounded-md border border-white/5 bg-black/15 p-1.5">

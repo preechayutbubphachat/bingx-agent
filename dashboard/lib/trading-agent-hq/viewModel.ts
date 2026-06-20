@@ -94,6 +94,7 @@ export interface PaperVM {
   regimeAwareExactCandidateWatchlist: RegimeAwareExactCandidateWatchlistVM;
   entryCandidateResolution: EntryCandidateResolutionVM;
   resolverDrivenPullbackGate: ResolverDrivenPullbackGateVM;
+  pullbackTriggerThresholds: PullbackTriggerThresholdsVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -143,6 +144,16 @@ export interface OperatorSummaryVM {
     bestRR: number | null;
     rrThreshold: number | null;
     confirmationStatus: string;
+    nextAction: string;
+  };
+  pullbackTrigger: {
+    status: string;
+    triggerPrice: number | null;
+    rawZoneTriggerPrice: number | null;
+    distanceToTriggerAbs: number | null;
+    distanceToTriggerPct: number | null;
+    rrReady: boolean;
+    promotionBlockedBy: string[];
     nextAction: string;
   };
   safety: {
@@ -222,6 +233,34 @@ export interface ResolverDrivenPullbackGateVM {
   nextAction: string;
   doNotDo: string[];
   detailsCollapsedByDefault: true;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+}
+
+export interface PullbackTriggerThresholdsVM {
+  schemaVersion: number;
+  source: string;
+  readiness: string;
+  status: string;
+  alignedDirection: string;
+  currentPrice: number | null;
+  rawZoneLow: number | null;
+  rawZoneHigh: number | null;
+  expandedZoneLow: number | null;
+  expandedZoneHigh: number | null;
+  triggerPrice: number | null;
+  rawZoneTriggerPrice: number | null;
+  distanceToTriggerAbs: number | null;
+  distanceToTriggerPct: number | null;
+  bestRR: number | null;
+  rrThreshold: number | null;
+  rrReady: boolean;
+  confirmationRequired: boolean;
+  promotionBlockedBy: string[];
+  nextAction: string;
   activationAllowed: boolean;
   paperActivationAllowed: boolean;
   liveActivationAllowed: boolean;

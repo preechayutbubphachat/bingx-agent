@@ -686,6 +686,36 @@ function mapResolverDrivenPullbackGate(raw: AnyObj): PaperVM["resolverDrivenPull
   };
 }
 
+function mapPullbackTriggerThresholds(raw: AnyObj): PaperVM["pullbackTriggerThresholds"] {
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "PULLBACK_TRIGGER_THRESHOLDS_V1"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    status: str(raw.status, "NO_GATE"),
+    alignedDirection: str(raw.alignedDirection, "UNKNOWN"),
+    currentPrice: numOrNull(raw.currentPrice),
+    rawZoneLow: numOrNull(raw.rawZoneLow),
+    rawZoneHigh: numOrNull(raw.rawZoneHigh),
+    expandedZoneLow: numOrNull(raw.expandedZoneLow),
+    expandedZoneHigh: numOrNull(raw.expandedZoneHigh),
+    triggerPrice: numOrNull(raw.triggerPrice),
+    rawZoneTriggerPrice: numOrNull(raw.rawZoneTriggerPrice),
+    distanceToTriggerAbs: numOrNull(raw.distanceToTriggerAbs),
+    distanceToTriggerPct: numOrNull(raw.distanceToTriggerPct),
+    bestRR: numOrNull(raw.bestRR),
+    rrThreshold: numOrNull(raw.rrThreshold),
+    rrReady: bool(raw.rrReady),
+    confirmationRequired: bool(raw.confirmationRequired),
+    promotionBlockedBy: strArray(raw.promotionBlockedBy),
+    nextAction: str(raw.nextAction, "wait for a valid D8.1 resolver-driven pullback gate"),
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+  };
+}
+
 function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pipeline = obj(loop.mtfEntryCandidatePipeline);
   const pipelinePrice = obj(pipeline.currentPriceContext);
@@ -707,6 +737,7 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const firstWatchCandidate = obj(arr(watchlist.topWatchCandidates)[0]);
   const trendStrategy = obj(loop.trendStrategy);
   const pullbackGate = obj(loop.resolverDrivenPullbackGate);
+  const pullbackTrigger = obj(loop.pullbackTriggerThresholds);
   const trendEntryZone = numberPair(trendStrategy.entryZone);
   const trendCurrentPrice = firstNumber(trendStrategy.currentPrice, pipelinePrice.currentPrice, pipelinePrice.value);
   const trendPriceMoveRequiredDirection = trendEntryZone == null || trendCurrentPrice == null
@@ -792,6 +823,16 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
       rrThreshold: numOrNull(pullbackGate.rrThreshold),
       confirmationStatus: str(pullbackGate.confirmationStatus, "UNKNOWN"),
       nextAction: str(pullbackGate.nextAction, "wait for a valid D8.0 aligned entry resolution"),
+    },
+    pullbackTrigger: {
+      status: str(pullbackTrigger.status, "NO_GATE"),
+      triggerPrice: numOrNull(pullbackTrigger.triggerPrice),
+      rawZoneTriggerPrice: numOrNull(pullbackTrigger.rawZoneTriggerPrice),
+      distanceToTriggerAbs: numOrNull(pullbackTrigger.distanceToTriggerAbs),
+      distanceToTriggerPct: numOrNull(pullbackTrigger.distanceToTriggerPct),
+      rrReady: bool(pullbackTrigger.rrReady),
+      promotionBlockedBy: strArray(pullbackTrigger.promotionBlockedBy),
+      nextAction: str(pullbackTrigger.nextAction, "wait for a valid D8.1 resolver-driven pullback gate"),
     },
     safety: {
       reviewOnly: auditSafety.reviewOnly === false ? false : true,
@@ -1134,6 +1175,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     ),
     entryCandidateResolution: mapEntryCandidateResolution(obj(loop.entryCandidateResolution)),
     resolverDrivenPullbackGate: mapResolverDrivenPullbackGate(obj(loop.resolverDrivenPullbackGate)),
+    pullbackTriggerThresholds: mapPullbackTriggerThresholds(obj(loop.pullbackTriggerThresholds)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

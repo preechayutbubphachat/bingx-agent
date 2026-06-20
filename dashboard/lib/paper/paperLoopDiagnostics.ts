@@ -100,6 +100,10 @@ import {
   evaluateResolverDrivenPullbackGate,
   type ResolverDrivenPullbackGate,
 } from "../trend/resolverDrivenPullbackGate.ts";
+import {
+  evaluatePullbackTriggerThresholds,
+  type PullbackTriggerThresholds,
+} from "../trend/pullbackTriggerThresholds.ts";
 import { getCandlesFromSnapshot } from "../candleAdapter.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -134,6 +138,7 @@ export interface PaperLoopDiagnostics {
   regimeAwareExactCandidateWatchlist: RegimeAwareExactCandidateWatchlist;
   entryCandidateResolution: EntryCandidateResolution;
   resolverDrivenPullbackGate: ResolverDrivenPullbackGate;
+  pullbackTriggerThresholds: PullbackTriggerThresholds;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -1083,6 +1088,9 @@ export function buildPaperLoopDiagnostics(
     entryCandidateResolution,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
   });
+  const pullbackTriggerThresholds = evaluatePullbackTriggerThresholds({
+    resolverDrivenPullbackGate,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -1113,6 +1121,7 @@ export function buildPaperLoopDiagnostics(
     regimeAwareExactCandidateWatchlist,
     entryCandidateResolution,
     resolverDrivenPullbackGate,
+    pullbackTriggerThresholds,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

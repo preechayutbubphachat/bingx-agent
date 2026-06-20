@@ -598,6 +598,67 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj, subsetRaw: AnyObj = 
   };
 }
 
+function mapEntryCandidateResolution(raw: AnyObj): PaperVM["entryCandidateResolution"] {
+  const best = obj(raw.bestReviewCandidate);
+  const rrScenarios = arr(raw.rrScenarios).map((item) => {
+    const scenario = obj(item);
+    return {
+      name: str(scenario.name, "UNKNOWN"),
+      available: bool(scenario.available),
+      direction: str(scenario.direction, "UNKNOWN"),
+      entry: numOrNull(scenario.entry),
+      stopLoss: numOrNull(scenario.stopLoss),
+      target: numOrNull(scenario.target),
+      riskDistance: numOrNull(scenario.riskDistance),
+      rewardDistance: numOrNull(scenario.rewardDistance),
+      rr: numOrNull(scenario.rr),
+      meetsThreshold: bool(scenario.meetsThreshold),
+      sources: strArray(scenario.sources),
+      notes: strArray(scenario.notes),
+    };
+  });
+  const rejectedOppositeCandidates = arr(raw.rejectedOppositeCandidates).map((item) => {
+    const candidate = obj(item);
+    return {
+      id: str(candidate.id, "unknown"),
+      direction: str(candidate.direction, "UNKNOWN"),
+      entry: numOrNull(candidate.entry),
+      stopLoss: numOrNull(candidate.stopLoss),
+      target1: numOrNull(candidate.target1),
+      currentPriceStatus: str(candidate.currentPriceStatus, "UNKNOWN"),
+      qualityStatus: str(candidate.qualityStatus, "UNKNOWN"),
+      actionability: str(candidate.actionability, "COUNTER_REGIME_REJECTED"),
+      blockers: strArray(candidate.blockers),
+      doNotUseAsEntry: candidate.doNotUseAsEntry === true,
+    };
+  });
+
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "ENTRY_CANDIDATE_RESOLVER_V1"),
+    entryResolutionStatus: str(raw.status, "NO_ALIGNED_SETUP"),
+    alignedDirection: str(raw.alignedDirection, "UNKNOWN"),
+    priceLocation: str(raw.priceLocation, "UNKNOWN"),
+    currentPrice: numOrNull(raw.currentPrice),
+    alignedEntryZone: numberPair(raw.alignedEntryZone),
+    rrBest: numOrNull(best.rr),
+    rrThreshold: numOrNull(raw.rrThreshold),
+    rrThresholdSource: str(raw.rrThresholdSource, "trendStrategy.DEFAULT_MIN_RR"),
+    rejectedOppositeCount: rejectedOppositeCandidates.length,
+    nextAction: str(raw.nextAction, "wait for aligned entry evidence"),
+    blockers: strArray(raw.blockers),
+    doNotDo: strArray(raw.doNotDo),
+    detailsCollapsedByDefault: true,
+    rrScenarios,
+    rejectedOppositeCandidates,
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: raw.reviewOnly === false ? false : true,
+    shadowOnly: raw.shadowOnly === false ? false : true,
+  };
+}
+
 function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pipeline = obj(loop.mtfEntryCandidatePipeline);
   const pipelinePrice = obj(pipeline.currentPriceContext);
@@ -1034,6 +1095,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       obj(loop.regimeAwareExactCandidateWatchlist),
       obj(loop.currentPriceEligibleExactSubset),
     ),
+    entryCandidateResolution: mapEntryCandidateResolution(obj(loop.entryCandidateResolution)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

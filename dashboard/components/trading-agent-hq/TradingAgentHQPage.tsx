@@ -76,6 +76,7 @@ import ShadowOutcomeSummaryCard from "./ShadowOutcomeSummaryCard";
 import ReviewReadinessNextStepCard from "./ReviewReadinessNextStepCard";
 import TradingCafeBottomPanels from "./TradingCafeBottomPanels";
 import OperatorSummaryRailCard from "./OperatorSummaryRailCard";
+import EntryCandidateResolutionCard from "./EntryCandidateResolutionCard";
 
 const STATUS_FILTERS: ("all" | TileStatusCategory)[] = ["all", "working", "waiting", "notready"];
 
@@ -532,6 +533,7 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
           </div>
           {/* UI-2.1 Task C: read-only health heartbeat (existing VM fields only) */}
           <OperatorSummaryRailCard paper={vm.paper} />
+          <EntryCandidateResolutionCard paper={vm.paper} />
           <EvidencePilotHealthCard paper={vm.paper} />
           {/* T-3H-6-a: read-only rejection frequency summary (observe only) */}
           <RailDetails title="ข้อมูล debug / raw และ RR diagnostics">

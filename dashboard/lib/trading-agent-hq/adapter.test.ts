@@ -412,6 +412,65 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             nextAction: "wait for regime and price",
           },
         },
+        entryCandidateResolution: {
+          schemaVersion: 1,
+          source: "ENTRY_CANDIDATE_RESOLVER_V1",
+          status: "WAITING_PULLBACK",
+          alignedDirection: "LONG",
+          priceLocation: "ABOVE_LONG_ZONE",
+          currentPrice: 101.5,
+          alignedEntryZone: [99, 101],
+          rrThreshold: 1.2,
+          rrThresholdSource: "trendStrategy.DEFAULT_MIN_RR",
+          rrScenarios: [{
+            name: "ZONE_MID_ENTRY",
+            available: true,
+            direction: "LONG",
+            entry: 100,
+            stopLoss: 97,
+            target: 105,
+            riskDistance: 3,
+            rewardDistance: 5,
+            rr: 1.67,
+            meetsThreshold: true,
+            sources: ["trendStrategy.entryZone.mid"],
+            notes: [],
+          }],
+          bestReviewCandidate: {
+            name: "ZONE_MID_ENTRY",
+            available: true,
+            direction: "LONG",
+            entry: 100,
+            stopLoss: 97,
+            target: 105,
+            riskDistance: 3,
+            rewardDistance: 5,
+            rr: 1.67,
+            meetsThreshold: true,
+            sources: ["trendStrategy.entryZone.mid"],
+            notes: [],
+          },
+          rejectedOppositeCandidates: [{
+            id: "short-near",
+            direction: "SHORT",
+            entry: 101.5,
+            stopLoss: 102,
+            target1: 101,
+            currentPriceStatus: "NEAR_ENTRY",
+            qualityStatus: "TARGET_TOO_CLOSE",
+            actionability: "COUNTER_REGIME_REJECTED",
+            blockers: ["REGIME_DIRECTION_CONFLICT", "TARGET_TOO_CLOSE"],
+            doNotUseAsEntry: true,
+          }],
+          blockers: ["CURRENT_PRICE_OUTSIDE_ALIGNED_ENTRY_ZONE", "REGIME_DIRECTION_CONFLICT"],
+          nextAction: "wait for current price to enter the aligned LONG pullback zone",
+          doNotDo: ["do not place or cancel orders"],
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -486,6 +545,17 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.topWatchCandidates[0]?.occurrenceCount, 2);
   assert.deepEqual(vm.paper.regimeAwareExactCandidateWatchlist.topWatchCandidates[0]?.stopLossRange, [64199.8, 64200.3]);
   assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.activationAllowed, false);
+  assert.equal(vm.paper.entryCandidateResolution.entryResolutionStatus, "WAITING_PULLBACK");
+  assert.equal(vm.paper.entryCandidateResolution.alignedDirection, "LONG");
+  assert.equal(vm.paper.entryCandidateResolution.rrBest, 1.67);
+  assert.equal(vm.paper.entryCandidateResolution.rrThreshold, 1.2);
+  assert.equal(vm.paper.entryCandidateResolution.priceLocation, "ABOVE_LONG_ZONE");
+  assert.equal(vm.paper.entryCandidateResolution.rejectedOppositeCount, 1);
+  assert.equal(vm.paper.entryCandidateResolution.rrScenarios[0]?.name, "ZONE_MID_ENTRY");
+  assert.equal(vm.paper.entryCandidateResolution.detailsCollapsedByDefault, true);
+  assert.equal(vm.paper.entryCandidateResolution.activationAllowed, false);
+  assert.equal(vm.paper.entryCandidateResolution.paperActivationAllowed, false);
+  assert.equal(vm.paper.entryCandidateResolution.liveActivationAllowed, false);
   assert.equal(vm.paper.operatorSummary.currentPrice, 101.5);
   assert.equal(vm.paper.operatorSummary.freshnessStatus, "FRESH");
   assert.equal(vm.paper.operatorSummary.regime, "NO_TRADE");

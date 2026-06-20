@@ -92,6 +92,7 @@ export interface PaperVM {
   currentPriceEligibleExactSubset: CurrentPriceEligibleExactSubsetVM;
   currentPriceConsistencyAudit: CurrentPriceConsistencyAuditVM;
   regimeAwareExactCandidateWatchlist: RegimeAwareExactCandidateWatchlistVM;
+  entryCandidateResolution: EntryCandidateResolutionVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -142,6 +143,55 @@ export interface OperatorSummaryVM {
     orderAllowed: boolean;
     shadowOnly: boolean;
   };
+}
+
+export interface EntryCandidateResolutionVM {
+  schemaVersion: number;
+  source: string;
+  entryResolutionStatus: string;
+  alignedDirection: string;
+  priceLocation: string;
+  currentPrice: number | null;
+  alignedEntryZone: [number, number] | null;
+  rrBest: number | null;
+  rrThreshold: number | null;
+  rrThresholdSource: string;
+  rejectedOppositeCount: number;
+  nextAction: string;
+  blockers: string[];
+  doNotDo: string[];
+  detailsCollapsedByDefault: true;
+  rrScenarios: Array<{
+    name: string;
+    available: boolean;
+    direction: string;
+    entry: number | null;
+    stopLoss: number | null;
+    target: number | null;
+    riskDistance: number | null;
+    rewardDistance: number | null;
+    rr: number | null;
+    meetsThreshold: boolean;
+    sources: string[];
+    notes: string[];
+  }>;
+  rejectedOppositeCandidates: Array<{
+    id: string;
+    direction: string;
+    entry: number | null;
+    stopLoss: number | null;
+    target1: number | null;
+    currentPriceStatus: string;
+    qualityStatus: string;
+    actionability: string;
+    blockers: string[];
+    doNotUseAsEntry: boolean;
+  }>;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
 }
 
 export interface CostGateBreakdownVM {

@@ -197,6 +197,46 @@ test("clusters duplicate watch candidates and exposes stop loss range", () => {
   assert.equal(result.topWatchCandidates[0]?.representativeStopLoss, 64_200);
 });
 
+test("clusters the runtime watchlist stop range before limiting top candidates", () => {
+  const candidate = {
+    ...subset().topCandidates[0],
+    direction: "SHORT",
+    entry: 63_450.7728,
+    target1: 62_232.6,
+    currentPriceStatus: "NEAR_ENTRY",
+    qualityStatus: "TARGET_TOO_CLOSE",
+    distanceToEntryPct: 0.003,
+  };
+  const result = evaluateRegimeAwareExactCandidateWatchlist(baseInput({
+    canonicalMarketRegime: {
+      regime: "UPTREND",
+      direction: "BULLISH",
+      confidence: 78,
+    },
+    currentPriceConsistencyAudit: {
+      canonicalCurrentPrice: { value: 63_470.1, freshnessStatus: "FRESH" },
+      currentPriceReevaluation: { trendZoneStatus: "WAITING_PULLBACK_TO_ENTRY" },
+    },
+    currentPriceEligibleExactSubset: subset({
+      sampleAccounting: {
+        currentPriceEligibleExactSamples: 11,
+        cleanCurrentPriceEligibleSamples: 0,
+      },
+      topCandidates: [64_474.2029, 64_477.8386, 64_481.6557, 64_482.7429].map((stopLoss, index) => ({
+        ...candidate,
+        id: `runtime-watch-${index + 1}`,
+        stopLoss,
+      })),
+    }),
+  }));
+
+  assert.equal(result.watchlistDedupSummary.rawWatchCandidates, 4);
+  assert.equal(result.watchlistDedupSummary.uniqueWatchCandidates, 1);
+  assert.equal(result.topWatchCandidates.length, 1);
+  assert.equal(result.topWatchCandidates[0]?.occurrenceCount, 4);
+  assert.deepEqual(result.topWatchCandidates[0]?.stopLossRange, [64_474.2029, 64_482.7429]);
+});
+
 test("near entry candidate with target-too-close quality is quality rejected", () => {
   const result = evaluateRegimeAwareExactCandidateWatchlist(baseInput({
     canonicalMarketRegime: {
@@ -222,8 +262,89 @@ test("near entry candidate with target-too-close quality is quality rejected", (
     }),
   }));
 
-  assert.equal(result.topWatchCandidates[0]?.actionability, "QUALITY_REJECTED");
+  assert.equal(result.topWatchCandidates[0]?.directionAlignment, "ALIGNED");
+  assert.equal(result.topWatchCandidates[0]?.actionability, "ELIGIBLE_BUT_QUALITY_REJECTED");
+  assert.equal(result.topWatchCandidates[0]?.clean, false);
+  assert.ok(result.topWatchCandidates[0]?.blockers.includes("TARGET_TOO_CLOSE"));
   assert.equal(result.watchlistSummary.qualityRejectedCandidates, 1);
+});
+
+test("eligible candidates without a clean subset stay degraded instead of reporting no eligible candidates", () => {
+  const result = evaluateRegimeAwareExactCandidateWatchlist(baseInput({
+    canonicalMarketRegime: {
+      regime: "UPTREND",
+      direction: "BULLISH",
+      confidence: 78,
+    },
+    currentPriceConsistencyAudit: {
+      canonicalCurrentPrice: { value: 63_470.1, freshnessStatus: "FRESH" },
+      currentPriceReevaluation: { trendZoneStatus: "WAITING_PULLBACK_TO_ENTRY" },
+    },
+    currentPriceEligibleExactSubset: subset({
+      status: "CURRENT_PRICE_ELIGIBLE_DEGRADED",
+      sampleAccounting: {
+        currentPriceEligibleExactSamples: 11,
+        cleanCurrentPriceEligibleSamples: 0,
+      },
+      topCandidates: [{
+        ...subset().topCandidates[0],
+        direction: "SHORT",
+        currentPriceStatus: "NEAR_ENTRY",
+        qualityStatus: "TARGET_TOO_CLOSE",
+        distanceToEntryPct: 0.003,
+      }],
+    }),
+  }));
+
+  assert.equal(result.status, "CURRENT_PRICE_ELIGIBLE_DEGRADED");
+  assert.equal(result.verdict.status, "WATCH_ONLY");
+  assert.equal(result.watchlistSummary.cleanReviewCandidates, 0);
+  assert.equal(result.topWatchCandidates[0]?.directionAlignment, "COUNTER_REGIME");
+  assert.equal(result.topWatchCandidates[0]?.actionability, "COUNTER_REGIME_REJECTED");
+  assert.equal(result.topWatchCandidates[0]?.clean, false);
+  assert.ok(result.topWatchCandidates[0]?.blockers.includes("REGIME_DIRECTION_CONFLICT"));
+  assert.ok(result.topWatchCandidates[0]?.blockers.includes("TARGET_TOO_CLOSE"));
+  assert.equal(result.activationAllowed, false);
+  assert.equal(result.paperActivationAllowed, false);
+  assert.equal(result.liveActivationAllowed, false);
+  assert.equal(result.reviewOnly, true);
+  assert.equal(result.shadowOnly, true);
+});
+
+test("bearish regime rejects a near-entry long candidate as counter-regime", () => {
+  const result = evaluateRegimeAwareExactCandidateWatchlist(baseInput({
+    canonicalMarketRegime: {
+      regime: "DOWNTREND",
+      direction: "BEARISH",
+      confidence: 78,
+    },
+    currentPriceConsistencyAudit: {
+      canonicalCurrentPrice: { value: 63_470.1, freshnessStatus: "FRESH" },
+      currentPriceReevaluation: { trendZoneStatus: "WAITING_PULLBACK_TO_ENTRY" },
+    },
+    currentPriceEligibleExactSubset: subset({
+      sampleAccounting: {
+        currentPriceEligibleExactSamples: 1,
+        cleanCurrentPriceEligibleSamples: 0,
+      },
+      topCandidates: [{
+        ...subset().topCandidates[0],
+        direction: "LONG",
+        currentPriceStatus: "NEAR_ENTRY",
+        qualityStatus: "TARGET_TOO_CLOSE",
+        distanceToEntryPct: 0.01,
+      }],
+    }),
+  }));
+
+  assert.equal(result.topWatchCandidates[0]?.directionAlignment, "COUNTER_REGIME");
+  assert.equal(result.topWatchCandidates[0]?.actionability, "COUNTER_REGIME_REJECTED");
+  assert.equal(result.topWatchCandidates[0]?.clean, false);
+  assert.ok(result.topWatchCandidates[0]?.blockers.includes("REGIME_DIRECTION_CONFLICT"));
+  assert.ok(result.topWatchCandidates[0]?.blockers.includes("TARGET_TOO_CLOSE"));
+  assert.equal(result.activationAllowed, false);
+  assert.equal(result.paperActivationAllowed, false);
+  assert.equal(result.liveActivationAllowed, false);
 });
 
 test("clean near-entry candidate is review-only and never activation-ready", () => {
@@ -263,6 +384,7 @@ test("clean near-entry candidate is review-only and never activation-ready", () 
   assert.equal(result.status, "CLEAN_REVIEW_CANDIDATE_AVAILABLE_NOT_ACTIVATION");
   assert.equal(result.verdict.status, "CLEAN_REVIEW_READY_NOT_ACTIVATION");
   assert.equal(result.topWatchCandidates[0]?.actionability, "CLEAN_REVIEW_ONLY");
+  assert.equal(result.topWatchCandidates[0]?.clean, true);
   assert.equal(result.compactSummary.cleanReviewCandidates, 1);
   assert.equal(result.compactSummary.detailsCollapsedByDefault, true);
   assert.equal(result.activationAllowed, false);

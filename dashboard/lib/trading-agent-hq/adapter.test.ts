@@ -503,3 +503,123 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.operatorSummary.safety.liveActivationAllowed, false);
   assert.equal(vm.paper.operatorSummary.safety.orderAllowed, false);
 });
+
+test("operator summary explains aligned trend setup and counter-regime exact candidates", () => {
+  const vm = mapToViewModel(
+    {
+      generatedAt: "2026-06-20T00:20:00.000Z",
+      phase: "M-0B_BLOCKED",
+      exchangeManualApproval: "not_approved",
+      runtimeCoreFiles: {},
+    },
+    {
+      checkedAt: "2026-06-20T00:20:00.000Z",
+      paperJournal: { paperModeDetected: true, totalOrderFilled: 0, totalPaperEvents: 0, recentEvents: [] },
+    },
+    {
+      edgeDiagnostics: { closedCycles: 0 },
+      paperLoopDiagnostics: {
+        mtfEntryCandidatePipeline: {
+          currentPriceContext: {
+            currentPrice: 63_470.1,
+            latestCandleAt: "2026-06-20T00:15:00.000Z",
+            freshnessStatus: "FRESH",
+          },
+          sampleAccounting: { reviewSamplesUsed: 369, reviewTargetSamples: 100 },
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
+        currentPriceEligibleExactSubset: {
+          status: "CURRENT_PRICE_ELIGIBLE_DEGRADED",
+          sampleAccounting: {
+            lifetimeExactSamples: 369,
+            windowExactSamples: 56,
+            currentPriceEligibleExactSamples: 11,
+            cleanCurrentPriceEligibleSamples: 0,
+          },
+          cleanSubsetGate: { failed: ["clean eligible candidates < 10"] },
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
+        canonicalMarketRegime: {
+          regime: "UPTREND",
+          direction: "BULLISH",
+          confidence: 78,
+        },
+        trendStrategy: {
+          status: "RISK_REJECTED",
+          direction: "LONG",
+          riskStatus: "NO_TRADE_BAD_RR",
+          entryZone: [62_799.9334, 62_960.85],
+          currentPrice: 63_470.1,
+          confirmationStatus: "WAITING_5M_CONFIRM",
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          shadowOnly: true,
+        },
+        regimeAwareExactCandidateWatchlist: {
+          status: "NO_CURRENT_PRICE_ELIGIBLE_CANDIDATES",
+          currentMarket: {
+            currentPrice: 63_470.1,
+            freshnessStatus: "FRESH",
+            regime: "UPTREND",
+            direction: "BULLISH",
+            confidence: 78,
+          },
+          watchlistSummary: { cleanReviewCandidates: 0 },
+          compactSummary: {
+            currentPrice: 63_470.1,
+            freshnessStatus: "FRESH",
+            regime: "UPTREND",
+            direction: "BULLISH",
+            watchlistStatus: "NO_CURRENT_PRICE_ELIGIBLE_CANDIDATES",
+            cleanReviewCandidates: 0,
+          },
+          topWatchCandidates: [{
+            id: "short-counter-regime",
+            direction: "SHORT",
+            actionability: "COUNTER_REGIME_REJECTED",
+            currentPriceStatus: "NEAR_ENTRY",
+            qualityStatus: "TARGET_TOO_CLOSE",
+            blockers: ["REGIME_DIRECTION_CONFLICT", "TARGET_TOO_CLOSE"],
+          }],
+          verdict: {
+            status: "WATCH_ONLY",
+            nextAction: "wait for aligned LONG pullback and quality improvement",
+          },
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
+      },
+    },
+  );
+
+  assert.equal(vm.paper.operatorSummary.regime, "UPTREND");
+  assert.equal(vm.paper.operatorSummary.direction, "BULLISH");
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.status, "CURRENT_PRICE_ELIGIBLE_DEGRADED");
+  assert.equal(vm.paper.regimeAwareExactCandidateWatchlist.topWatchCandidates[0]?.directionAlignment, "COUNTER_REGIME");
+  assert.equal(vm.paper.operatorSummary.trendSetupDirection, "LONG");
+  assert.equal(vm.paper.operatorSummary.trendSetupStatus, "RISK_REJECTED");
+  assert.equal(vm.paper.operatorSummary.trendRiskStatus, "NO_TRADE_BAD_RR");
+  assert.deepEqual(vm.paper.operatorSummary.trendEntryZone, [62_799.9334, 62_960.85]);
+  assert.equal(vm.paper.operatorSummary.trendPriceMoveRequiredDirection, "DOWN_TO_ENTRY");
+  assert.equal(vm.paper.operatorSummary.nearCandidateDirection, "SHORT");
+  assert.equal(vm.paper.operatorSummary.nearCandidateDirectionAlignment, "COUNTER_REGIME");
+  assert.equal(vm.paper.operatorSummary.nearCandidateQualityStatus, "TARGET_TOO_CLOSE");
+  assert.match(vm.paper.operatorSummary.candidateInterpretation, /SHORT.*counter-regime.*TARGET_TOO_CLOSE/i);
+  assert.equal(vm.paper.operatorSummary.currentPriceEligibleExactSamples, 11);
+  assert.equal(vm.paper.operatorSummary.cleanCurrentPriceEligibleSamples, 0);
+  assert.equal(vm.paper.operatorSummary.safety.activationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.safety.paperActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.safety.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.safety.orderAllowed, false);
+});

@@ -29,6 +29,18 @@ const firstNumber = (...values: unknown[]): number | null => {
   }
   return null;
 };
+const numberPair = (value: unknown): [number, number] | null => {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const first = numOrNull(value[0]);
+  const second = numOrNull(value[1]);
+  return first != null && second != null ? [first, second] : null;
+};
+const candidateDirectionAlignment = (candidateDirection: string | null, canonicalDirection: string | null): string => {
+  if (candidateDirection !== "LONG" && candidateDirection !== "SHORT") return "UNKNOWN";
+  if (canonicalDirection === "BULLISH") return candidateDirection === "LONG" ? "ALIGNED" : "COUNTER_REGIME";
+  if (canonicalDirection === "BEARISH") return candidateDirection === "SHORT" ? "ALIGNED" : "COUNTER_REGIME";
+  return "REGIME_NOT_CONFIRMED";
+};
 
 function ageIsStale(iso: string, maxMin = 10): boolean {
   const t = Date.parse(iso);
@@ -464,16 +476,30 @@ function mapCurrentPriceConsistencyAudit(raw: AnyObj): PaperVM["currentPriceCons
   };
 }
 
-function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwareExactCandidateWatchlist"] {
+function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj, subsetRaw: AnyObj = {}): PaperVM["regimeAwareExactCandidateWatchlist"] {
   const market = obj(raw.currentMarket);
   const summary = obj(raw.watchlistSummary);
   const dedup = obj(raw.watchlistDedupSummary);
   const compact = obj(raw.compactSummary);
   const checklist = obj(raw.nextTriggerChecklist);
   const verdict = obj(raw.verdict);
+  const subsetSamples = obj(subsetRaw.sampleAccounting);
+  const eligibleSamples = numOrNull(subsetSamples.currentPriceEligibleExactSamples);
+  const cleanSamples = numOrNull(subsetSamples.cleanCurrentPriceEligibleSamples);
+  const rawStatus = str(raw.status, "NO_DATA");
+  const normalizedStatus = rawStatus === "NO_CURRENT_PRICE_ELIGIBLE_CANDIDATES" && (eligibleSamples ?? 0) > 0 && cleanSamples === 0
+    ? "CURRENT_PRICE_ELIGIBLE_DEGRADED"
+    : rawStatus;
   const topWatchCandidates = Array.isArray(raw.topWatchCandidates)
     ? raw.topWatchCandidates.map((item) => {
         const candidate = obj(item);
+        const direction = str(candidate.direction, "UNKNOWN");
+        const alignment = strOrNull(candidate.directionAlignment) ?? candidateDirectionAlignment(direction, strOrNull(market.direction));
+        const actionability = alignment === "COUNTER_REGIME"
+          ? "COUNTER_REGIME_REJECTED"
+          : str(candidate.actionability, "NO_ACTION");
+        const blockers = strArray(candidate.blockers);
+        if (alignment === "COUNTER_REGIME" && !blockers.includes("REGIME_DIRECTION_CONFLICT")) blockers.unshift("REGIME_DIRECTION_CONFLICT");
         const stopLossRange: [number, number] | null =
           Array.isArray(candidate.stopLossRange) &&
           candidate.stopLossRange.length === 2 &&
@@ -483,8 +509,10 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwar
             : null;
         return {
           id: str(candidate.id, "unknown"),
-          direction: str(candidate.direction, "UNKNOWN"),
-          actionability: str(candidate.actionability, "NO_ACTION"),
+          direction,
+          directionAlignment: alignment,
+          actionability,
+          clean: alignment === "ALIGNED" && (bool(candidate.clean) || actionability === "CLEAN_REVIEW_ONLY"),
           currentPriceStatus: str(candidate.currentPriceStatus, "UNKNOWN"),
           qualityStatus: str(candidate.qualityStatus, "UNKNOWN"),
           entry: numOrNull(candidate.entry),
@@ -496,7 +524,7 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwar
           occurrenceCount: num(candidate.occurrenceCount, 1),
           representativeStopLoss: numOrNull(candidate.representativeStopLoss),
           stopLossRange,
-          blockers: strArray(candidate.blockers),
+          blockers,
           watchCondition: str(candidate.watchCondition, ""),
           doNotDo: strArray(candidate.doNotDo),
         };
@@ -505,7 +533,7 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwar
   return {
     schemaVersion: num(raw.schemaVersion, 1),
     source: str(raw.source, "REGIME_AWARE_EXACT_CANDIDATE_WATCHLIST_V1"),
-    status: str(raw.status, "NO_DATA"),
+    status: normalizedStatus,
     readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
     activationAllowed: bool(raw.activationAllowed),
     paperActivationAllowed: bool(raw.paperActivationAllowed),
@@ -546,7 +574,9 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwar
       freshnessStatus: str(compact.freshnessStatus, str(market.freshnessStatus, "UNKNOWN")),
       regime: strOrNull(compact.regime) ?? strOrNull(market.regime),
       direction: strOrNull(compact.direction) ?? strOrNull(market.direction),
-      watchlistStatus: str(compact.watchlistStatus, str(raw.status, "NO_DATA")),
+      watchlistStatus: normalizedStatus === "CURRENT_PRICE_ELIGIBLE_DEGRADED"
+        ? normalizedStatus
+        : str(compact.watchlistStatus, normalizedStatus),
       cleanReviewCandidates: num(compact.cleanReviewCandidates, num(summary.cleanReviewCandidates, 0)),
       nextAction: str(compact.nextAction, str(verdict.nextAction, "")),
       topCandidateDisplayLimit: num(compact.topCandidateDisplayLimit, 3),
@@ -587,7 +617,35 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const watchSummary = obj(watchlist.watchlistSummary);
   const watchVerdict = obj(watchlist.verdict);
   const firstWatchCandidate = obj(arr(watchlist.topWatchCandidates)[0]);
+  const trendStrategy = obj(loop.trendStrategy);
+  const trendEntryZone = numberPair(trendStrategy.entryZone);
+  const trendCurrentPrice = firstNumber(trendStrategy.currentPrice, pipelinePrice.currentPrice, pipelinePrice.value);
+  const trendPriceMoveRequiredDirection = trendEntryZone == null || trendCurrentPrice == null
+    ? null
+    : trendCurrentPrice > trendEntryZone[1]
+      ? "DOWN_TO_ENTRY"
+      : trendCurrentPrice < trendEntryZone[0]
+        ? "UP_TO_ENTRY"
+        : "INSIDE_ENTRY";
+  const nearCandidateDirection = strOrNull(firstWatchCandidate.direction);
+  const nearCandidateDirectionAlignment = strOrNull(firstWatchCandidate.directionAlignment) ?? candidateDirectionAlignment(
+    nearCandidateDirection,
+    strOrNull(compact.direction) ?? strOrNull(market.direction),
+  );
+  const nearCandidateQualityStatus = strOrNull(firstWatchCandidate.qualityStatus);
+  const candidateInterpretation = nearCandidateDirection == null
+    ? "no exact candidate interpretation available"
+    : nearCandidateDirectionAlignment === "COUNTER_REGIME"
+      ? `${nearCandidateDirection} exact candidate is near price but counter-regime and ${nearCandidateQualityStatus ?? "quality rejected"}`
+      : `${nearCandidateDirection} exact candidate is ${nearCandidateDirectionAlignment ?? "UNKNOWN"} with quality ${nearCandidateQualityStatus ?? "UNKNOWN"}`;
+  const contextualNextAction = nearCandidateDirectionAlignment === "COUNTER_REGIME"
+    ? `wait for aligned ${str(trendStrategy.direction, "trend")} pullback${trendEntryZone ? ` into ${trendEntryZone[0].toFixed(2)}-${trendEntryZone[1].toFixed(2)}` : ""} plus RR/confirmation improvement; review ${nearCandidateDirection ?? "opposite-direction"} only after canonical regime change`
+    : null;
+  const directionConflictBlocker = nearCandidateDirectionAlignment === "COUNTER_REGIME"
+    ? "REGIME_DIRECTION_CONFLICT"
+    : undefined;
   const blocker =
+    directionConflictBlocker ??
     strArray(subsetGate.failed)[0] ??
     strArray(pipelineVerdict.blockers)[0] ??
     strArray(firstWatchCandidate.blockers)[0] ??
@@ -622,10 +680,21 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
     windowExactSamples: firstNumber(subsetSample.windowExactSamples, pipelineSample.windowExactSamples, zoneCandidate.windowExactSamples),
     currentPriceEligibleExactSamples: numOrNull(subsetSample.currentPriceEligibleExactSamples),
     cleanCurrentPriceEligibleSamples: numOrNull(subsetSample.cleanCurrentPriceEligibleSamples),
-    watchlistStatus: str(compact.watchlistStatus ?? watchlist.status, "NO_DATA"),
+    watchlistStatus: (numOrNull(subsetSample.currentPriceEligibleExactSamples) ?? 0) > 0 && numOrNull(subsetSample.cleanCurrentPriceEligibleSamples) === 0
+      ? "CURRENT_PRICE_ELIGIBLE_DEGRADED"
+      : str(compact.watchlistStatus ?? watchlist.status, "NO_DATA"),
     cleanReviewCandidates: num(compact.cleanReviewCandidates ?? watchSummary.cleanReviewCandidates, 0),
+    trendSetupDirection: strOrNull(trendStrategy.direction),
+    trendSetupStatus: strOrNull(trendStrategy.status),
+    trendRiskStatus: strOrNull(trendStrategy.riskStatus),
+    trendEntryZone,
+    trendPriceMoveRequiredDirection,
+    nearCandidateDirection,
+    nearCandidateDirectionAlignment,
+    nearCandidateQualityStatus,
+    candidateInterpretation,
     mainBlocker: blocker || "no current blocker available",
-    nextAction: str(compact.nextAction ?? watchVerdict.nextAction ?? subset.nextAction ?? pipelineVerdict.nextAction, "continue diagnostics review without activation"),
+    nextAction: contextualNextAction ?? str(compact.nextAction ?? watchVerdict.nextAction ?? subset.nextAction ?? pipelineVerdict.nextAction, "continue diagnostics review without activation"),
     safety: {
       reviewOnly: auditSafety.reviewOnly === false ? false : true,
       activationAllowed: bool(auditSafety.activationAllowed ?? subset.activationAllowed ?? watchlist.activationAllowed ?? pipeline.activationAllowed),
@@ -961,7 +1030,10 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     mtfExactZoneFailureAttribution: mapMtfExactZoneFailureAttribution(obj(loop.mtfExactZoneFailureAttribution)),
     currentPriceEligibleExactSubset: mapCurrentPriceEligibleExactSubset(obj(loop.currentPriceEligibleExactSubset)),
     currentPriceConsistencyAudit: mapCurrentPriceConsistencyAudit(obj(loop.currentPriceConsistencyAudit)),
-    regimeAwareExactCandidateWatchlist: mapRegimeAwareExactCandidateWatchlist(obj(loop.regimeAwareExactCandidateWatchlist)),
+    regimeAwareExactCandidateWatchlist: mapRegimeAwareExactCandidateWatchlist(
+      obj(loop.regimeAwareExactCandidateWatchlist),
+      obj(loop.currentPriceEligibleExactSubset),
+    ),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

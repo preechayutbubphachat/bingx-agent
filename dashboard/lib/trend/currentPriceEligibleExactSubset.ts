@@ -202,7 +202,7 @@ const MIN_NET_RR = 1.2;
 const NEAR_ENTRY_PCT = 0.25;
 const TARGET_TOO_CLOSE_PCT = 0.25;
 const CANDIDATE_STALE_SECONDS = 45 * 60;
-const COMPACT_STOP_TOLERANCE_USDT = 1;
+const COMPACT_STOP_TOLERANCE_USDT = 5;
 const CURRENT_PRICE_STALE_SECONDS: Record<string, number> = {
   "5m": 15 * 60,
   "5M": 15 * 60,
@@ -622,22 +622,23 @@ function stopCompatible(existingStops: number[], candidateStop: number | null): 
 }
 
 function buildCompactTopCandidates(candidates: EligibleTopCandidate[]): EligibleTopCandidate[] {
-  const groups: Array<{ key: string; candidates: EligibleTopCandidate[]; stops: number[] }> = [];
+  const groups: Array<{ key: string; candidates: EligibleTopCandidate[]; stops: number[]; firstRank: number }> = [];
 
-  for (const candidate of candidates) {
+  candidates.forEach((candidate, rank) => {
     const key = compactCandidateKey(candidate);
     const group = groups.find((item) => item.key === key && stopCompatible(item.stops, candidate.stopLoss));
     if (group) {
       group.candidates.push(candidate);
       if (candidate.stopLoss != null) group.stops.push(candidate.stopLoss);
-      continue;
+      return;
     }
     groups.push({
       key,
       candidates: [candidate],
       stops: candidate.stopLoss == null ? [] : [candidate.stopLoss],
+      firstRank: rank,
     });
-  }
+  });
 
   return groups.map((group) => {
     const [representative] = group.candidates;
@@ -653,13 +654,19 @@ function buildCompactTopCandidates(candidates: EligibleTopCandidate[]): Eligible
         : null;
 
     return {
-      ...representative,
-      occurrenceCount,
-      representativeStopLoss: representative.stopLoss,
-      stopLossRange,
-      duplicateGroupSize: occurrenceCount,
+      firstRank: group.firstRank,
+      candidate: {
+        ...representative,
+        occurrenceCount,
+        representativeStopLoss: representative.stopLoss,
+        stopLossRange,
+        duplicateGroupSize: occurrenceCount,
+      },
     };
-  }).slice(0, 3);
+  })
+    .sort((left, right) => left.firstRank - right.firstRank)
+    .slice(0, 3)
+    .map((group) => group.candidate);
 }
 
 function failureRates(input: CurrentPriceEligibleExactSubsetInput): Record<string, number | null> {

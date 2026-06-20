@@ -383,6 +383,37 @@ test("compact top candidates clusters near-duplicate stops while preserving raw 
   assert.equal(result.liveActivationAllowed, false);
 });
 
+test("compact top candidates cluster the full runtime stop range before applying the display limit", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    currentPriceContext: {
+      ...freshContext,
+      currentPrice: 63_470.1,
+      priceSource: "market_snapshot.15m.close",
+    },
+    exactCandidateRecords: [64_474.2029, 64_477.8386, 64_481.6557, 64_482.7429].map((stopLoss, index) => ({
+      id: `short-runtime-${index + 1}`,
+      direction: "SHORT",
+      zoneType: "UNKNOWN",
+      readiness: "TARGET_TOO_CLOSE",
+      entry: 63_450.7728,
+      stopLoss,
+      target1: 62_232.6,
+      netRR: 1.6,
+      flags: ["TARGET_TOO_CLOSE"],
+    })),
+  }));
+
+  assert.equal(result.topCandidates.length, 4);
+  assert.equal(result.compactTopCandidates.length, 1);
+  assert.equal(result.compactTopCandidates[0]?.occurrenceCount, 4);
+  assert.equal(result.compactTopCandidates[0]?.duplicateGroupSize, 4);
+  assert.equal(result.compactTopCandidates[0]?.representativeStopLoss, 64_474.2029);
+  assert.deepEqual(result.compactTopCandidates[0]?.stopLossRange, [64_474.2029, 64_482.7429]);
+  assert.equal(result.activationAllowed, false);
+  assert.equal(result.paperActivationAllowed, false);
+  assert.equal(result.liveActivationAllowed, false);
+});
+
 test("audits when subset price source differs from geometry snapshot price source", () => {
   const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
     currentPriceContext: { ...freshContext, currentPrice: 100, priceSource: "runtime.currentPriceContext" },

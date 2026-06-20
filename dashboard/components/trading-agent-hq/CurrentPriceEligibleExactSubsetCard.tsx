@@ -208,6 +208,7 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
         {watchTopCandidates.map((candidate) => (
           <div key={candidate.id} className="mt-1 rounded-md border border-violet-200 bg-white/80 p-1.5">
             <div className="font-black">{candidate.id} · {candidate.direction} · {candidate.actionability}</div>
+            <div>direction {candidate.directionAlignment} · clean {candidate.clean ? "yes" : "no"}</div>
             <div>entry {fmt(candidate.entry)} · stop {fmt(candidate.representativeStopLoss ?? candidate.stopLoss)} · target {fmt(candidate.target1)} · RR {fmt(candidate.netRR)}</div>
             {candidate.stopLossRange ? <div>stop range {fmt(candidate.stopLossRange[0])}-{fmt(candidate.stopLossRange[1])} · occurrence {candidate.occurrenceCount}</div> : <div>occurrence {candidate.occurrenceCount}</div>}
             <div>distance {fmt(candidate.distanceToEntryPct)}% · move {candidate.priceMoveRequiredDirection}</div>

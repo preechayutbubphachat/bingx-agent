@@ -17,6 +17,10 @@ function count(value: number | null | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? String(value) : NA;
 }
 
+function zone(value: [number, number] | null | undefined): string {
+  return value ? `${value[0].toFixed(2)}-${value[1].toFixed(2)}` : NA;
+}
+
 function Row({
   label,
   value,
@@ -76,11 +80,19 @@ export default function OperatorSummaryRailCard({ paper }: { paper: PaperVM }) {
         <Row label="Current Price" value={fmt(summary.currentPrice)} tone={fresh ? "good" : "warn"} />
         <Row label="Freshness / Latest candle" value={`${summary.freshnessStatus} / ${summary.latestCandleAt ?? NA}`} tone={fresh ? "good" : "warn"} />
         <Row label="Regime / Direction / Confidence" value={`${summary.regime ?? NA} / ${summary.direction ?? NA} / ${count(summary.confidence)}`} />
+        <Row label="Trend setup / Risk" value={`${summary.trendSetupDirection ?? NA} / ${summary.trendSetupStatus ?? NA} / ${summary.trendRiskStatus ?? NA}`} tone="warn" />
+        <Row label="Aligned pullback zone" value={`${zone(summary.trendEntryZone)} / ${summary.trendPriceMoveRequiredDirection ?? NA}`} />
         <Row label="ตัวอย่างสะสม = review progress" value={`${count(summary.reviewSamplesUsed)} / ${summary.reviewTargetSamples}`} tone={summary.reviewSampleGatePassed ? "good" : "warn"} />
         <Row label="window samples = pattern ล่าสุด" value={count(summary.windowExactSamples)} />
         <Row label="current-price eligible = ใช้กับราคาตอนนี้" value={count(summary.currentPriceEligibleExactSamples)} tone={(summary.currentPriceEligibleExactSamples ?? 0) > 0 ? "good" : "warn"} />
         <Row label="Clean candidates" value={count(summary.cleanCurrentPriceEligibleSamples)} tone={(summary.cleanCurrentPriceEligibleSamples ?? 0) > 0 ? "good" : "warn"} />
         <Row label="Watchlist status" value={summary.watchlistStatus} tone={summary.cleanReviewCandidates > 0 ? "good" : "warn"} />
+      </div>
+
+      <div className="mt-2 rounded-lg border border-rose-300/20 bg-rose-950/20 p-2 text-[11px] font-bold leading-relaxed text-rose-100">
+        <div className="font-black">Near-price exact candidate</div>
+        <div className="break-words">{summary.candidateInterpretation}</div>
+        <div className="mt-1 text-rose-200">Near entry is observation context, not an entry signal.</div>
       </div>
 
       <div className="mt-2 rounded-lg border border-amber-300/20 bg-amber-950/20 p-2 text-[11px] font-bold leading-relaxed text-amber-100">

@@ -123,6 +123,15 @@ export interface OperatorSummaryVM {
   cleanCurrentPriceEligibleSamples: number | null;
   watchlistStatus: string;
   cleanReviewCandidates: number;
+  trendSetupDirection: string | null;
+  trendSetupStatus: string | null;
+  trendRiskStatus: string | null;
+  trendEntryZone: [number, number] | null;
+  trendPriceMoveRequiredDirection: string | null;
+  nearCandidateDirection: string | null;
+  nearCandidateDirectionAlignment: string | null;
+  nearCandidateQualityStatus: string | null;
+  candidateInterpretation: string;
   mainBlocker: string;
   nextAction: string;
   safety: {
@@ -562,7 +571,9 @@ export interface RegimeAwareExactCandidateWatchlistVM {
   topWatchCandidates: Array<{
     id: string;
     direction: string;
+    directionAlignment: string;
     actionability: string;
+    clean: boolean;
     currentPriceStatus: string;
     qualityStatus: string;
     entry: number | null;

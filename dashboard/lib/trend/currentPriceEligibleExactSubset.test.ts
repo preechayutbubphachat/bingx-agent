@@ -339,6 +339,50 @@ test("compact top candidates defaults to top three while raw top candidates rema
   assert.deepEqual(result.compactTopCandidates.map((candidate) => candidate.id), ["candidate-1", "candidate-2", "candidate-3"]);
 });
 
+test("compact top candidates clusters near-duplicate stops while preserving raw top candidates", () => {
+  const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
+    currentPriceContext: {
+      ...freshContext,
+      currentPrice: 62_607.4,
+      priceSource: "market_snapshot.15m.close",
+    },
+    exactCandidateRecords: [
+      {
+        id: "short-63106-a",
+        direction: "SHORT",
+        zoneType: "OB_FVG_OVERLAP",
+        readiness: "TARGET_TOO_CLOSE",
+        entry: 63_106.7083,
+        stopLoss: 63_857.8586,
+        target1: 62_232.6,
+        netRR: 0.9,
+        flags: ["TARGET_TOO_CLOSE"],
+      },
+      {
+        id: "short-63106-b",
+        direction: "SHORT",
+        zoneType: "OB_FVG_OVERLAP",
+        readiness: "TARGET_TOO_CLOSE",
+        entry: 63_106.7083,
+        stopLoss: 63_858.3671,
+        target1: 62_232.6,
+        netRR: 0.9,
+        flags: ["TARGET_TOO_CLOSE"],
+      },
+    ],
+  }));
+
+  assert.equal(result.topCandidates.length, 2);
+  assert.equal(result.compactTopCandidates.length, 1);
+  assert.equal(result.compactTopCandidates[0]?.occurrenceCount, 2);
+  assert.equal(result.compactTopCandidates[0]?.duplicateGroupSize, 2);
+  assert.equal(result.compactTopCandidates[0]?.representativeStopLoss, 63_857.8586);
+  assert.deepEqual(result.compactTopCandidates[0]?.stopLossRange, [63_857.8586, 63_858.3671]);
+  assert.equal(result.activationAllowed, false);
+  assert.equal(result.paperActivationAllowed, false);
+  assert.equal(result.liveActivationAllowed, false);
+});
+
 test("audits when subset price source differs from geometry snapshot price source", () => {
   const result = evaluateCurrentPriceEligibleExactSubset(baseInput({
     currentPriceContext: { ...freshContext, currentPrice: 100, priceSource: "runtime.currentPriceContext" },

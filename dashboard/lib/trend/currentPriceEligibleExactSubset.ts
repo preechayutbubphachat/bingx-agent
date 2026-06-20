@@ -117,6 +117,9 @@ export interface CurrentPriceEligibleExactSubset {
     distanceToEntryAbs: number | null;
     priceMoveRequiredDirection: CurrentPriceCandidateMoveDirection;
     occurrenceCount: number;
+    representativeStopLoss: number | null;
+    stopLossRange: [number, number] | null;
+    duplicateGroupSize: number;
     flags?: string[];
     reason: string;
   }>;
@@ -199,6 +202,7 @@ const MIN_NET_RR = 1.2;
 const NEAR_ENTRY_PCT = 0.25;
 const TARGET_TOO_CLOSE_PCT = 0.25;
 const CANDIDATE_STALE_SECONDS = 45 * 60;
+const COMPACT_STOP_TOLERANCE_USDT = 1;
 const CURRENT_PRICE_STALE_SECONDS: Record<string, number> = {
   "5m": 15 * 60,
   "5M": 15 * 60,
@@ -258,6 +262,12 @@ function round2(value: number): number {
 
 function roundKey(value: number | null): string {
   return value == null ? "" : String(Math.round(value * 100) / 100);
+}
+
+function compactRoundKey(value: number | null, decimals = 1): string {
+  if (value == null) return "";
+  const factor = 10 ** decimals;
+  return String(Math.round(value * factor) / factor);
 }
 
 function pctDistance(price: number, low: number | null, high: number | null, entry: number | null): number | null {
@@ -576,11 +586,80 @@ function statusForCandidate(
     distanceToEntryAbs,
     priceMoveRequiredDirection: requiredMove,
     occurrenceCount: candidate.occurrenceCount,
+    representativeStopLoss: candidate.stopLoss,
+    stopLossRange: null,
+    duplicateGroupSize: Math.max(1, candidate.occurrenceCount),
     zoneType: candidate.zoneType,
     readiness: candidate.readiness,
     flags: candidate.flags,
     reason,
   };
+}
+
+type EligibleTopCandidate = CurrentPriceEligibleExactSubset["topCandidates"][number];
+
+function compactEntry(candidate: EligibleTopCandidate): number | null {
+  if (candidate.entry != null) return candidate.entry;
+  if (candidate.entryLow != null && candidate.entryHigh != null) return (candidate.entryLow + candidate.entryHigh) / 2;
+  return candidate.entryLow ?? candidate.entryHigh ?? null;
+}
+
+function compactCandidateKey(candidate: EligibleTopCandidate): string {
+  return [
+    candidate.direction,
+    compactRoundKey(compactEntry(candidate)),
+    compactRoundKey(candidate.target1),
+    candidate.currentPriceStatus,
+    candidate.qualityStatus,
+    candidate.zoneType ?? "UNKNOWN_ZONE",
+    candidate.readiness ?? "UNKNOWN_READINESS",
+  ].join("|");
+}
+
+function stopCompatible(existingStops: number[], candidateStop: number | null): boolean {
+  if (!existingStops.length || candidateStop == null) return true;
+  return existingStops.some((stop) => Math.abs(stop - candidateStop) <= COMPACT_STOP_TOLERANCE_USDT);
+}
+
+function buildCompactTopCandidates(candidates: EligibleTopCandidate[]): EligibleTopCandidate[] {
+  const groups: Array<{ key: string; candidates: EligibleTopCandidate[]; stops: number[] }> = [];
+
+  for (const candidate of candidates) {
+    const key = compactCandidateKey(candidate);
+    const group = groups.find((item) => item.key === key && stopCompatible(item.stops, candidate.stopLoss));
+    if (group) {
+      group.candidates.push(candidate);
+      if (candidate.stopLoss != null) group.stops.push(candidate.stopLoss);
+      continue;
+    }
+    groups.push({
+      key,
+      candidates: [candidate],
+      stops: candidate.stopLoss == null ? [] : [candidate.stopLoss],
+    });
+  }
+
+  return groups.map((group) => {
+    const [representative] = group.candidates;
+    const occurrenceCount = group.candidates.reduce((sum, candidate) => sum + Math.max(1, candidate.occurrenceCount), 0);
+    const stops = group.candidates
+      .map((candidate) => candidate.stopLoss)
+      .filter((value): value is number => value != null);
+    const minStop = stops.length ? Math.min(...stops) : null;
+    const maxStop = stops.length ? Math.max(...stops) : null;
+    const stopLossRange: [number, number] | null =
+      minStop != null && maxStop != null && minStop !== maxStop
+        ? [round4(minStop), round4(maxStop)]
+        : null;
+
+    return {
+      ...representative,
+      occurrenceCount,
+      representativeStopLoss: representative.stopLoss,
+      stopLossRange,
+      duplicateGroupSize: occurrenceCount,
+    };
+  }).slice(0, 3);
 }
 
 function failureRates(input: CurrentPriceEligibleExactSubsetInput): Record<string, number | null> {
@@ -885,7 +964,7 @@ export function evaluateCurrentPriceEligibleExactSubset(
       thresholds: THRESHOLDS,
     },
     topCandidates: sortedTopCandidates.slice(0, 10),
-    compactTopCandidates: sortedTopCandidates.slice(0, 3),
+    compactTopCandidates: buildCompactTopCandidates(sortedTopCandidates),
     requiredGeometryInputs: missingCount > 0 ? [...REQUIRED_GEOMETRY_INPUTS] : [],
     warnings: missingCount > 0 ? [`${missingCount} candidate(s) were excluded because structured geometry is incomplete.`] : [],
     nextAction: gateStatus === "REVIEW_READY_NOT_ACTIVATION"

@@ -267,8 +267,11 @@ export default function CurrentPriceEligibleExactSubsetCard({ paper }: { paper: 
             <div key={candidate.id} className="rounded-lg border border-sky-200 bg-sky-50/70 p-2 text-[11px] font-bold leading-relaxed text-sky-950">
               <div className="mb-1 font-black">Top candidate: {candidate.id} · {candidate.status}</div>
               <div>{candidate.direction} · current {candidate.currentPriceStatus} · quality {candidate.qualityStatus}</div>
-              <div>{candidate.zoneType ?? "UNKNOWN_ZONE"} · readiness {candidate.readiness ?? NA} · occurrence {candidate.occurrenceCount}</div>
-              <div>entry {fmt(candidate.entry)} · zone {fmt(candidate.entryLow)}-{fmt(candidate.entryHigh)} · stop {fmt(candidate.stopLoss)} · target {fmt(candidate.target1)} · RR {fmt(candidate.netRR)}</div>
+              <div>{candidate.zoneType ?? "UNKNOWN_ZONE"} · readiness {candidate.readiness ?? NA} · occurrence {candidate.occurrenceCount} · group {candidate.duplicateGroupSize}</div>
+              <div>entry {fmt(candidate.entry)} · zone {fmt(candidate.entryLow)}-{fmt(candidate.entryHigh)} · stop {fmt(candidate.representativeStopLoss ?? candidate.stopLoss)} · target {fmt(candidate.target1)} · RR {fmt(candidate.netRR)}</div>
+              {candidate.stopLossRange ? (
+                <div>stop range {fmt(candidate.stopLossRange[0])}-{fmt(candidate.stopLossRange[1])}</div>
+              ) : null}
               <div>distance {fmt(candidate.distanceToEntryPct)}% / {fmt(candidate.distanceToEntryAbs)} · move {moveDirectionLabel(candidate.priceMoveRequiredDirection)}</div>
               <div>flags {flagText(candidate.flags)}</div>
               <div>{candidate.reason}</div>

@@ -12,6 +12,7 @@ import type {
 /* loose shapes — endpoints are public-safe JSON; we read defensively */
 type AnyObj = Record<string, unknown>;
 const obj = (v: unknown): AnyObj => (v && typeof v === "object" ? (v as AnyObj) : {});
+const arr = (v: unknown): unknown[] => Array.isArray(v) ? v : [];
 const num = (v: unknown, d = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
 const numOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const bool = (v: unknown): boolean => v === true || v === "true";
@@ -21,6 +22,13 @@ const strOrNull = (v: unknown): string | null => (typeof v === "string" && v.len
 const strArray = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 const scalarOrNull = (v: unknown): string | number | boolean | null =>
   typeof v === "string" || typeof v === "number" || typeof v === "boolean" ? v : null;
+const firstNumber = (...values: unknown[]): number | null => {
+  for (const value of values) {
+    const n = numOrNull(value);
+    if (n != null) return n;
+  }
+  return null;
+};
 
 function ageIsStale(iso: string, maxMin = 10): boolean {
   const t = Date.parse(iso);
@@ -275,6 +283,15 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
   const audit = obj(raw.priceSourceAudit);
   const mapCandidate = (item: unknown) => {
     const candidate = obj(item);
+    const stopLossRange: [number, number] | null =
+      Array.isArray(candidate.stopLossRange) &&
+      candidate.stopLossRange.length === 2 &&
+      numOrNull(candidate.stopLossRange[0]) != null &&
+      numOrNull(candidate.stopLossRange[1]) != null
+        ? [numOrNull(candidate.stopLossRange[0])!, numOrNull(candidate.stopLossRange[1])!]
+        : null;
+    const occurrenceCount = num(candidate.occurrenceCount, 1);
+    const stopLoss = numOrNull(candidate.stopLoss);
     return {
       id: str(candidate.id, "unknown"),
       direction: str(candidate.direction, "UNKNOWN"),
@@ -286,14 +303,17 @@ function mapCurrentPriceEligibleExactSubset(raw: AnyObj): PaperVM["currentPriceE
       entry: numOrNull(candidate.entry),
       entryLow: numOrNull(candidate.entryLow),
       entryHigh: numOrNull(candidate.entryHigh),
-      stopLoss: numOrNull(candidate.stopLoss),
+      stopLoss,
       target1: numOrNull(candidate.target1),
       target2: numOrNull(candidate.target2),
       netRR: numOrNull(candidate.netRR),
       distanceToEntryPct: numOrNull(candidate.distanceToEntryPct),
       distanceToEntryAbs: numOrNull(candidate.distanceToEntryAbs),
       priceMoveRequiredDirection: str(candidate.priceMoveRequiredDirection, "UNKNOWN"),
-      occurrenceCount: num(candidate.occurrenceCount, 1),
+      occurrenceCount,
+      representativeStopLoss: numOrNull(candidate.representativeStopLoss) ?? stopLoss,
+      stopLossRange,
+      duplicateGroupSize: num(candidate.duplicateGroupSize, occurrenceCount),
       flags: strArray(candidate.flags),
       reason: str(candidate.reason, ""),
     };
@@ -544,6 +564,75 @@ function mapRegimeAwareExactCandidateWatchlist(raw: AnyObj): PaperVM["regimeAwar
       status: str(verdict.status, "WATCH_ONLY"),
       summary: str(verdict.summary, ""),
       nextAction: str(verdict.nextAction, ""),
+    },
+  };
+}
+
+function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
+  const pipeline = obj(loop.mtfEntryCandidatePipeline);
+  const pipelinePrice = obj(pipeline.currentPriceContext);
+  const pipelineSample = obj(pipeline.sampleAccounting);
+  const zoneCandidate = obj(pipeline.zoneCandidate);
+  const pipelineVerdict = obj(pipeline.verdict);
+  const subset = obj(loop.currentPriceEligibleExactSubset);
+  const subsetPrice = obj(subset.currentPrice);
+  const subsetSample = obj(subset.sampleAccounting);
+  const subsetGate = obj(subset.cleanSubsetGate);
+  const audit = obj(loop.currentPriceConsistencyAudit);
+  const canonicalPrice = obj(audit.canonicalCurrentPrice);
+  const auditSafety = obj(audit.safety);
+  const watchlist = obj(loop.regimeAwareExactCandidateWatchlist);
+  const market = obj(watchlist.currentMarket);
+  const compact = obj(watchlist.compactSummary);
+  const watchSummary = obj(watchlist.watchlistSummary);
+  const watchVerdict = obj(watchlist.verdict);
+  const firstWatchCandidate = obj(arr(watchlist.topWatchCandidates)[0]);
+  const blocker =
+    strArray(subsetGate.failed)[0] ??
+    strArray(pipelineVerdict.blockers)[0] ??
+    strArray(firstWatchCandidate.blockers)[0] ??
+    str(watchVerdict.summary, "") ??
+    str(subset.status, "NO_DATA");
+
+  return {
+    currentPrice: firstNumber(
+      canonicalPrice.value,
+      subsetPrice.value,
+      pipelinePrice.currentPrice,
+      pipelinePrice.value,
+      compact.currentPrice,
+      market.currentPrice,
+    ),
+    freshnessStatus: str(
+      canonicalPrice.freshnessStatus ??
+      subsetPrice.freshnessStatus ??
+      pipelinePrice.freshnessStatus ??
+      compact.freshnessStatus ??
+      market.freshnessStatus,
+      "UNKNOWN",
+    ),
+    latestCandleAt: strOrNull(canonicalPrice.latestCandleAt ?? subsetPrice.latestCandleAt ?? pipelinePrice.latestCandleAt ?? market.latestCandleAt),
+    regime: strOrNull(compact.regime) ?? strOrNull(market.regime),
+    direction: strOrNull(compact.direction) ?? strOrNull(market.direction),
+    confidence: numOrNull(market.confidence),
+    reviewSamplesUsed: firstNumber(pipelineSample.reviewSamplesUsed, zoneCandidate.reviewSamplesUsed, zoneCandidate.lifetimeExactSamples),
+    reviewTargetSamples: num(pipelineSample.reviewTargetSamples ?? zoneCandidate.requiredExactSamples, 100),
+    reviewSampleGatePassed: bool(pipelineSample.reviewSampleGatePassed ?? zoneCandidate.reviewSampleGatePassed),
+    lifetimeExactSamples: firstNumber(subsetSample.lifetimeExactSamples, pipelineSample.lifetimeExactSamples, zoneCandidate.lifetimeExactSamples),
+    windowExactSamples: firstNumber(subsetSample.windowExactSamples, pipelineSample.windowExactSamples, zoneCandidate.windowExactSamples),
+    currentPriceEligibleExactSamples: numOrNull(subsetSample.currentPriceEligibleExactSamples),
+    cleanCurrentPriceEligibleSamples: numOrNull(subsetSample.cleanCurrentPriceEligibleSamples),
+    watchlistStatus: str(compact.watchlistStatus ?? watchlist.status, "NO_DATA"),
+    cleanReviewCandidates: num(compact.cleanReviewCandidates ?? watchSummary.cleanReviewCandidates, 0),
+    mainBlocker: blocker || "no current blocker available",
+    nextAction: str(compact.nextAction ?? watchVerdict.nextAction ?? subset.nextAction ?? pipelineVerdict.nextAction, "continue diagnostics review without activation"),
+    safety: {
+      reviewOnly: auditSafety.reviewOnly === false ? false : true,
+      activationAllowed: bool(auditSafety.activationAllowed ?? subset.activationAllowed ?? watchlist.activationAllowed ?? pipeline.activationAllowed),
+      paperActivationAllowed: bool(auditSafety.paperActivationAllowed ?? subset.paperActivationAllowed ?? watchlist.paperActivationAllowed ?? pipeline.paperActivationAllowed),
+      liveActivationAllowed: bool(auditSafety.liveActivationAllowed ?? subset.liveActivationAllowed ?? watchlist.liveActivationAllowed ?? pipeline.liveActivationAllowed),
+      orderAllowed: bool(auditSafety.orderAllowed),
+      shadowOnly: subset.shadowOnly === false || watchlist.shadowOnly === false || pipeline.shadowOnly === false ? false : true,
     },
   };
 }
@@ -867,6 +956,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     trendPaperArmIntentBridge: mapTrendPaperArmIntentBridge(obj(loop.trendPaperArmIntentBridge)),
     trendPaperEvidenceRunner: mapTrendPaperEvidenceRunner(obj(loop.trendPaperEvidenceRunner)),
     reviewReadinessScore: mapReviewReadinessScore(reviewReadinessScore),
+    operatorSummary: buildOperatorSummaryFromRaw(loop),
     mtfEntryCandidatePipeline: mapMtfEntryCandidatePipeline(obj(loop.mtfEntryCandidatePipeline)),
     mtfExactZoneFailureAttribution: mapMtfExactZoneFailureAttribution(obj(loop.mtfExactZoneFailureAttribution)),
     currentPriceEligibleExactSubset: mapCurrentPriceEligibleExactSubset(obj(loop.currentPriceEligibleExactSubset)),

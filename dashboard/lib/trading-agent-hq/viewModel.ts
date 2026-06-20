@@ -86,6 +86,7 @@ export interface PaperVM {
   trendPaperArmIntentBridge: TrendPaperArmIntentBridgeVM;
   trendPaperEvidenceRunner: TrendPaperEvidenceRunnerVM;
   reviewReadinessScore: ReviewReadinessScoreVM;
+  operatorSummary: OperatorSummaryVM;
   mtfEntryCandidatePipeline: MtfEntryCandidatePipelineVM;
   mtfExactZoneFailureAttribution: MtfExactZoneFailureAttributionVM;
   currentPriceEligibleExactSubset: CurrentPriceEligibleExactSubsetVM;
@@ -104,6 +105,34 @@ export interface TrendPaperConfigPublicVM {
   minRewardRisk: number | null;
   feePct: number | null;
   slippagePct: number | null;
+}
+
+export interface OperatorSummaryVM {
+  currentPrice: number | null;
+  freshnessStatus: string;
+  latestCandleAt: string | null;
+  regime: string | null;
+  direction: string | null;
+  confidence: number | null;
+  reviewSamplesUsed: number | null;
+  reviewTargetSamples: number;
+  reviewSampleGatePassed: boolean;
+  lifetimeExactSamples: number | null;
+  windowExactSamples: number | null;
+  currentPriceEligibleExactSamples: number | null;
+  cleanCurrentPriceEligibleSamples: number | null;
+  watchlistStatus: string;
+  cleanReviewCandidates: number;
+  mainBlocker: string;
+  nextAction: string;
+  safety: {
+    reviewOnly: boolean;
+    activationAllowed: boolean;
+    paperActivationAllowed: boolean;
+    liveActivationAllowed: boolean;
+    orderAllowed: boolean;
+    shadowOnly: boolean;
+  };
 }
 
 export interface CostGateBreakdownVM {
@@ -403,6 +432,9 @@ export interface CurrentPriceEligibleExactSubsetVM {
     distanceToEntryAbs: number | null;
     priceMoveRequiredDirection: string;
     occurrenceCount: number;
+    representativeStopLoss: number | null;
+    stopLossRange: [number, number] | null;
+    duplicateGroupSize: number;
     flags: string[];
     reason: string;
   }>;

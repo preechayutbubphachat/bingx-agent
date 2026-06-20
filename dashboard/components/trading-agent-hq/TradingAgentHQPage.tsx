@@ -75,6 +75,7 @@ import CurrentPriceEligibleExactSubsetCard from "./CurrentPriceEligibleExactSubs
 import ShadowOutcomeSummaryCard from "./ShadowOutcomeSummaryCard";
 import ReviewReadinessNextStepCard from "./ReviewReadinessNextStepCard";
 import TradingCafeBottomPanels from "./TradingCafeBottomPanels";
+import OperatorSummaryRailCard from "./OperatorSummaryRailCard";
 
 const STATUS_FILTERS: ("all" | TileStatusCategory)[] = ["all", "working", "waiting", "notready"];
 
@@ -93,6 +94,17 @@ const CARD_TITLES: Record<string, string> = Object.fromEntries(
 const CARD_ICONS: Record<string, string | undefined> = Object.fromEntries(
   AGENT_HQ_CARD_LAYOUT.map((c) => [c.id, c.icon]),
 );
+
+function RailDetails({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <details className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-2 shadow-[0_10px_24px_rgba(2,8,23,0.34)]">
+      <summary className="cursor-pointer select-none rounded-xl px-1 py-1 text-[12px] font-black text-cyan-100 marker:text-cyan-300">
+        {title}
+      </summary>
+      <div className="mt-2 space-y-3">{children}</div>
+    </details>
+  );
+}
 
 // THQ-5: starts from server-provided initial (mock), then hydrates from public-safe endpoints.
 export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAgentHQViewModel }) {
@@ -519,19 +531,24 @@ export default function TradingAgentHQPage({ initialVm }: { initialVm: TradingAg
             <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-300">อ่านแยกจาก center canvas ได้ · Paper-only · ไม่ใช่ Activation/Live/Order</p>
           </div>
           {/* UI-2.1 Task C: read-only health heartbeat (existing VM fields only) */}
+          <OperatorSummaryRailCard paper={vm.paper} />
           <EvidencePilotHealthCard paper={vm.paper} />
           {/* T-3H-6-a: read-only rejection frequency summary (observe only) */}
-          <RejectionAnalysisCard paper={vm.paper} />
+          <RailDetails title="ข้อมูล debug / raw และ RR diagnostics">
+            <RejectionAnalysisCard paper={vm.paper} />
           {/* T-3H-6-b: read-only RR drilldown for the latest setup (observe only) */}
-          <RrDrilldownCard paper={vm.paper} />
+            <RrDrilldownCard paper={vm.paper} />
+          </RailDetails>
           {/* T-3H-6-c: read-only MTF OB/FVG refinement shadow (observe only) */}
-          <MtfObFvgShadowCard paper={vm.paper} />
+          <RailDetails title="รายละเอียด candidate / MTF exact diagnostics">
+            <MtfObFvgShadowCard paper={vm.paper} />
           {/* D7.0: read-only MTF entry candidate review pipeline */}
           <MtfEntryCandidatePipelineCard paper={vm.paper} />
           <MtfExactZoneFailureAttributionCard paper={vm.paper} />
           <CurrentPriceEligibleExactSubsetCard paper={vm.paper} />
           {/* D5.2-c: read-only shadow outcome (counterfactual reachability) evidence — not real trades */}
-          <ShadowOutcomeSummaryCard paper={vm.paper} />
+            <ShadowOutcomeSummaryCard paper={vm.paper} />
+          </RailDetails>
           <RiskManagerPanel paper={vm.paper} safety={vm.safety} log={vm.bottomLog} />
         </aside>
       </div>

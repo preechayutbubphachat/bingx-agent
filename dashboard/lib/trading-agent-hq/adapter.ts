@@ -791,6 +791,50 @@ function mapTouchAwareConfirmationReview(raw: AnyObj): PaperVM["touchAwareConfir
   };
 }
 
+function mapNoReviewCandidateBottleneckResolver(raw: AnyObj): PaperVM["noReviewCandidateBottleneckResolver"] {
+  const statuses = obj(raw.d8Statuses);
+  const continuation = obj(raw.continuationEvidence);
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "NO_REVIEW_CANDIDATE_BOTTLENECK_RESOLVER_V1"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    status: str(raw.status, "NO_CONTEXT"),
+    primaryBlocker: str(raw.primaryBlocker, "MISSING_CONTEXT"),
+    contributingBlockers: strArray(raw.contributingBlockers),
+    alignedDirection: str(raw.alignedDirection, "UNKNOWN"),
+    currentPrice: numOrNull(raw.currentPrice),
+    triggerPrice: numOrNull(raw.triggerPrice),
+    distanceToTriggerAbs: numOrNull(raw.distanceToTriggerAbs),
+    distanceToTriggerPct: numOrNull(raw.distanceToTriggerPct),
+    bestRR: numOrNull(raw.bestRR),
+    rrThreshold: numOrNull(raw.rrThreshold),
+    rrReady: bool(raw.rrReady),
+    touchStatus: str(raw.touchStatus, "UNKNOWN"),
+    confirmationStatus: str(raw.confirmationStatus, "UNKNOWN"),
+    d8Statuses: {
+      d8_0: str(statuses.d8_0, "UNKNOWN"),
+      d8_1: str(statuses.d8_1, "UNKNOWN"),
+      d8_2: str(statuses.d8_2, "UNKNOWN"),
+      d8_3: str(statuses.d8_3, "UNKNOWN"),
+      d8_4: str(statuses.d8_4, "UNKNOWN"),
+    },
+    triggerDistanceClass: str(raw.triggerDistanceClass, "UNKNOWN"),
+    continuationEvidence: {
+      status: str(continuation.status, "INSUFFICIENT"),
+      timeframesUsed: strArray(continuation.timeframesUsed),
+      reasons: strArray(continuation.reasons),
+    },
+    nextAlgorithmBranch: str(raw.nextAlgorithmBranch, "NO_ACTION"),
+    nextAction: str(raw.nextAction, "wait for consistent D8.0-D8.4 diagnostic context"),
+    doNotDo: strArray(raw.doNotDo),
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+  };
+}
+
 function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pipeline = obj(loop.mtfEntryCandidatePipeline);
   const pipelinePrice = obj(pipeline.currentPriceContext);
@@ -815,6 +859,7 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pullbackTrigger = obj(loop.pullbackTriggerThresholds);
   const pullbackTouch = obj(loop.pullbackZoneTouchEvidence);
   const touchConfirmation = obj(loop.touchAwareConfirmationReview);
+  const candidateBottleneck = obj(loop.noReviewCandidateBottleneckResolver);
   const trendEntryZone = numberPair(trendStrategy.entryZone);
   const trendCurrentPrice = firstNumber(trendStrategy.currentPrice, pipelinePrice.currentPrice, pipelinePrice.value);
   const trendPriceMoveRequiredDirection = trendEntryZone == null || trendCurrentPrice == null
@@ -929,6 +974,15 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
       rrReady: bool(touchConfirmation.rrReady),
       shouldPromoteToReview: bool(touchConfirmation.shouldPromoteToReview),
       nextAction: str(touchConfirmation.nextAction, "wait for an active touch window and fresh aligned confirmation"),
+    },
+    candidateBottleneck: {
+      status: str(candidateBottleneck.status, "NO_CONTEXT"),
+      primaryBlocker: str(candidateBottleneck.primaryBlocker, "MISSING_CONTEXT"),
+      distanceToTriggerAbs: numOrNull(candidateBottleneck.distanceToTriggerAbs),
+      distanceToTriggerPct: numOrNull(candidateBottleneck.distanceToTriggerPct),
+      triggerDistanceClass: str(candidateBottleneck.triggerDistanceClass, "UNKNOWN"),
+      nextAlgorithmBranch: str(candidateBottleneck.nextAlgorithmBranch, "NO_ACTION"),
+      nextAction: str(candidateBottleneck.nextAction, "wait for consistent D8.0-D8.4 diagnostic context"),
     },
     safety: {
       reviewOnly: auditSafety.reviewOnly === false ? false : true,
@@ -1274,6 +1328,9 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     pullbackTriggerThresholds: mapPullbackTriggerThresholds(obj(loop.pullbackTriggerThresholds)),
     pullbackZoneTouchEvidence: mapPullbackZoneTouchEvidence(obj(loop.pullbackZoneTouchEvidence)),
     touchAwareConfirmationReview: mapTouchAwareConfirmationReview(obj(loop.touchAwareConfirmationReview)),
+    noReviewCandidateBottleneckResolver: mapNoReviewCandidateBottleneckResolver(
+      obj(loop.noReviewCandidateBottleneckResolver),
+    ),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

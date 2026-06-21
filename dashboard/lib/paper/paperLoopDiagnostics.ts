@@ -112,6 +112,10 @@ import {
   evaluateTouchAwareConfirmationReview,
   type TouchAwareConfirmationReview,
 } from "../trend/touchAwareConfirmationReview.ts";
+import {
+  evaluateNoReviewCandidateBottleneckResolver,
+  type NoReviewCandidateBottleneckResolver,
+} from "../trend/noReviewCandidateBottleneckResolver.ts";
 import { getCandlesFromSnapshot, normalizeCandles } from "../candleAdapter.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -149,6 +153,7 @@ export interface PaperLoopDiagnostics {
   pullbackTriggerThresholds: PullbackTriggerThresholds;
   pullbackZoneTouchEvidence: PullbackZoneTouchEvidence;
   touchAwareConfirmationReview: TouchAwareConfirmationReview;
+  noReviewCandidateBottleneckResolver: NoReviewCandidateBottleneckResolver;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -1121,6 +1126,14 @@ export function buildPaperLoopDiagnostics(
     resolverDrivenPullbackGate,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
   });
+  const noReviewCandidateBottleneckResolver = evaluateNoReviewCandidateBottleneckResolver({
+    entryCandidateResolution,
+    resolverDrivenPullbackGate,
+    pullbackTriggerThresholds,
+    pullbackZoneTouchEvidence,
+    touchAwareConfirmationReview,
+    multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -1154,6 +1167,7 @@ export function buildPaperLoopDiagnostics(
     pullbackTriggerThresholds,
     pullbackZoneTouchEvidence,
     touchAwareConfirmationReview,
+    noReviewCandidateBottleneckResolver,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

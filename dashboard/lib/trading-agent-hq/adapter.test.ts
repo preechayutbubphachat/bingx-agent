@@ -589,6 +589,49 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
           reviewOnly: true,
           shadowOnly: true,
         },
+        noReviewCandidateBottleneckResolver: {
+          schemaVersion: 1,
+          source: "NO_REVIEW_CANDIDATE_BOTTLENECK_RESOLVER_V1",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          status: "STRATEGY_BRANCH_GAP",
+          primaryBlocker: "PRICE_ABOVE_LONG_TRIGGER",
+          contributingBlockers: [
+            "PRICE_ABOVE_LONG_TRIGGER",
+            "PULLBACK_ZONE_NOT_TOUCHED",
+            "PULLBACK_ONLY_STRATEGY_GAP",
+          ],
+          alignedDirection: "LONG",
+          currentPrice: 64435.4,
+          triggerPrice: 63834.4677,
+          distanceToTriggerAbs: 600.9323,
+          distanceToTriggerPct: 0.9326,
+          bestRR: 6.208,
+          rrThreshold: 1.2,
+          rrReady: true,
+          touchStatus: "NO_TOUCH_YET",
+          confirmationStatus: "NOT_EVALUATED",
+          d8Statuses: {
+            d8_0: "WAITING_PULLBACK",
+            d8_1: "WAITING_PULLBACK",
+            d8_2: "WAITING_FOR_TRIGGER_PRICE",
+            d8_3: "NO_TOUCH_YET",
+            d8_4: "TOUCH_WINDOW_INACTIVE",
+          },
+          triggerDistanceClass: "FAR",
+          continuationEvidence: {
+            status: "STRONG_ALIGNED",
+            timeframesUsed: ["5M"],
+            reasons: ["5M ADX/DI/momentum support LONG"],
+          },
+          nextAlgorithmBranch: "DESIGN_CONTINUATION_REVIEW_BRANCH",
+          nextAction: "design a separate review-only continuation branch after historical replay evidence",
+          doNotDo: ["do not create a candidate"],
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -724,6 +767,18 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.operatorSummary.touchConfirmation.status, "PROMOTABLE_REVIEW_CANDIDATE");
   assert.equal(vm.paper.operatorSummary.touchConfirmation.confirmationStatus, "CONFIRMED_BULLISH");
   assert.equal(vm.paper.operatorSummary.touchConfirmation.shouldPromoteToReview, true);
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.status, "STRATEGY_BRANCH_GAP");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.primaryBlocker, "PRICE_ABOVE_LONG_TRIGGER");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.triggerDistanceClass, "FAR");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.continuationEvidence.status, "STRONG_ALIGNED");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.nextAlgorithmBranch, "DESIGN_CONTINUATION_REVIEW_BRANCH");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.activationAllowed, false);
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.paperActivationAllowed, false);
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.candidateBottleneck.status, "STRATEGY_BRANCH_GAP");
+  assert.equal(vm.paper.operatorSummary.candidateBottleneck.primaryBlocker, "PRICE_ABOVE_LONG_TRIGGER");
+  assert.equal(vm.paper.operatorSummary.candidateBottleneck.distanceToTriggerPct, 0.9326);
+  assert.equal(vm.paper.operatorSummary.candidateBottleneck.nextAlgorithmBranch, "DESIGN_CONTINUATION_REVIEW_BRANCH");
   assert.equal(vm.paper.operatorSummary.currentPrice, 101.5);
   assert.equal(vm.paper.operatorSummary.freshnessStatus, "FRESH");
   assert.equal(vm.paper.operatorSummary.regime, "NO_TRADE");
@@ -880,4 +935,16 @@ test("operator summary explains aligned trend setup and counter-regime exact can
   assert.equal(vm.paper.touchAwareConfirmationReview.liveActivationAllowed, false);
   assert.equal(vm.paper.operatorSummary.touchConfirmation.status, "NO_TOUCH_CONTEXT");
   assert.equal(vm.paper.operatorSummary.touchConfirmation.shouldPromoteToReview, false);
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.status, "NO_CONTEXT");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.primaryBlocker, "MISSING_CONTEXT");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.currentPrice, null);
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.triggerDistanceClass, "UNKNOWN");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.nextAlgorithmBranch, "NO_ACTION");
+  assert.deepEqual(vm.paper.noReviewCandidateBottleneckResolver.contributingBlockers, []);
+  assert.deepEqual(vm.paper.noReviewCandidateBottleneckResolver.continuationEvidence.timeframesUsed, []);
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.activationAllowed, false);
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.paperActivationAllowed, false);
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.candidateBottleneck.status, "NO_CONTEXT");
+  assert.equal(vm.paper.operatorSummary.candidateBottleneck.nextAlgorithmBranch, "NO_ACTION");
 });

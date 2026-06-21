@@ -20,6 +20,7 @@ function tone(status: string): string {
     || status === "RR_REPAIRED_REVIEW_ONLY"
     || status === "READY_FOR_CONFIRMATION_REVIEW"
     || status === "PROMOTABLE_REVIEW_CANDIDATE"
+    || status === "PROMOTABLE_REVIEW_EXISTS"
   ) {
     return "border-emerald-300/35 bg-emerald-950/35 text-emerald-100";
   }
@@ -31,6 +32,8 @@ function tone(status: string): string {
     || status === "INVALIDATION_REVIEW_REQUIRED"
     || status === "SOURCE_SAFETY_INVALID"
     || status === "CONFIRMATION_CONFLICTING"
+    || status === "SAFETY_BLOCKED"
+    || status === "RR_NOT_READY"
   ) {
     return "border-rose-300/35 bg-rose-950/35 text-rose-100";
   }
@@ -56,6 +59,8 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
   const touchRaw = paper.pullbackZoneTouchEvidence;
   const confirmation = paper.operatorSummary.touchConfirmation;
   const confirmationRaw = paper.touchAwareConfirmationReview;
+  const bottleneck = paper.operatorSummary.candidateBottleneck;
+  const bottleneckRaw = paper.noReviewCandidateBottleneckResolver;
 
   return (
     <section className="rounded-lg border border-cyan-300/20 bg-slate-950/85 p-3 shadow-[0_12px_28px_rgba(2,8,23,0.44)]">
@@ -104,9 +109,15 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
           <Row label="Touch-aware review" value={confirmation.status} />
           <Row label="Fresh confirmation" value={confirmation.confirmationStatus} />
           <Row label="Promote to review" value={confirmation.shouldPromoteToReview ? "YES" : "NO"} />
+          <Row label="Primary blocker" value={bottleneck.primaryBlocker} />
+          <Row
+            label="Distance to trigger"
+            value={`${fmt(bottleneck.distanceToTriggerAbs)} / ${pct(bottleneck.distanceToTriggerPct)}`}
+          />
+          <Row label="Next algorithm branch" value={bottleneck.nextAlgorithmBranch} />
         </div>
         <div className="mt-1.5 break-words text-[10px] font-bold leading-relaxed text-amber-100">
-          Next action: {confirmation.nextAction || touch.nextAction || trigger.nextAction || gate.nextAction || NA}
+          Next action: {bottleneck.nextAction || confirmation.nextAction || touch.nextAction || trigger.nextAction || gate.nextAction || NA}
         </div>
       </div>
 
@@ -163,6 +174,29 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
             ))}
             <div className="break-words text-slate-400">
               Confirmation blockers: {confirmationRaw.blockers.join(", ") || "NONE"}
+            </div>
+          </div>
+          <div className="rounded-md border border-amber-300/15 bg-amber-950/15 p-1.5">
+            <div className="font-black text-amber-100">
+              {bottleneckRaw.status} / {bottleneckRaw.triggerDistanceClass}
+            </div>
+            <div className="break-words text-amber-200">
+              D8.0-D8.4: {Object.values(bottleneckRaw.d8Statuses).join(" / ")}
+            </div>
+            <div className="break-words text-amber-200">
+              Continuation evidence: {bottleneckRaw.continuationEvidence.status}
+              {bottleneckRaw.continuationEvidence.timeframesUsed.length
+                ? ` (${bottleneckRaw.continuationEvidence.timeframesUsed.join(", ")})`
+                : ""}
+            </div>
+            <div className="break-words text-slate-300">
+              Evidence reasons: {bottleneckRaw.continuationEvidence.reasons.join("; ") || NA}
+            </div>
+            <div className="break-words text-slate-400">
+              Contributing blockers: {bottleneckRaw.contributingBlockers.join(", ") || "NONE"}
+            </div>
+            <div className="break-words text-slate-400">
+              Do not: {bottleneckRaw.doNotDo.join("; ") || NA}
             </div>
           </div>
           {resolution.rrScenarios.map((scenario) => (

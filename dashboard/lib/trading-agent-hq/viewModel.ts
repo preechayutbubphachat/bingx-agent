@@ -97,6 +97,7 @@ export interface PaperVM {
   pullbackTriggerThresholds: PullbackTriggerThresholdsVM;
   pullbackZoneTouchEvidence: PullbackZoneTouchEvidenceVM;
   touchAwareConfirmationReview: TouchAwareConfirmationReviewVM;
+  noReviewCandidateBottleneckResolver: NoReviewCandidateBottleneckResolverVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -175,6 +176,15 @@ export interface OperatorSummaryVM {
     touchStatus: string;
     rrReady: boolean;
     shouldPromoteToReview: boolean;
+    nextAction: string;
+  };
+  candidateBottleneck: {
+    status: string;
+    primaryBlocker: string;
+    distanceToTriggerAbs: number | null;
+    distanceToTriggerPct: number | null;
+    triggerDistanceClass: string;
+    nextAlgorithmBranch: string;
     nextAction: string;
   };
   safety: {
@@ -350,6 +360,46 @@ export interface TouchAwareConfirmationReviewVM {
   shouldPromoteToReview: boolean;
   blockers: string[];
   nextAction: string;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+}
+
+export interface NoReviewCandidateBottleneckResolverVM {
+  schemaVersion: number;
+  source: string;
+  readiness: string;
+  status: string;
+  primaryBlocker: string;
+  contributingBlockers: string[];
+  alignedDirection: string;
+  currentPrice: number | null;
+  triggerPrice: number | null;
+  distanceToTriggerAbs: number | null;
+  distanceToTriggerPct: number | null;
+  bestRR: number | null;
+  rrThreshold: number | null;
+  rrReady: boolean;
+  touchStatus: string;
+  confirmationStatus: string;
+  d8Statuses: {
+    d8_0: string;
+    d8_1: string;
+    d8_2: string;
+    d8_3: string;
+    d8_4: string;
+  };
+  triggerDistanceClass: string;
+  continuationEvidence: {
+    status: string;
+    timeframesUsed: string[];
+    reasons: string[];
+  };
+  nextAlgorithmBranch: string;
+  nextAction: string;
+  doNotDo: string[];
   activationAllowed: boolean;
   paperActivationAllowed: boolean;
   liveActivationAllowed: boolean;

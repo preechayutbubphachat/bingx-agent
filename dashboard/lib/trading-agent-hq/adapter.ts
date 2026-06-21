@@ -716,6 +716,38 @@ function mapPullbackTriggerThresholds(raw: AnyObj): PaperVM["pullbackTriggerThre
   };
 }
 
+function mapPullbackZoneTouchEvidence(raw: AnyObj): PaperVM["pullbackZoneTouchEvidence"] {
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "PULLBACK_ZONE_TOUCH_EVIDENCE_V1"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    status: str(raw.status, "NO_TRIGGER_CONTEXT"),
+    alignedDirection: str(raw.alignedDirection, "UNKNOWN"),
+    currentPrice: numOrNull(raw.currentPrice),
+    rawZoneLow: numOrNull(raw.rawZoneLow),
+    rawZoneHigh: numOrNull(raw.rawZoneHigh),
+    expandedZoneLow: numOrNull(raw.expandedZoneLow),
+    expandedZoneHigh: numOrNull(raw.expandedZoneHigh),
+    triggerPrice: numOrNull(raw.triggerPrice),
+    lastTouchAt: strOrNull(raw.lastTouchAt),
+    lastTouchTimeframe: strOrNull(raw.lastTouchTimeframe),
+    candlesSinceTouch: numOrNull(raw.candlesSinceTouch),
+    touchType: strOrNull(raw.touchType),
+    deepestTouchPrice: numOrNull(raw.deepestTouchPrice),
+    touchDistancePct: numOrNull(raw.touchDistancePct),
+    confirmationWindowCandles: numOrNull(raw.confirmationWindowCandles),
+    confirmationWindowStatus: str(raw.confirmationWindowStatus, "NOT_AVAILABLE"),
+    shouldEvaluateConfirmation: bool(raw.shouldEvaluateConfirmation),
+    blockers: strArray(raw.blockers),
+    nextAction: str(raw.nextAction, "wait for valid D8.2 pullback trigger geometry"),
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+  };
+}
+
 function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pipeline = obj(loop.mtfEntryCandidatePipeline);
   const pipelinePrice = obj(pipeline.currentPriceContext);
@@ -738,6 +770,7 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const trendStrategy = obj(loop.trendStrategy);
   const pullbackGate = obj(loop.resolverDrivenPullbackGate);
   const pullbackTrigger = obj(loop.pullbackTriggerThresholds);
+  const pullbackTouch = obj(loop.pullbackZoneTouchEvidence);
   const trendEntryZone = numberPair(trendStrategy.entryZone);
   const trendCurrentPrice = firstNumber(trendStrategy.currentPrice, pipelinePrice.currentPrice, pipelinePrice.value);
   const trendPriceMoveRequiredDirection = trendEntryZone == null || trendCurrentPrice == null
@@ -833,6 +866,16 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
       rrReady: bool(pullbackTrigger.rrReady),
       promotionBlockedBy: strArray(pullbackTrigger.promotionBlockedBy),
       nextAction: str(pullbackTrigger.nextAction, "wait for a valid D8.1 resolver-driven pullback gate"),
+    },
+    pullbackTouch: {
+      touchStatus: str(pullbackTouch.status, "NO_TRIGGER_CONTEXT"),
+      touchType: strOrNull(pullbackTouch.touchType),
+      lastTouchAt: strOrNull(pullbackTouch.lastTouchAt),
+      lastTouchTimeframe: strOrNull(pullbackTouch.lastTouchTimeframe),
+      candlesSinceTouch: numOrNull(pullbackTouch.candlesSinceTouch),
+      confirmationWindowStatus: str(pullbackTouch.confirmationWindowStatus, "NOT_AVAILABLE"),
+      shouldEvaluateConfirmation: bool(pullbackTouch.shouldEvaluateConfirmation),
+      nextAction: str(pullbackTouch.nextAction, "wait for valid D8.2 pullback trigger geometry"),
     },
     safety: {
       reviewOnly: auditSafety.reviewOnly === false ? false : true,
@@ -1176,6 +1219,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     entryCandidateResolution: mapEntryCandidateResolution(obj(loop.entryCandidateResolution)),
     resolverDrivenPullbackGate: mapResolverDrivenPullbackGate(obj(loop.resolverDrivenPullbackGate)),
     pullbackTriggerThresholds: mapPullbackTriggerThresholds(obj(loop.pullbackTriggerThresholds)),
+    pullbackZoneTouchEvidence: mapPullbackZoneTouchEvidence(obj(loop.pullbackZoneTouchEvidence)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

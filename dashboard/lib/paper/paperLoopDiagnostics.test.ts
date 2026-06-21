@@ -345,6 +345,13 @@ test("old paper diagnostics payload remains valid with R1 Pack B defaults", () =
   assert.equal(d.pullbackTriggerThresholds.activationAllowed, false);
   assert.equal(d.pullbackTriggerThresholds.paperActivationAllowed, false);
   assert.equal(d.pullbackTriggerThresholds.liveActivationAllowed, false);
+  assert.equal(d.pullbackZoneTouchEvidence.source, "PULLBACK_ZONE_TOUCH_EVIDENCE_V1");
+  assert.equal(d.pullbackZoneTouchEvidence.status, "NO_TRIGGER_CONTEXT");
+  assert.equal(d.pullbackZoneTouchEvidence.confirmationWindowStatus, "NOT_AVAILABLE");
+  assert.equal(d.pullbackZoneTouchEvidence.shouldEvaluateConfirmation, false);
+  assert.equal(d.pullbackZoneTouchEvidence.activationAllowed, false);
+  assert.equal(d.pullbackZoneTouchEvidence.paperActivationAllowed, false);
+  assert.equal(d.pullbackZoneTouchEvidence.liveActivationAllowed, false);
 });
 
 test("D5.4 no-trade reason analysis surfaces diagnostics gap and runtime counters", () => {

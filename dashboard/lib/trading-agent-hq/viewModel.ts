@@ -95,6 +95,7 @@ export interface PaperVM {
   entryCandidateResolution: EntryCandidateResolutionVM;
   resolverDrivenPullbackGate: ResolverDrivenPullbackGateVM;
   pullbackTriggerThresholds: PullbackTriggerThresholdsVM;
+  pullbackZoneTouchEvidence: PullbackZoneTouchEvidenceVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -154,6 +155,16 @@ export interface OperatorSummaryVM {
     distanceToTriggerPct: number | null;
     rrReady: boolean;
     promotionBlockedBy: string[];
+    nextAction: string;
+  };
+  pullbackTouch: {
+    touchStatus: string;
+    touchType: string | null;
+    lastTouchAt: string | null;
+    lastTouchTimeframe: string | null;
+    candlesSinceTouch: number | null;
+    confirmationWindowStatus: string;
+    shouldEvaluateConfirmation: boolean;
     nextAction: string;
   };
   safety: {
@@ -260,6 +271,36 @@ export interface PullbackTriggerThresholdsVM {
   rrReady: boolean;
   confirmationRequired: boolean;
   promotionBlockedBy: string[];
+  nextAction: string;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+}
+
+export interface PullbackZoneTouchEvidenceVM {
+  schemaVersion: number;
+  source: string;
+  readiness: string;
+  status: string;
+  alignedDirection: string;
+  currentPrice: number | null;
+  rawZoneLow: number | null;
+  rawZoneHigh: number | null;
+  expandedZoneLow: number | null;
+  expandedZoneHigh: number | null;
+  triggerPrice: number | null;
+  lastTouchAt: string | null;
+  lastTouchTimeframe: string | null;
+  candlesSinceTouch: number | null;
+  touchType: string | null;
+  deepestTouchPrice: number | null;
+  touchDistancePct: number | null;
+  confirmationWindowCandles: number | null;
+  confirmationWindowStatus: string;
+  shouldEvaluateConfirmation: boolean;
+  blockers: string[];
   nextAction: string;
   activationAllowed: boolean;
   paperActivationAllowed: boolean;

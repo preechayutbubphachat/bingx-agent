@@ -104,7 +104,11 @@ import {
   evaluatePullbackTriggerThresholds,
   type PullbackTriggerThresholds,
 } from "../trend/pullbackTriggerThresholds.ts";
-import { getCandlesFromSnapshot } from "../candleAdapter.ts";
+import {
+  evaluatePullbackZoneTouchEvidence,
+  type PullbackZoneTouchEvidence,
+} from "../trend/pullbackZoneTouchEvidence.ts";
+import { getCandlesFromSnapshot, normalizeCandles } from "../candleAdapter.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
 
@@ -139,6 +143,7 @@ export interface PaperLoopDiagnostics {
   entryCandidateResolution: EntryCandidateResolution;
   resolverDrivenPullbackGate: ResolverDrivenPullbackGate;
   pullbackTriggerThresholds: PullbackTriggerThresholds;
+  pullbackZoneTouchEvidence: PullbackZoneTouchEvidence;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -1091,6 +1096,20 @@ export function buildPaperLoopDiagnostics(
   const pullbackTriggerThresholds = evaluatePullbackTriggerThresholds({
     resolverDrivenPullbackGate,
   });
+  const recent5mCandles = normalizeCandles(
+    context.latest5mCandles ?? (
+      context.marketSnapshot ? getCandlesFromSnapshot(context.marketSnapshot, "5M") : []
+    ),
+  );
+  const recent15mCandles = normalizeCandles(
+    context.marketSnapshot ? getCandlesFromSnapshot(context.marketSnapshot, "15M") : [],
+  );
+  const pullbackZoneTouchEvidence = evaluatePullbackZoneTouchEvidence({
+    pullbackTriggerThresholds,
+    resolverDrivenPullbackGate,
+    recent5mCandles,
+    recent15mCandles,
+  });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -1122,6 +1141,7 @@ export function buildPaperLoopDiagnostics(
     entryCandidateResolution,
     resolverDrivenPullbackGate,
     pullbackTriggerThresholds,
+    pullbackZoneTouchEvidence,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

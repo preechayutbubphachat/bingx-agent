@@ -521,6 +521,35 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
           reviewOnly: true,
           shadowOnly: true,
         },
+        pullbackZoneTouchEvidence: {
+          schemaVersion: 1,
+          source: "PULLBACK_ZONE_TOUCH_EVIDENCE_V1",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          status: "CONFIRMATION_WINDOW_ACTIVE",
+          alignedDirection: "LONG",
+          currentPrice: 63845.6,
+          rawZoneLow: 63623.198,
+          rawZoneHigh: 63763.5,
+          expandedZoneLow: 63591.2752,
+          expandedZoneHigh: 63795.4228,
+          triggerPrice: 63795.4228,
+          lastTouchAt: "2026-06-21T00:05:00.000Z",
+          lastTouchTimeframe: "5M",
+          candlesSinceTouch: 1,
+          touchType: "RAW_ZONE_TOUCHED",
+          deepestTouchPrice: 63750,
+          touchDistancePct: 0.071201,
+          confirmationWindowCandles: 3,
+          confirmationWindowStatus: "ACTIVE",
+          shouldEvaluateConfirmation: true,
+          blockers: [],
+          nextAction: "evaluate fresh 5M/15M confirmation for aligned LONG",
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -633,6 +662,18 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
     "PRICE_NOT_AT_TRIGGER",
     "CONFIRMATION_NOT_EVALUATED",
   ]);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.status, "CONFIRMATION_WINDOW_ACTIVE");
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.touchType, "RAW_ZONE_TOUCHED");
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.lastTouchTimeframe, "5M");
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.candlesSinceTouch, 1);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.shouldEvaluateConfirmation, true);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.activationAllowed, false);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.paperActivationAllowed, false);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.pullbackTouch.touchStatus, "CONFIRMATION_WINDOW_ACTIVE");
+  assert.equal(vm.paper.operatorSummary.pullbackTouch.touchType, "RAW_ZONE_TOUCHED");
+  assert.equal(vm.paper.operatorSummary.pullbackTouch.confirmationWindowStatus, "ACTIVE");
+  assert.equal(vm.paper.operatorSummary.pullbackTouch.shouldEvaluateConfirmation, true);
   assert.equal(vm.paper.operatorSummary.currentPrice, 101.5);
   assert.equal(vm.paper.operatorSummary.freshnessStatus, "FRESH");
   assert.equal(vm.paper.operatorSummary.regime, "NO_TRADE");
@@ -769,4 +810,13 @@ test("operator summary explains aligned trend setup and counter-regime exact can
   assert.equal(vm.paper.operatorSummary.safety.paperActivationAllowed, false);
   assert.equal(vm.paper.operatorSummary.safety.liveActivationAllowed, false);
   assert.equal(vm.paper.operatorSummary.safety.orderAllowed, false);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.status, "NO_TRIGGER_CONTEXT");
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.deepestTouchPrice, null);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.shouldEvaluateConfirmation, false);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.activationAllowed, false);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.paperActivationAllowed, false);
+  assert.equal(vm.paper.pullbackZoneTouchEvidence.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.pullbackTouch.touchStatus, "NO_TRIGGER_CONTEXT");
+  assert.equal(vm.paper.operatorSummary.pullbackTouch.lastTouchAt, null);
+  assert.equal(vm.paper.operatorSummary.pullbackTouch.shouldEvaluateConfirmation, false);
 });

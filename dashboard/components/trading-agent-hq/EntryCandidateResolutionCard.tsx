@@ -18,7 +18,12 @@ function tone(status: string): string {
   if (status === "CLEAN_REVIEW_CANDIDATE" || status === "RR_REPAIRED_REVIEW_ONLY" || status === "READY_FOR_CONFIRMATION_REVIEW") {
     return "border-emerald-300/35 bg-emerald-950/35 text-emerald-100";
   }
-  if (status === "NO_TRADE_BAD_RR" || status === "COUNTER_REGIME_ONLY" || status === "BEYOND_ZONE_INVALIDATION_RISK") {
+  if (
+    status === "NO_TRADE_BAD_RR"
+    || status === "COUNTER_REGIME_ONLY"
+    || status === "BEYOND_ZONE_INVALIDATION_RISK"
+    || status === "INVALIDATION_RISK_TOUCHED"
+  ) {
     return "border-rose-300/35 bg-rose-950/35 text-rose-100";
   }
   return "border-amber-300/35 bg-amber-950/35 text-amber-100";
@@ -39,6 +44,8 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
   const gateRaw = paper.resolverDrivenPullbackGate;
   const trigger = paper.operatorSummary.pullbackTrigger;
   const triggerRaw = paper.pullbackTriggerThresholds;
+  const touch = paper.operatorSummary.pullbackTouch;
+  const touchRaw = paper.pullbackZoneTouchEvidence;
 
   return (
     <section className="rounded-lg border border-cyan-300/20 bg-slate-950/85 p-3 shadow-[0_12px_28px_rgba(2,8,23,0.44)]">
@@ -80,9 +87,13 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
           <Row label="Distance to trigger" value={`${fmt(trigger.distanceToTriggerAbs)} / ${pct(trigger.distanceToTriggerPct)}`} />
           <Row label="RR ready" value={trigger.rrReady ? "YES" : "NO"} />
           <Row label="Promotion blockers" value={trigger.promotionBlockedBy.join(", ") || "NONE"} />
+          <Row label="Touch status / Type" value={`${touch.touchStatus} / ${touch.touchType ?? NA}`} />
+          <Row label="Last touch / Timeframe" value={`${touch.lastTouchAt ?? NA} / ${touch.lastTouchTimeframe ?? NA}`} />
+          <Row label="Candles since / Window" value={`${touch.candlesSinceTouch ?? NA} / ${touch.confirmationWindowStatus}`} />
+          <Row label="Evaluate confirmation" value={touch.shouldEvaluateConfirmation ? "YES" : "NO"} />
         </div>
         <div className="mt-1.5 break-words text-[10px] font-bold leading-relaxed text-amber-100">
-          Next action: {trigger.nextAction || gate.nextAction || NA}
+          Next action: {touch.nextAction || trigger.nextAction || gate.nextAction || NA}
         </div>
       </div>
 
@@ -110,6 +121,21 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
             </div>
             <div className="break-words text-slate-400">
               Promotion blockers: {triggerRaw.promotionBlockedBy.join(", ") || "NONE"}
+            </div>
+          </div>
+          <div className="rounded-md border border-cyan-300/15 bg-cyan-950/15 p-1.5">
+            <div className="font-black text-cyan-100">{touchRaw.status} / {touchRaw.confirmationWindowStatus}</div>
+            <div className="break-words text-cyan-200">
+              Deepest: {fmt(touchRaw.deepestTouchPrice)} / Distance: {pct(touchRaw.touchDistancePct)}
+            </div>
+            <div className="break-words text-cyan-200">
+              Raw: {fmt(touchRaw.rawZoneLow)} - {fmt(touchRaw.rawZoneHigh)}
+            </div>
+            <div className="break-words text-cyan-200">
+              Expanded: {fmt(touchRaw.expandedZoneLow)} - {fmt(touchRaw.expandedZoneHigh)}
+            </div>
+            <div className="break-words text-slate-400">
+              Touch blockers: {touchRaw.blockers.join(", ") || "NONE"}
             </div>
           </div>
           {resolution.rrScenarios.map((scenario) => (

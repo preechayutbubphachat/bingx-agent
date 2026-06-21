@@ -494,8 +494,8 @@ export function evaluateNoReviewCandidateBottleneckResolver(
       "STRATEGY_BRANCH_GAP",
       priceBlocker,
       [priceBlocker, "PULLBACK_ZONE_NOT_TOUCHED", "PULLBACK_ONLY_STRATEGY_GAP"],
-      "DESIGN_CONTINUATION_REVIEW_BRANCH",
-      "design a separate review-only continuation branch after historical replay evidence; do not create a candidate here",
+      "RUN_HISTORICAL_REPLAY_REVIEW",
+      "run an offline historical replay review before deciding whether a continuation-review branch is justified",
     );
   }
 

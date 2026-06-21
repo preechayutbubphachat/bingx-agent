@@ -341,7 +341,7 @@ test("FAR pullback-only state plus strong aligned evidence exposes strategy bran
     "PULLBACK_ZONE_NOT_TOUCHED",
     "PULLBACK_ONLY_STRATEGY_GAP",
   ]);
-  assert.equal(result.nextAlgorithmBranch, "DESIGN_CONTINUATION_REVIEW_BRANCH");
+  assert.equal(result.nextAlgorithmBranch, "RUN_HISTORICAL_REPLAY_REVIEW");
 });
 
 test("strong evidence does not recommend continuation near the existing trigger", () => {

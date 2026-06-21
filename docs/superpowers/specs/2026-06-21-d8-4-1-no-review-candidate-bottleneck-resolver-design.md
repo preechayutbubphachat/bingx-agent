@@ -300,7 +300,7 @@ Result:
 status = STRATEGY_BRANCH_GAP
 primaryBlocker = PRICE_ABOVE_LONG_TRIGGER or PRICE_BELOW_SHORT_TRIGGER
 contributingBlockers include PULLBACK_ZONE_NOT_TOUCHED and PULLBACK_ONLY_STRATEGY_GAP
-nextAlgorithmBranch = DESIGN_CONTINUATION_REVIEW_BRANCH
+nextAlgorithmBranch = RUN_HISTORICAL_REPLAY_REVIEW
 ```
 
 The corresponding explanation is:
@@ -366,7 +366,7 @@ It may also be used when distance is FAR but continuation evidence is weak or co
 
 ### `DESIGN_CONTINUATION_REVIEW_BRANCH`
 
-Use only for `STRATEGY_BRANCH_GAP`. This recommends a separate design cycle for a review-only continuation candidate. It does not authorize implementation or alter the current pullback pipeline.
+Reserved for a future post-replay decision layer. D8.4.1 V1 does not emit this branch because Historical Replay Review must quantify candidate scarcity before continuation design is justified.
 
 ### `RUN_HISTORICAL_REPLAY_REVIEW`
 
@@ -393,7 +393,7 @@ Therefore RR repair is not recommended.
 
 The final status depends only on fresh continuation evidence:
 
-- with `STRONG_ALIGNED` evidence: `STRATEGY_BRANCH_GAP` and `DESIGN_CONTINUATION_REVIEW_BRANCH`;
+- with `STRONG_ALIGNED` evidence: `STRATEGY_BRANCH_GAP` and `RUN_HISTORICAL_REPLAY_REVIEW`;
 - with insufficient or mixed evidence: `WAITING_FOR_PULLBACK_TRIGGER` and `RUN_HISTORICAL_REPLAY_REVIEW`;
 - if price moves to MID_RANGE, NEAR, or AT_TRIGGER: `WAITING_FOR_PULLBACK_TRIGGER` and `WAIT_FOR_PULLBACK`.
 
@@ -494,7 +494,7 @@ Hard prohibitions:
 - Non-finite numeric values remain null in output.
 - Inconsistent distance geometry produces `NO_CONTEXT`.
 - Stale MTF evidence is ignored rather than interpreted as weak trend.
-- Missing MTF evidence cannot produce `DESIGN_CONTINUATION_REVIEW_BRANCH`.
+- D8.4.1 V1 cannot produce `DESIGN_CONTINUATION_REVIEW_BRANCH` before Historical Replay Review.
 - D8.4 promotion boolean and status must agree; disagreement produces `NO_CONTEXT`.
 - Unknown future source statuses fall back to `CONFIRMATION_NOT_READY` only after context and safety validation.
 

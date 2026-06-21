@@ -225,7 +225,7 @@ assert.deepEqual(result.contributingBlockers, [
   "PULLBACK_ZONE_NOT_TOUCHED",
   "PULLBACK_ONLY_STRATEGY_GAP",
 ]);
-assert.equal(result.nextAlgorithmBranch, "DESIGN_CONTINUATION_REVIEW_BRANCH");
+assert.equal(result.nextAlgorithmBranch, "RUN_HISTORICAL_REPLAY_REVIEW");
 ```
 
 Replace evidence with missing or weak evidence. Expect ordinary `WAITING_FOR_PULLBACK_TRIGGER` and `RUN_HISTORICAL_REPLAY_REVIEW`.
@@ -351,7 +351,7 @@ For a branch gap, preserve the directional price blocker as primary and add no-t
 
 - [ ] **Step 7: Implement recommendation and copy mapping**
 
-Map statuses and evidence to the six approved branches. FAR plus strong aligned evidence is the only path to `DESIGN_CONTINUATION_REVIEW_BRANCH`. FAR plus insufficient/weak evidence maps to replay review. AT_TRIGGER/NEAR/MID_RANGE maps to waiting for the existing pullback.
+Map statuses and evidence to the approved branches. All FAR candidate-scarcity paths map to `RUN_HISTORICAL_REPLAY_REVIEW`; strong aligned evidence may elevate status to `STRATEGY_BRANCH_GAP` but does not skip replay. `DESIGN_CONTINUATION_REVIEW_BRANCH` is reserved for a future post-replay decision. AT_TRIGGER/NEAR/MID_RANGE maps to waiting for the existing pullback.
 
 Every next action must describe review or research only. Every `doNotDo` array must prohibit moving the trigger, bypassing touch, creating a candidate, implementing D8.5, and activating operational behavior.
 
@@ -488,8 +488,8 @@ noReviewCandidateBottleneckResolver: {
     timeframesUsed: ["5M"],
     reasons: ["5M ADX/DI/momentum support LONG"],
   },
-  nextAlgorithmBranch: "DESIGN_CONTINUATION_REVIEW_BRANCH",
-  nextAction: "design a separate review-only continuation branch",
+  nextAlgorithmBranch: "RUN_HISTORICAL_REPLAY_REVIEW",
+  nextAction: "run historical replay before deciding whether a continuation-review branch is justified",
   doNotDo: ["do not create a candidate"],
   activationAllowed: false,
   paperActivationAllowed: false,

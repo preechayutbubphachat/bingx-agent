@@ -623,8 +623,8 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
             timeframesUsed: ["5M"],
             reasons: ["5M ADX/DI/momentum support LONG"],
           },
-          nextAlgorithmBranch: "DESIGN_CONTINUATION_REVIEW_BRANCH",
-          nextAction: "design a separate review-only continuation branch after historical replay evidence",
+          nextAlgorithmBranch: "RUN_HISTORICAL_REPLAY_REVIEW",
+          nextAction: "run historical replay before deciding whether a continuation-review branch is justified",
           doNotDo: ["do not create a candidate"],
           activationAllowed: false,
           paperActivationAllowed: false,
@@ -771,14 +771,14 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.noReviewCandidateBottleneckResolver.primaryBlocker, "PRICE_ABOVE_LONG_TRIGGER");
   assert.equal(vm.paper.noReviewCandidateBottleneckResolver.triggerDistanceClass, "FAR");
   assert.equal(vm.paper.noReviewCandidateBottleneckResolver.continuationEvidence.status, "STRONG_ALIGNED");
-  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.nextAlgorithmBranch, "DESIGN_CONTINUATION_REVIEW_BRANCH");
+  assert.equal(vm.paper.noReviewCandidateBottleneckResolver.nextAlgorithmBranch, "RUN_HISTORICAL_REPLAY_REVIEW");
   assert.equal(vm.paper.noReviewCandidateBottleneckResolver.activationAllowed, false);
   assert.equal(vm.paper.noReviewCandidateBottleneckResolver.paperActivationAllowed, false);
   assert.equal(vm.paper.noReviewCandidateBottleneckResolver.liveActivationAllowed, false);
   assert.equal(vm.paper.operatorSummary.candidateBottleneck.status, "STRATEGY_BRANCH_GAP");
   assert.equal(vm.paper.operatorSummary.candidateBottleneck.primaryBlocker, "PRICE_ABOVE_LONG_TRIGGER");
   assert.equal(vm.paper.operatorSummary.candidateBottleneck.distanceToTriggerPct, 0.9326);
-  assert.equal(vm.paper.operatorSummary.candidateBottleneck.nextAlgorithmBranch, "DESIGN_CONTINUATION_REVIEW_BRANCH");
+  assert.equal(vm.paper.operatorSummary.candidateBottleneck.nextAlgorithmBranch, "RUN_HISTORICAL_REPLAY_REVIEW");
   assert.equal(vm.paper.operatorSummary.currentPrice, 101.5);
   assert.equal(vm.paper.operatorSummary.freshnessStatus, "FRESH");
   assert.equal(vm.paper.operatorSummary.regime, "NO_TRADE");

@@ -96,6 +96,7 @@ export interface PaperVM {
   resolverDrivenPullbackGate: ResolverDrivenPullbackGateVM;
   pullbackTriggerThresholds: PullbackTriggerThresholdsVM;
   pullbackZoneTouchEvidence: PullbackZoneTouchEvidenceVM;
+  touchAwareConfirmationReview: TouchAwareConfirmationReviewVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -165,6 +166,15 @@ export interface OperatorSummaryVM {
     candlesSinceTouch: number | null;
     confirmationWindowStatus: string;
     shouldEvaluateConfirmation: boolean;
+    nextAction: string;
+  };
+  touchConfirmation: {
+    status: string;
+    confirmationStatus: string;
+    alignedDirection: string;
+    touchStatus: string;
+    rrReady: boolean;
+    shouldPromoteToReview: boolean;
     nextAction: string;
   };
   safety: {
@@ -300,6 +310,44 @@ export interface PullbackZoneTouchEvidenceVM {
   confirmationWindowCandles: number | null;
   confirmationWindowStatus: string;
   shouldEvaluateConfirmation: boolean;
+  blockers: string[];
+  nextAction: string;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+}
+
+export interface TouchAwareConfirmationReviewVM {
+  schemaVersion: number;
+  source: string;
+  readiness: string;
+  status: string;
+  alignedDirection: string;
+  touchStatus: string;
+  touchType: string | null;
+  confirmationWindowStatus: string;
+  currentPrice: number | null;
+  triggerPrice: number | null;
+  rawZoneLow: number | null;
+  rawZoneHigh: number | null;
+  expandedZoneLow: number | null;
+  expandedZoneHigh: number | null;
+  bestRR: number | null;
+  rrThreshold: number | null;
+  rrReady: boolean;
+  confirmationStatus: string;
+  confirmationTimeframesUsed: string[];
+  confirmationVotes: Array<{
+    timeframe: string;
+    ageMs: number | null;
+    diVote: string;
+    macdHistogramVote: string;
+    emaSlopeVote: string;
+    classification: string;
+  }>;
+  shouldPromoteToReview: boolean;
   blockers: string[];
   nextAction: string;
   activationAllowed: boolean;

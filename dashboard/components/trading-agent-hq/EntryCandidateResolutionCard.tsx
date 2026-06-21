@@ -15,7 +15,12 @@ function pct(value: number | null | undefined): string {
 }
 
 function tone(status: string): string {
-  if (status === "CLEAN_REVIEW_CANDIDATE" || status === "RR_REPAIRED_REVIEW_ONLY" || status === "READY_FOR_CONFIRMATION_REVIEW") {
+  if (
+    status === "CLEAN_REVIEW_CANDIDATE"
+    || status === "RR_REPAIRED_REVIEW_ONLY"
+    || status === "READY_FOR_CONFIRMATION_REVIEW"
+    || status === "PROMOTABLE_REVIEW_CANDIDATE"
+  ) {
     return "border-emerald-300/35 bg-emerald-950/35 text-emerald-100";
   }
   if (
@@ -23,6 +28,9 @@ function tone(status: string): string {
     || status === "COUNTER_REGIME_ONLY"
     || status === "BEYOND_ZONE_INVALIDATION_RISK"
     || status === "INVALIDATION_RISK_TOUCHED"
+    || status === "INVALIDATION_REVIEW_REQUIRED"
+    || status === "SOURCE_SAFETY_INVALID"
+    || status === "CONFIRMATION_CONFLICTING"
   ) {
     return "border-rose-300/35 bg-rose-950/35 text-rose-100";
   }
@@ -46,6 +54,8 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
   const triggerRaw = paper.pullbackTriggerThresholds;
   const touch = paper.operatorSummary.pullbackTouch;
   const touchRaw = paper.pullbackZoneTouchEvidence;
+  const confirmation = paper.operatorSummary.touchConfirmation;
+  const confirmationRaw = paper.touchAwareConfirmationReview;
 
   return (
     <section className="rounded-lg border border-cyan-300/20 bg-slate-950/85 p-3 shadow-[0_12px_28px_rgba(2,8,23,0.44)]">
@@ -91,9 +101,12 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
           <Row label="Last touch / Timeframe" value={`${touch.lastTouchAt ?? NA} / ${touch.lastTouchTimeframe ?? NA}`} />
           <Row label="Candles since / Window" value={`${touch.candlesSinceTouch ?? NA} / ${touch.confirmationWindowStatus}`} />
           <Row label="Evaluate confirmation" value={touch.shouldEvaluateConfirmation ? "YES" : "NO"} />
+          <Row label="Touch-aware review" value={confirmation.status} />
+          <Row label="Fresh confirmation" value={confirmation.confirmationStatus} />
+          <Row label="Promote to review" value={confirmation.shouldPromoteToReview ? "YES" : "NO"} />
         </div>
         <div className="mt-1.5 break-words text-[10px] font-bold leading-relaxed text-amber-100">
-          Next action: {touch.nextAction || trigger.nextAction || gate.nextAction || NA}
+          Next action: {confirmation.nextAction || touch.nextAction || trigger.nextAction || gate.nextAction || NA}
         </div>
       </div>
 
@@ -136,6 +149,20 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
             </div>
             <div className="break-words text-slate-400">
               Touch blockers: {touchRaw.blockers.join(", ") || "NONE"}
+            </div>
+          </div>
+          <div className="rounded-md border border-amber-300/15 bg-amber-950/15 p-1.5">
+            <div className="font-black text-amber-100">{confirmationRaw.status} / {confirmationRaw.confirmationStatus}</div>
+            <div className="break-words text-amber-200">
+              Timeframes: {confirmationRaw.confirmationTimeframesUsed.join(", ") || NA}
+            </div>
+            {confirmationRaw.confirmationVotes.map((vote) => (
+              <div key={vote.timeframe} className="break-words text-slate-300">
+                {vote.timeframe}: DI {vote.diVote}, MACD {vote.macdHistogramVote}, EMA {vote.emaSlopeVote} ({vote.classification})
+              </div>
+            ))}
+            <div className="break-words text-slate-400">
+              Confirmation blockers: {confirmationRaw.blockers.join(", ") || "NONE"}
             </div>
           </div>
           {resolution.rrScenarios.map((scenario) => (

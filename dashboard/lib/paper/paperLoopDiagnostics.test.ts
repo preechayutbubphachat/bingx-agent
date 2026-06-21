@@ -352,6 +352,13 @@ test("old paper diagnostics payload remains valid with R1 Pack B defaults", () =
   assert.equal(d.pullbackZoneTouchEvidence.activationAllowed, false);
   assert.equal(d.pullbackZoneTouchEvidence.paperActivationAllowed, false);
   assert.equal(d.pullbackZoneTouchEvidence.liveActivationAllowed, false);
+  assert.equal(d.touchAwareConfirmationReview.source, "TOUCH_AWARE_CONFIRMATION_REVIEW_V1");
+  assert.equal(d.touchAwareConfirmationReview.status, "NO_TOUCH_CONTEXT");
+  assert.equal(d.touchAwareConfirmationReview.confirmationStatus, "NOT_EVALUATED");
+  assert.equal(d.touchAwareConfirmationReview.shouldPromoteToReview, false);
+  assert.equal(d.touchAwareConfirmationReview.activationAllowed, false);
+  assert.equal(d.touchAwareConfirmationReview.paperActivationAllowed, false);
+  assert.equal(d.touchAwareConfirmationReview.liveActivationAllowed, false);
 });
 
 test("D5.4 no-trade reason analysis surfaces diagnostics gap and runtime counters", () => {

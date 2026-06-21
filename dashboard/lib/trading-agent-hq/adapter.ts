@@ -748,6 +748,49 @@ function mapPullbackZoneTouchEvidence(raw: AnyObj): PaperVM["pullbackZoneTouchEv
   };
 }
 
+function mapTouchAwareConfirmationReview(raw: AnyObj): PaperVM["touchAwareConfirmationReview"] {
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "TOUCH_AWARE_CONFIRMATION_REVIEW_V1"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    status: str(raw.status, "NO_TOUCH_CONTEXT"),
+    alignedDirection: str(raw.alignedDirection, "UNKNOWN"),
+    touchStatus: str(raw.touchStatus, "NO_TRIGGER_CONTEXT"),
+    touchType: strOrNull(raw.touchType),
+    confirmationWindowStatus: str(raw.confirmationWindowStatus, "NOT_AVAILABLE"),
+    currentPrice: numOrNull(raw.currentPrice),
+    triggerPrice: numOrNull(raw.triggerPrice),
+    rawZoneLow: numOrNull(raw.rawZoneLow),
+    rawZoneHigh: numOrNull(raw.rawZoneHigh),
+    expandedZoneLow: numOrNull(raw.expandedZoneLow),
+    expandedZoneHigh: numOrNull(raw.expandedZoneHigh),
+    bestRR: numOrNull(raw.bestRR),
+    rrThreshold: numOrNull(raw.rrThreshold),
+    rrReady: bool(raw.rrReady),
+    confirmationStatus: str(raw.confirmationStatus, "NOT_EVALUATED"),
+    confirmationTimeframesUsed: strArray(raw.confirmationTimeframesUsed),
+    confirmationVotes: arr(raw.confirmationVotes).map((entry) => {
+      const vote = obj(entry);
+      return {
+        timeframe: str(vote.timeframe, "UNKNOWN"),
+        ageMs: numOrNull(vote.ageMs),
+        diVote: str(vote.diVote, "UNAVAILABLE"),
+        macdHistogramVote: str(vote.macdHistogramVote, "UNAVAILABLE"),
+        emaSlopeVote: str(vote.emaSlopeVote, "UNAVAILABLE"),
+        classification: str(vote.classification, "MIXED_NEUTRAL"),
+      };
+    }),
+    shouldPromoteToReview: bool(raw.shouldPromoteToReview),
+    blockers: strArray(raw.blockers),
+    nextAction: str(raw.nextAction, "wait for an active touch window and fresh aligned confirmation"),
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+  };
+}
+
 function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pipeline = obj(loop.mtfEntryCandidatePipeline);
   const pipelinePrice = obj(pipeline.currentPriceContext);
@@ -771,6 +814,7 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pullbackGate = obj(loop.resolverDrivenPullbackGate);
   const pullbackTrigger = obj(loop.pullbackTriggerThresholds);
   const pullbackTouch = obj(loop.pullbackZoneTouchEvidence);
+  const touchConfirmation = obj(loop.touchAwareConfirmationReview);
   const trendEntryZone = numberPair(trendStrategy.entryZone);
   const trendCurrentPrice = firstNumber(trendStrategy.currentPrice, pipelinePrice.currentPrice, pipelinePrice.value);
   const trendPriceMoveRequiredDirection = trendEntryZone == null || trendCurrentPrice == null
@@ -876,6 +920,15 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
       confirmationWindowStatus: str(pullbackTouch.confirmationWindowStatus, "NOT_AVAILABLE"),
       shouldEvaluateConfirmation: bool(pullbackTouch.shouldEvaluateConfirmation),
       nextAction: str(pullbackTouch.nextAction, "wait for valid D8.2 pullback trigger geometry"),
+    },
+    touchConfirmation: {
+      status: str(touchConfirmation.status, "NO_TOUCH_CONTEXT"),
+      confirmationStatus: str(touchConfirmation.confirmationStatus, "NOT_EVALUATED"),
+      alignedDirection: str(touchConfirmation.alignedDirection, "UNKNOWN"),
+      touchStatus: str(touchConfirmation.touchStatus, "NO_TRIGGER_CONTEXT"),
+      rrReady: bool(touchConfirmation.rrReady),
+      shouldPromoteToReview: bool(touchConfirmation.shouldPromoteToReview),
+      nextAction: str(touchConfirmation.nextAction, "wait for an active touch window and fresh aligned confirmation"),
     },
     safety: {
       reviewOnly: auditSafety.reviewOnly === false ? false : true,
@@ -1220,6 +1273,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     resolverDrivenPullbackGate: mapResolverDrivenPullbackGate(obj(loop.resolverDrivenPullbackGate)),
     pullbackTriggerThresholds: mapPullbackTriggerThresholds(obj(loop.pullbackTriggerThresholds)),
     pullbackZoneTouchEvidence: mapPullbackZoneTouchEvidence(obj(loop.pullbackZoneTouchEvidence)),
+    touchAwareConfirmationReview: mapTouchAwareConfirmationReview(obj(loop.touchAwareConfirmationReview)),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),

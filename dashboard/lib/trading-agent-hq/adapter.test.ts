@@ -550,6 +550,45 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
           reviewOnly: true,
           shadowOnly: true,
         },
+        touchAwareConfirmationReview: {
+          schemaVersion: 1,
+          source: "TOUCH_AWARE_CONFIRMATION_REVIEW_V1",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          status: "PROMOTABLE_REVIEW_CANDIDATE",
+          alignedDirection: "LONG",
+          touchStatus: "CONFIRMATION_WINDOW_ACTIVE",
+          touchType: "RAW_ZONE_TOUCHED",
+          confirmationWindowStatus: "ACTIVE",
+          currentPrice: 63845.6,
+          triggerPrice: 63795.4228,
+          rawZoneLow: 63623.198,
+          rawZoneHigh: 63763.5,
+          expandedZoneLow: 63591.2752,
+          expandedZoneHigh: 63795.4228,
+          bestRR: 4.227,
+          rrThreshold: 1.2,
+          rrReady: true,
+          confirmationStatus: "CONFIRMED_BULLISH",
+          confirmationTimeframesUsed: ["5M"],
+          confirmationVotes: [
+            {
+              timeframe: "5M",
+              ageMs: 60000,
+              diVote: "BULLISH",
+              macdHistogramVote: "BULLISH",
+              emaSlopeVote: "BULLISH",
+              classification: "BULLISH_SUPPORT",
+            },
+          ],
+          shouldPromoteToReview: true,
+          blockers: [],
+          nextAction: "manual review of the aligned candidate only; no activation or order action",
+          activationAllowed: false,
+          paperActivationAllowed: false,
+          liveActivationAllowed: false,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -674,6 +713,17 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.operatorSummary.pullbackTouch.touchType, "RAW_ZONE_TOUCHED");
   assert.equal(vm.paper.operatorSummary.pullbackTouch.confirmationWindowStatus, "ACTIVE");
   assert.equal(vm.paper.operatorSummary.pullbackTouch.shouldEvaluateConfirmation, true);
+  assert.equal(vm.paper.touchAwareConfirmationReview.status, "PROMOTABLE_REVIEW_CANDIDATE");
+  assert.equal(vm.paper.touchAwareConfirmationReview.confirmationStatus, "CONFIRMED_BULLISH");
+  assert.deepEqual(vm.paper.touchAwareConfirmationReview.confirmationTimeframesUsed, ["5M"]);
+  assert.equal(vm.paper.touchAwareConfirmationReview.confirmationVotes[0]?.classification, "BULLISH_SUPPORT");
+  assert.equal(vm.paper.touchAwareConfirmationReview.shouldPromoteToReview, true);
+  assert.equal(vm.paper.touchAwareConfirmationReview.activationAllowed, false);
+  assert.equal(vm.paper.touchAwareConfirmationReview.paperActivationAllowed, false);
+  assert.equal(vm.paper.touchAwareConfirmationReview.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.touchConfirmation.status, "PROMOTABLE_REVIEW_CANDIDATE");
+  assert.equal(vm.paper.operatorSummary.touchConfirmation.confirmationStatus, "CONFIRMED_BULLISH");
+  assert.equal(vm.paper.operatorSummary.touchConfirmation.shouldPromoteToReview, true);
   assert.equal(vm.paper.operatorSummary.currentPrice, 101.5);
   assert.equal(vm.paper.operatorSummary.freshnessStatus, "FRESH");
   assert.equal(vm.paper.operatorSummary.regime, "NO_TRADE");
@@ -819,4 +869,15 @@ test("operator summary explains aligned trend setup and counter-regime exact can
   assert.equal(vm.paper.operatorSummary.pullbackTouch.touchStatus, "NO_TRIGGER_CONTEXT");
   assert.equal(vm.paper.operatorSummary.pullbackTouch.lastTouchAt, null);
   assert.equal(vm.paper.operatorSummary.pullbackTouch.shouldEvaluateConfirmation, false);
+  assert.equal(vm.paper.touchAwareConfirmationReview.status, "NO_TOUCH_CONTEXT");
+  assert.equal(vm.paper.touchAwareConfirmationReview.confirmationStatus, "NOT_EVALUATED");
+  assert.deepEqual(vm.paper.touchAwareConfirmationReview.confirmationTimeframesUsed, []);
+  assert.deepEqual(vm.paper.touchAwareConfirmationReview.confirmationVotes, []);
+  assert.equal(vm.paper.touchAwareConfirmationReview.currentPrice, null);
+  assert.equal(vm.paper.touchAwareConfirmationReview.shouldPromoteToReview, false);
+  assert.equal(vm.paper.touchAwareConfirmationReview.activationAllowed, false);
+  assert.equal(vm.paper.touchAwareConfirmationReview.paperActivationAllowed, false);
+  assert.equal(vm.paper.touchAwareConfirmationReview.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.touchConfirmation.status, "NO_TOUCH_CONTEXT");
+  assert.equal(vm.paper.operatorSummary.touchConfirmation.shouldPromoteToReview, false);
 });

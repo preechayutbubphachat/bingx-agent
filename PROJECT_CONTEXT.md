@@ -68,6 +68,14 @@ Phase M-0B remains **BLOCKED**. Dynamic Regrid Phase 2-A เป็น read-only 
 - Mandatory next step: D8.4.2 Historical Replay Review to quantify where D8.0-D8.4 loses candidates. A continuation branch is not approved unless replay proves pullback-only scarcity over a usable sample.
 - Review-only/shadow-only: no activation, order, runtime writer, runner, broker, or execution changes.
 
+**Local Research Node - Planned**
+- Production runtime remains on server.
+- Local machine will be a pull-only mirror for research/replay/dev/debug/build/test.
+- Server remains source-of-truth for `market_snapshot.json`, `latest_decision.json`, and runtime audit logs.
+- Local must not write back to server.
+- Local must not run paper loop, order, broker, execution, or activation paths.
+- Purpose: feed D8.4.2 historical replay and local `/agent-hq` research cockpit without disturbing server uptime.
+
 **Next Actions:**
 1. Monitor Phase 2-A บน `/agent-hq` (ดู `docs/M0Z6_DYNAMIC_REGRID_PHASE2A_MONITORING.md`)
 2. **Do NOT activate Phase 2-B yet** — Phase 2-B = DESIGN ONLY (`docs/M0Z6_DYNAMIC_REGRID_PHASE2B_MANUAL_PAPER_ACTIVATION_PLAN.md`); activation ต้อง operator approve + Codex handoff แยก

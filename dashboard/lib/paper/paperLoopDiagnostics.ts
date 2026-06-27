@@ -116,6 +116,10 @@ import {
   evaluateNoReviewCandidateBottleneckResolver,
   type NoReviewCandidateBottleneckResolver,
 } from "../trend/noReviewCandidateBottleneckResolver.ts";
+import {
+  evaluateHistoricalReplayCandidateScarcityReview,
+  type HistoricalReplayCandidateScarcityReview,
+} from "../trend/historicalReplayCandidateScarcityReview.ts";
 import { getCandlesFromSnapshot, normalizeCandles } from "../candleAdapter.ts";
 
 export type PriceVsGrid = "BELOW_GRID" | "INSIDE_GRID" | "ABOVE_GRID" | "UNKNOWN";
@@ -154,6 +158,7 @@ export interface PaperLoopDiagnostics {
   pullbackZoneTouchEvidence: PullbackZoneTouchEvidence;
   touchAwareConfirmationReview: TouchAwareConfirmationReview;
   noReviewCandidateBottleneckResolver: NoReviewCandidateBottleneckResolver;
+  historicalReplayCandidateScarcityReview: HistoricalReplayCandidateScarcityReview;
   dynamicGrid: {
     enabled: boolean;
     status: DynamicGridResult["status"];
@@ -264,6 +269,7 @@ export interface PaperLoopDiagnosticsContext {
   paperDataQuality?: unknown;
   trendEvidenceDecisionSummary?: unknown;
   trendPaperEvidenceRunner?: unknown;
+  historicalReplayCandidateScarcityReview?: HistoricalReplayCandidateScarcityReview | null;
 }
 
 export type CostGateGridSpacingSource =
@@ -1134,6 +1140,17 @@ export function buildPaperLoopDiagnostics(
     touchAwareConfirmationReview,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
   });
+  const suppliedHistoricalReplay = context.historicalReplayCandidateScarcityReview;
+  const historicalReplayCandidateScarcityReview: HistoricalReplayCandidateScarcityReview = suppliedHistoricalReplay
+    ? {
+        ...suppliedHistoricalReplay,
+        activationAllowed: false,
+        paperActivationAllowed: false,
+        liveActivationAllowed: false,
+        reviewOnly: true,
+        shadowOnly: true,
+      }
+    : evaluateHistoricalReplayCandidateScarcityReview({ timeframe: "5M", replayPoints: [] });
 
   return {
     sampleBuyFillCount: summary.buyFillCount,
@@ -1168,6 +1185,7 @@ export function buildPaperLoopDiagnostics(
     pullbackZoneTouchEvidence,
     touchAwareConfirmationReview,
     noReviewCandidateBottleneckResolver,
+    historicalReplayCandidateScarcityReview,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,

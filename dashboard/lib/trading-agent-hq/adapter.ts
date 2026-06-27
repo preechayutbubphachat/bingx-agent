@@ -835,6 +835,76 @@ function mapNoReviewCandidateBottleneckResolver(raw: AnyObj): PaperVM["noReviewC
   };
 }
 
+function mapHistoricalReplayCandidateScarcityReview(
+  raw: AnyObj,
+): PaperVM["historicalReplayCandidateScarcityReview"] {
+  const replayWindow = obj(raw.replayWindow);
+  const counts = obj(raw.funnelCounts);
+  const rates = obj(raw.funnelRates);
+  const blockers = obj(raw.blockerDistribution);
+  const distances = obj(raw.triggerDistanceBuckets);
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "HISTORICAL_REPLAY_CANDIDATE_SCARCITY_REVIEW_V1"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    status: str(raw.status, "NO_REPLAY_DATA"),
+    replayWindow: {
+      timeframe: str(replayWindow.timeframe, "5M"),
+      startAt: strOrNull(replayWindow.startAt),
+      endAt: strOrNull(replayWindow.endAt),
+      candleCount: num(replayWindow.candleCount, 0),
+      sampleQuality: str(replayWindow.sampleQuality, "NO_SAMPLE"),
+    },
+    funnelCounts: {
+      totalEvaluationPoints: num(counts.totalEvaluationPoints, 0),
+      alignedContextCount: num(counts.alignedContextCount, 0),
+      d8_0AlignedCandidateCount: num(counts.d8_0AlignedCandidateCount, 0),
+      rrReadyCount: num(counts.rrReadyCount, 0),
+      waitingForTriggerCount: num(counts.waitingForTriggerCount, 0),
+      triggerReachedCount: num(counts.triggerReachedCount, 0),
+      zoneTouchedCount: num(counts.zoneTouchedCount, 0),
+      confirmationWindowActiveCount: num(counts.confirmationWindowActiveCount, 0),
+      confirmationAlignedCount: num(counts.confirmationAlignedCount, 0),
+      promotableReviewCandidateCount: num(counts.promotableReviewCandidateCount, 0),
+    },
+    funnelRates: {
+      alignedContextRate: numOrNull(rates.alignedContextRate),
+      rrReadyRate: numOrNull(rates.rrReadyRate),
+      triggerReachedRate: numOrNull(rates.triggerReachedRate),
+      zoneTouchedRate: numOrNull(rates.zoneTouchedRate),
+      confirmationAlignedRate: numOrNull(rates.confirmationAlignedRate),
+      promotableRate: numOrNull(rates.promotableRate),
+    },
+    blockerDistribution: {
+      RR_NOT_READY: num(blockers.RR_NOT_READY, 0),
+      WAITING_FOR_PULLBACK_TRIGGER: num(blockers.WAITING_FOR_PULLBACK_TRIGGER, 0),
+      NO_TOUCH_EVIDENCE: num(blockers.NO_TOUCH_EVIDENCE, 0),
+      TOUCH_WINDOW_EXPIRED: num(blockers.TOUCH_WINDOW_EXPIRED, 0),
+      CONFIRMATION_NOT_READY: num(blockers.CONFIRMATION_NOT_READY, 0),
+      CONFIRMATION_CONFLICTING: num(blockers.CONFIRMATION_CONFLICTING, 0),
+      SAFETY_BLOCKED: num(blockers.SAFETY_BLOCKED, 0),
+      NO_CONTEXT: num(blockers.NO_CONTEXT, 0),
+    },
+    triggerDistanceBuckets: {
+      AT_TRIGGER: num(distances.AT_TRIGGER, 0),
+      NEAR: num(distances.NEAR, 0),
+      MID_RANGE: num(distances.MID_RANGE, 0),
+      FAR: num(distances.FAR, 0),
+    },
+    dominantBottleneck: str(raw.dominantBottleneck, "NONE"),
+    hypothesis: str(raw.hypothesis, "INSUFFICIENT_HISTORY"),
+    recommendedNextResearch: str(raw.recommendedNextResearch, "COLLECT_MORE_HISTORY"),
+    blockers: strArray(raw.blockers),
+    nextAction: str(raw.nextAction, "supply approved offline point-in-time replay evidence"),
+    doNotDo: strArray(raw.doNotDo),
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+  };
+}
+
 function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pipeline = obj(loop.mtfEntryCandidatePipeline);
   const pipelinePrice = obj(pipeline.currentPriceContext);
@@ -860,6 +930,9 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   const pullbackTouch = obj(loop.pullbackZoneTouchEvidence);
   const touchConfirmation = obj(loop.touchAwareConfirmationReview);
   const candidateBottleneck = obj(loop.noReviewCandidateBottleneckResolver);
+  const historicalReplay = mapHistoricalReplayCandidateScarcityReview(
+    obj(loop.historicalReplayCandidateScarcityReview),
+  );
   const trendEntryZone = numberPair(trendStrategy.entryZone);
   const trendCurrentPrice = firstNumber(trendStrategy.currentPrice, pipelinePrice.currentPrice, pipelinePrice.value);
   const trendPriceMoveRequiredDirection = trendEntryZone == null || trendCurrentPrice == null
@@ -983,6 +1056,13 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
       triggerDistanceClass: str(candidateBottleneck.triggerDistanceClass, "UNKNOWN"),
       nextAlgorithmBranch: str(candidateBottleneck.nextAlgorithmBranch, "NO_ACTION"),
       nextAction: str(candidateBottleneck.nextAction, "wait for consistent D8.0-D8.4 diagnostic context"),
+    },
+    historicalReplay: {
+      status: historicalReplay.status,
+      dominantBottleneck: historicalReplay.dominantBottleneck,
+      promotableRate: historicalReplay.funnelRates.promotableRate,
+      recommendedNextResearch: historicalReplay.recommendedNextResearch,
+      nextAction: historicalReplay.nextAction,
     },
     safety: {
       reviewOnly: auditSafety.reviewOnly === false ? false : true,
@@ -1330,6 +1410,9 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     touchAwareConfirmationReview: mapTouchAwareConfirmationReview(obj(loop.touchAwareConfirmationReview)),
     noReviewCandidateBottleneckResolver: mapNoReviewCandidateBottleneckResolver(
       obj(loop.noReviewCandidateBottleneckResolver),
+    ),
+    historicalReplayCandidateScarcityReview: mapHistoricalReplayCandidateScarcityReview(
+      obj(loop.historicalReplayCandidateScarcityReview),
     ),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),

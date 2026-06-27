@@ -14,6 +14,10 @@ function pct(value: number | null | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(3)}%` : NA;
 }
 
+function ratePct(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? pct(value * 100) : NA;
+}
+
 function tone(status: string): string {
   if (
     status === "CLEAN_REVIEW_CANDIDATE"
@@ -21,6 +25,7 @@ function tone(status: string): string {
     || status === "READY_FOR_CONFIRMATION_REVIEW"
     || status === "PROMOTABLE_REVIEW_CANDIDATE"
     || status === "PROMOTABLE_REVIEW_EXISTS"
+    || status === "REPLAY_READY"
   ) {
     return "border-emerald-300/35 bg-emerald-950/35 text-emerald-100";
   }
@@ -34,6 +39,7 @@ function tone(status: string): string {
     || status === "CONFIRMATION_CONFLICTING"
     || status === "SAFETY_BLOCKED"
     || status === "RR_NOT_READY"
+    || status === "DATA_QUALITY_BLOCKED"
   ) {
     return "border-rose-300/35 bg-rose-950/35 text-rose-100";
   }
@@ -61,6 +67,8 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
   const confirmationRaw = paper.touchAwareConfirmationReview;
   const bottleneck = paper.operatorSummary.candidateBottleneck;
   const bottleneckRaw = paper.noReviewCandidateBottleneckResolver;
+  const replay = paper.operatorSummary.historicalReplay;
+  const replayRaw = paper.historicalReplayCandidateScarcityReview;
 
   return (
     <section className="rounded-lg border border-cyan-300/20 bg-slate-950/85 p-3 shadow-[0_12px_28px_rgba(2,8,23,0.44)]">
@@ -115,9 +123,16 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
             value={`${fmt(bottleneck.distanceToTriggerAbs)} / ${pct(bottleneck.distanceToTriggerPct)}`}
           />
           <Row label="Next algorithm branch" value={bottleneck.nextAlgorithmBranch} />
+          <Row label="Replay status" value={replay.status} />
+          <Row label="Dominant bottleneck" value={replay.dominantBottleneck} />
+          <Row label="Promotable rate" value={ratePct(replay.promotableRate)} />
+          <Row label="Next research" value={replay.recommendedNextResearch} />
         </div>
         <div className="mt-1.5 break-words text-[10px] font-bold leading-relaxed text-amber-100">
           Next action: {bottleneck.nextAction || confirmation.nextAction || touch.nextAction || trigger.nextAction || gate.nextAction || NA}
+        </div>
+        <div className="mt-1 break-words text-[10px] font-bold leading-relaxed text-cyan-100">
+          Replay next action: {replay.nextAction || NA}
         </div>
       </div>
 
@@ -197,6 +212,29 @@ export default function EntryCandidateResolutionCard({ paper }: { paper: PaperVM
             </div>
             <div className="break-words text-slate-400">
               Do not: {bottleneckRaw.doNotDo.join("; ") || NA}
+            </div>
+          </div>
+          <div className="rounded-md border border-cyan-300/15 bg-cyan-950/15 p-1.5">
+            <div className="font-black text-cyan-100">
+              Replay {replayRaw.status} / {replayRaw.dominantBottleneck}
+            </div>
+            <div className="break-words text-cyan-200">
+              Window: {replayRaw.replayWindow.timeframe} / {replayRaw.replayWindow.sampleQuality} / {replayRaw.replayWindow.candleCount} candles
+            </div>
+            <div className="break-words text-cyan-200">
+              Funnel: aligned {replayRaw.funnelCounts.alignedContextCount}, RR {replayRaw.funnelCounts.rrReadyCount}, trigger {replayRaw.funnelCounts.triggerReachedCount}, touch {replayRaw.funnelCounts.zoneTouchedCount}, active {replayRaw.funnelCounts.confirmationWindowActiveCount}, promotable {replayRaw.funnelCounts.promotableReviewCandidateCount}
+            </div>
+            <div className="break-words text-slate-300">
+              Rates: RR {ratePct(replayRaw.funnelRates.rrReadyRate)}, trigger {ratePct(replayRaw.funnelRates.triggerReachedRate)}, touch {ratePct(replayRaw.funnelRates.zoneTouchedRate)}, confirmation {ratePct(replayRaw.funnelRates.confirmationAlignedRate)}, promotable {ratePct(replayRaw.funnelRates.promotableRate)}
+            </div>
+            <div className="break-words text-slate-300">
+              Trigger distance: AT {replayRaw.triggerDistanceBuckets.AT_TRIGGER}, NEAR {replayRaw.triggerDistanceBuckets.NEAR}, MID {replayRaw.triggerDistanceBuckets.MID_RANGE}, FAR {replayRaw.triggerDistanceBuckets.FAR}
+            </div>
+            <div className="break-words text-slate-400">
+              Replay blockers: {replayRaw.blockers.join(", ") || "NONE"}
+            </div>
+            <div className="break-words text-slate-400">
+              Do not: {replayRaw.doNotDo.join("; ") || NA}
             </div>
           </div>
           {resolution.rrScenarios.map((scenario) => (

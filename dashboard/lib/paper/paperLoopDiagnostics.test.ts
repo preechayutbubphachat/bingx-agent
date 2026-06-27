@@ -14,6 +14,11 @@ import {
 import type { PaperJournalSummary, PaperEventSummary } from "../readPaperJournal.ts";
 import { buildRegimeEvidence } from "./regimeEvidence.ts";
 import type { CanonicalMarketRegime } from "../market-regime/canonicalMarketRegime.ts";
+import {
+  evaluateHistoricalReplayCandidateScarcityReview,
+  type HistoricalReplayCandidateScarcityReview,
+  type HistoricalReplayPoint,
+} from "../trend/historicalReplayCandidateScarcityReview.ts";
 
 function ev(p: Partial<PaperEventSummary>): PaperEventSummary {
   return {
@@ -56,6 +61,27 @@ function canonicalRegime(p: Partial<CanonicalMarketRegime> = {}): CanonicalMarke
     paperActivationAllowed: false,
     liveActivationAllowed: false,
     ...p,
+  };
+}
+
+function historicalReplayPoint(index: number): HistoricalReplayPoint {
+  return {
+    evaluatedAt: new Date(Date.UTC(2026, 0, 1, 0, index * 5)).toISOString(),
+    alignedContext: true,
+    d8_0AlignedCandidate: true,
+    rrReady: true,
+    d8_2Status: "WAITING_FOR_TRIGGER_PRICE",
+    triggerReached: false,
+    d8_3Status: "NO_TOUCH_YET",
+    zoneTouched: false,
+    confirmationWindowActive: false,
+    d8_4Status: "TOUCH_WINDOW_INACTIVE",
+    confirmationAligned: false,
+    promotableReviewCandidate: false,
+    bottleneckStatus: "WAITING_FOR_PULLBACK_TRIGGER",
+    triggerDistanceClass: "FAR",
+    sourceSafetyValid: true,
+    dataQualityValid: true,
   };
 }
 
@@ -365,6 +391,40 @@ test("old paper diagnostics payload remains valid with R1 Pack B defaults", () =
   assert.equal(d.noReviewCandidateBottleneckResolver.activationAllowed, false);
   assert.equal(d.noReviewCandidateBottleneckResolver.paperActivationAllowed, false);
   assert.equal(d.noReviewCandidateBottleneckResolver.liveActivationAllowed, false);
+  assert.equal(d.historicalReplayCandidateScarcityReview.source, "HISTORICAL_REPLAY_CANDIDATE_SCARCITY_REVIEW_V1");
+  assert.equal(d.historicalReplayCandidateScarcityReview.status, "NO_REPLAY_DATA");
+  assert.equal(d.historicalReplayCandidateScarcityReview.replayWindow.sampleQuality, "NO_SAMPLE");
+  assert.equal(d.historicalReplayCandidateScarcityReview.activationAllowed, false);
+  assert.equal(d.historicalReplayCandidateScarcityReview.paperActivationAllowed, false);
+  assert.equal(d.historicalReplayCandidateScarcityReview.liveActivationAllowed, false);
+});
+
+test("approved offline replay review is exposed additively with forced safety", () => {
+  const approved = evaluateHistoricalReplayCandidateScarcityReview({
+    timeframe: "5M",
+    replayPoints: Array.from({ length: 500 }, (_, index) => historicalReplayPoint(index)),
+  });
+  const supplied = {
+    ...approved,
+    activationAllowed: Boolean(1),
+    paperActivationAllowed: Boolean(1),
+    liveActivationAllowed: Boolean(1),
+    reviewOnly: false,
+    shadowOnly: false,
+  } as unknown as HistoricalReplayCandidateScarcityReview;
+
+  const d = buildPaperLoopDiagnostics(summary({ recentEvents: [] }), null, {
+    historicalReplayCandidateScarcityReview: supplied,
+  });
+
+  assert.equal(d.historicalReplayCandidateScarcityReview.status, "PULLBACK_ONLY_BOTTLENECK");
+  assert.equal(d.historicalReplayCandidateScarcityReview.funnelCounts.totalEvaluationPoints, 500);
+  assert.equal(d.historicalReplayCandidateScarcityReview.funnelRates.triggerReachedRate, 0);
+  assert.equal(d.historicalReplayCandidateScarcityReview.activationAllowed, false);
+  assert.equal(d.historicalReplayCandidateScarcityReview.paperActivationAllowed, false);
+  assert.equal(d.historicalReplayCandidateScarcityReview.liveActivationAllowed, false);
+  assert.equal(d.historicalReplayCandidateScarcityReview.reviewOnly, true);
+  assert.equal(d.historicalReplayCandidateScarcityReview.shadowOnly, true);
 });
 
 test("D5.4 no-trade reason analysis surfaces diagnostics gap and runtime counters", () => {

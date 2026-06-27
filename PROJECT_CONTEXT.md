@@ -62,11 +62,11 @@ Phase M-0B remains **BLOCKED**. Dynamic Regrid Phase 2-A เป็น read-only 
 **🎮 Parallel track:** TradingAgentHQ (read-only pixel-art command center, codename Trading Caffe HQ) = APPROVED FOR DESIGN/PLANNING — ดู `PROJECT_ARCHITECTURE.md` Layer 13 + `docs/TRADING_AGENT_HQ_*.md` · **ไม่ปลดล็อก M-0B**, ไม่แตะ trading logic
 
 **🎯 Current Tactical Blocker — D8 Candidate Generation**
-- D8.0-D8.4 review pipeline is implemented, but current runtime has no review candidate; RR is ready and is not the blocker.
-- Primary blocker: `PRICE_ABOVE_LONG_TRIGGER`; price is FAR from the pullback trigger. D8.2=`WAITING_FOR_TRIGGER_PRICE`, D8.3=`NO_TOUCH_YET`, D8.4=`TOUCH_WINDOW_INACTIVE`.
-- D8.5 outcome recorder is APPROVED DESIGN but IMPLEMENTATION HOLD until candidate generation is resolved.
-- Next: implement D8.4.1, then design Historical Replay Review; only after replay evidence should the project decide whether D8.4.2 Continuation Review Branch is justified.
-- No activation, paper/live order, runner, broker, or execution changes.
+- D8.4.1 No-Review-Candidate Bottleneck Resolver is implemented and pushed; current scarcity is not an RR failure.
+- Primary blocker remains `PRICE_ABOVE_LONG_TRIGGER`: price is FAR from the pullback trigger, D8.2=`WAITING_FOR_TRIGGER_PRICE`, D8.3=`NO_TOUCH_YET`, and D8.4=`TOUCH_WINDOW_INACTIVE`.
+- D8.5 outcome recorder remains APPROVED DESIGN and IMPLEMENTATION HOLD because there is no candidate population to evaluate.
+- Mandatory next step: D8.4.2 Historical Replay Review to quantify where D8.0-D8.4 loses candidates. A continuation branch is not approved unless replay proves pullback-only scarcity over a usable sample.
+- Review-only/shadow-only: no activation, order, runtime writer, runner, broker, or execution changes.
 
 **Next Actions:**
 1. Monitor Phase 2-A บน `/agent-hq` (ดู `docs/M0Z6_DYNAMIC_REGRID_PHASE2A_MONITORING.md`)

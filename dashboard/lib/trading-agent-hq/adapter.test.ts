@@ -2,7 +2,22 @@
 // Run: node --test --experimental-strip-types lib/trading-agent-hq/adapter.test.ts
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { mapToViewModel } from "./adapter.ts";
+
+test("entry candidate card exposes compact replay diagnostics without controls", () => {
+  const source = readFileSync(
+    new URL("../../components/trading-agent-hq/EntryCandidateResolutionCard.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /operatorSummary\.historicalReplay/);
+  assert.match(source, /Replay status/);
+  assert.match(source, /Dominant bottleneck/);
+  assert.match(source, /Promotable rate/);
+  assert.match(source, /Next research/);
+  assert.doesNotMatch(source, /<button[^>]*>[^<]*Replay/i);
+});
 
 test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   const vm = mapToViewModel(
@@ -632,6 +647,66 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
           reviewOnly: true,
           shadowOnly: true,
         },
+        historicalReplayCandidateScarcityReview: {
+          schemaVersion: 1,
+          source: "HISTORICAL_REPLAY_CANDIDATE_SCARCITY_REVIEW_V1",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          status: "PULLBACK_ONLY_BOTTLENECK",
+          replayWindow: {
+            timeframe: "5M",
+            startAt: "2026-06-01T00:00:00.000Z",
+            endAt: "2026-06-02T17:35:00.000Z",
+            candleCount: 500,
+            sampleQuality: "USABLE_SAMPLE",
+          },
+          funnelCounts: {
+            totalEvaluationPoints: 500,
+            alignedContextCount: 300,
+            d8_0AlignedCandidateCount: 300,
+            rrReadyCount: 250,
+            waitingForTriggerCount: 230,
+            triggerReachedCount: 20,
+            zoneTouchedCount: 4,
+            confirmationWindowActiveCount: 2,
+            confirmationAlignedCount: 1,
+            promotableReviewCandidateCount: 2,
+          },
+          funnelRates: {
+            alignedContextRate: 0.6,
+            rrReadyRate: 0.8333,
+            triggerReachedRate: 0.08,
+            zoneTouchedRate: 0.2,
+            confirmationAlignedRate: 0.5,
+            promotableRate: 0.004,
+          },
+          blockerDistribution: {
+            RR_NOT_READY: 50,
+            WAITING_FOR_PULLBACK_TRIGGER: 230,
+            NO_TOUCH_EVIDENCE: 16,
+            TOUCH_WINDOW_EXPIRED: 2,
+            CONFIRMATION_NOT_READY: 1,
+            CONFIRMATION_CONFLICTING: 0,
+            SAFETY_BLOCKED: 0,
+            NO_CONTEXT: 200,
+          },
+          triggerDistanceBuckets: {
+            AT_TRIGGER: 20,
+            NEAR: 10,
+            MID_RANGE: 20,
+            FAR: 250,
+          },
+          dominantBottleneck: "PULLBACK_TRIGGER",
+          hypothesis: "PULLBACK_ONLY_TOO_STRICT",
+          recommendedNextResearch: "DESIGN_CONTINUATION_REVIEW_BRANCH",
+          blockers: ["TRIGGER_REACHED_RATE_BELOW_10_PERCENT"],
+          nextAction: "review continuation-branch design only; do not implement or activate it",
+          doNotDo: ["do not implement a continuation branch from replay output alone"],
+          activationAllowed: Boolean(1),
+          paperActivationAllowed: Boolean(1),
+          liveActivationAllowed: Boolean(1),
+          reviewOnly: false,
+          shadowOnly: false,
+        },
         trendEvidenceDecisionSummary: {
           exactZoneComparisonSummary: {
             conflictBreakdown: { TARGET_TOO_CLOSE: 50, COST_TOO_HIGH: 0, CONFLICTING_MTF: 0, other: {} },
@@ -779,6 +854,18 @@ test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   assert.equal(vm.paper.operatorSummary.candidateBottleneck.primaryBlocker, "PRICE_ABOVE_LONG_TRIGGER");
   assert.equal(vm.paper.operatorSummary.candidateBottleneck.distanceToTriggerPct, 0.9326);
   assert.equal(vm.paper.operatorSummary.candidateBottleneck.nextAlgorithmBranch, "RUN_HISTORICAL_REPLAY_REVIEW");
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.status, "PULLBACK_ONLY_BOTTLENECK");
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.replayWindow.sampleQuality, "USABLE_SAMPLE");
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.funnelCounts.totalEvaluationPoints, 500);
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.funnelRates.promotableRate, 0.004);
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.dominantBottleneck, "PULLBACK_TRIGGER");
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.activationAllowed, false);
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.paperActivationAllowed, false);
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.historicalReplay.status, "PULLBACK_ONLY_BOTTLENECK");
+  assert.equal(vm.paper.operatorSummary.historicalReplay.dominantBottleneck, "PULLBACK_TRIGGER");
+  assert.equal(vm.paper.operatorSummary.historicalReplay.promotableRate, 0.004);
+  assert.equal(vm.paper.operatorSummary.historicalReplay.recommendedNextResearch, "DESIGN_CONTINUATION_REVIEW_BRANCH");
   assert.equal(vm.paper.operatorSummary.currentPrice, 101.5);
   assert.equal(vm.paper.operatorSummary.freshnessStatus, "FRESH");
   assert.equal(vm.paper.operatorSummary.regime, "NO_TRADE");
@@ -947,4 +1034,16 @@ test("operator summary explains aligned trend setup and counter-regime exact can
   assert.equal(vm.paper.noReviewCandidateBottleneckResolver.liveActivationAllowed, false);
   assert.equal(vm.paper.operatorSummary.candidateBottleneck.status, "NO_CONTEXT");
   assert.equal(vm.paper.operatorSummary.candidateBottleneck.nextAlgorithmBranch, "NO_ACTION");
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.status, "NO_REPLAY_DATA");
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.replayWindow.sampleQuality, "NO_SAMPLE");
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.funnelCounts.totalEvaluationPoints, 0);
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.funnelRates.promotableRate, null);
+  assert.deepEqual(vm.paper.historicalReplayCandidateScarcityReview.blockers, []);
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.activationAllowed, false);
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.paperActivationAllowed, false);
+  assert.equal(vm.paper.historicalReplayCandidateScarcityReview.liveActivationAllowed, false);
+  assert.equal(vm.paper.operatorSummary.historicalReplay.status, "NO_REPLAY_DATA");
+  assert.equal(vm.paper.operatorSummary.historicalReplay.dominantBottleneck, "NONE");
+  assert.equal(vm.paper.operatorSummary.historicalReplay.promotableRate, null);
+  assert.equal(vm.paper.operatorSummary.historicalReplay.recommendedNextResearch, "COLLECT_MORE_HISTORY");
 });

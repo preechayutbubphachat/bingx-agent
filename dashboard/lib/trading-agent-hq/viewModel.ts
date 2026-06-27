@@ -98,6 +98,7 @@ export interface PaperVM {
   pullbackZoneTouchEvidence: PullbackZoneTouchEvidenceVM;
   touchAwareConfirmationReview: TouchAwareConfirmationReviewVM;
   noReviewCandidateBottleneckResolver: NoReviewCandidateBottleneckResolverVM;
+  historicalReplayCandidateScarcityReview: HistoricalReplayCandidateScarcityReviewVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
@@ -185,6 +186,13 @@ export interface OperatorSummaryVM {
     distanceToTriggerPct: number | null;
     triggerDistanceClass: string;
     nextAlgorithmBranch: string;
+    nextAction: string;
+  };
+  historicalReplay: {
+    status: string;
+    dominantBottleneck: string;
+    promotableRate: number | null;
+    recommendedNextResearch: string;
     nextAction: string;
   };
   safety: {
@@ -398,6 +406,67 @@ export interface NoReviewCandidateBottleneckResolverVM {
     reasons: string[];
   };
   nextAlgorithmBranch: string;
+  nextAction: string;
+  doNotDo: string[];
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
+}
+
+export interface HistoricalReplayCandidateScarcityReviewVM {
+  schemaVersion: number;
+  source: string;
+  readiness: string;
+  status: string;
+  replayWindow: {
+    timeframe: string;
+    startAt: string | null;
+    endAt: string | null;
+    candleCount: number;
+    sampleQuality: string;
+  };
+  funnelCounts: {
+    totalEvaluationPoints: number;
+    alignedContextCount: number;
+    d8_0AlignedCandidateCount: number;
+    rrReadyCount: number;
+    waitingForTriggerCount: number;
+    triggerReachedCount: number;
+    zoneTouchedCount: number;
+    confirmationWindowActiveCount: number;
+    confirmationAlignedCount: number;
+    promotableReviewCandidateCount: number;
+  };
+  funnelRates: {
+    alignedContextRate: number | null;
+    rrReadyRate: number | null;
+    triggerReachedRate: number | null;
+    zoneTouchedRate: number | null;
+    confirmationAlignedRate: number | null;
+    promotableRate: number | null;
+  };
+  blockerDistribution: {
+    RR_NOT_READY: number;
+    WAITING_FOR_PULLBACK_TRIGGER: number;
+    NO_TOUCH_EVIDENCE: number;
+    TOUCH_WINDOW_EXPIRED: number;
+    CONFIRMATION_NOT_READY: number;
+    CONFIRMATION_CONFLICTING: number;
+    SAFETY_BLOCKED: number;
+    NO_CONTEXT: number;
+  };
+  triggerDistanceBuckets: {
+    AT_TRIGGER: number;
+    NEAR: number;
+    MID_RANGE: number;
+    FAR: number;
+  };
+  dominantBottleneck: string;
+  hypothesis: string;
+  recommendedNextResearch: string;
+  blockers: string[];
   nextAction: string;
   doNotDo: string[];
   activationAllowed: boolean;

@@ -105,6 +105,35 @@ test("below-grid no-trade → priceVsGrid BELOW_GRID + state REGRID_REQUIRED", (
   assert.equal(d.dynamicGrid.candidate.activationAllowed, false);
 });
 
+test("paper evidence data quality exposes missing averageFillPrice as insufficient evidence", () => {
+  const d = buildPaperLoopDiagnostics(summary({
+    buyFillCount: 1,
+    sellFillCount: 0,
+    recentEvents: [
+      ev({ type: "ORDER_FILLED", side: "BUY", averageFillPrice: null, gridSpacingPct: 0.4, strategyMode: "GRID", regime: "RANGE", session: "Asia" }),
+    ],
+  }));
+
+  assert.equal(d.paperEvidenceDataQuality.qualityState, "INSUFFICIENT");
+  assert.equal(d.paperEvidenceDataQuality.hasFillEvents, true);
+  assert.equal(d.paperEvidenceDataQuality.hasAverageFillPrice, false);
+  assert.ok(d.paperEvidenceDataQuality.missingFields.includes("averageFillPrice"));
+  assert.equal(d.paperEvidenceDataQuality.activationAllowed, false);
+});
+
+test("paper evidence data quality separates stale latest decision as warning", () => {
+  const d = buildPaperLoopDiagnostics(summary({
+    recentEvents: [
+      ev({ noTradeReason: "data_missing", gridSpacingPct: 0.4, strategyMode: "GRID", regime: "RANGE", session: "Asia" }),
+    ],
+  }), null, { latestDecisionFreshness: "STALE" });
+
+  assert.ok(d.paperEvidenceDataQuality.warnings.includes("latest_decision_stale"));
+  assert.doesNotMatch(d.paperEvidenceDataQuality.blockers.join(" "), /latest_decision_stale/);
+  assert.equal(d.paperEvidenceDataQuality.paperActivationAllowed, false);
+  assert.equal(d.paperEvidenceDataQuality.liveActivationAllowed, false);
+});
+
 test("stale reason → paperLoopState STALE_DATA", () => {
   const d = buildPaperLoopDiagnostics(summary({
     recentEvents: [ev({ currentPrice: 66849, gridLower: 72480, gridUpper: 78053, noTradeReason: "stale_decision_or_price_mismatch" })],

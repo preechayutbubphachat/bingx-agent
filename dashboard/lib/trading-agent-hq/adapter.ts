@@ -1160,6 +1160,33 @@ function mapNoTradeReasonAnalysis(raw: AnyObj): PaperVM["noTradeReasonAnalysis"]
   };
 }
 
+function mapPaperEvidenceDataQuality(raw: AnyObj): PaperVM["paperEvidenceDataQuality"] {
+  if (!Object.keys(raw).length) return null;
+  return {
+    schemaVersion: num(raw.schemaVersion, 1),
+    source: str(raw.source, "PAPER_EVIDENCE_DATA_QUALITY_V1"),
+    readiness: str(raw.readiness, "REVIEW_NOT_ACTIVATION"),
+    qualityState: str(raw.qualityState, "NO_DATA"),
+    hasFillEvents: bool(raw.hasFillEvents),
+    hasAverageFillPrice: bool(raw.hasAverageFillPrice),
+    hasClosedCycleVisibility: bool(raw.hasClosedCycleVisibility),
+    hasGridSpacingPct: bool(raw.hasGridSpacingPct),
+    hasModeTags: bool(raw.hasModeTags),
+    hasRegimeTags: bool(raw.hasRegimeTags),
+    hasSessionTags: bool(raw.hasSessionTags),
+    hasNoTradeReasonCoverage: bool(raw.hasNoTradeReasonCoverage),
+    missingFields: strArray(raw.missingFields),
+    blockers: strArray(raw.blockers),
+    warnings: strArray(raw.warnings),
+    nextAction: str(raw.nextAction, "collect paper or no-trade evidence before algorithm review"),
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: raw.reviewOnly === false ? false : true,
+    shadowOnly: raw.shadowOnly === false ? false : true,
+  };
+}
+
 function mapTrendZoneCandidate(raw: unknown): TrendZoneCandidateVM | null {
   if (!raw || typeof raw !== "object") return null;
   const t = raw as AnyObj;
@@ -1224,6 +1251,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
   const decisionSummaryRaw = obj(loop.trendEvidenceDecisionSummary);
   const shadowEvidenceCoverage = obj(decisionSummaryRaw.shadowEvidenceCoverage);
   const noTradeReasonAnalysis = obj(loop.noTradeReasonAnalysis);
+  const paperEvidenceDataQuality = obj(loop.paperEvidenceDataQuality);
   const canonicalFreshness = obj(canonicalRegime.sourceFreshness);
   const canonicalCompleteness = obj(canonicalRegime.evidenceCompleteness);
   const dynamicGrid = obj(loop.dynamicGrid);
@@ -1446,6 +1474,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
     ),
     shadowEvidenceCoverage: mapShadowEvidenceCoverage(shadowEvidenceCoverage),
     noTradeReasonAnalysis: mapNoTradeReasonAnalysis(noTradeReasonAnalysis),
+    paperEvidenceDataQuality: mapPaperEvidenceDataQuality(paperEvidenceDataQuality),
     trendEvidenceDecisionSummary: mapTrendEvidenceDecisionSummary(obj(loop.trendEvidenceDecisionSummary)),
     // T-3H-6-b: non-secret display config (read-only)
     trendPaperConfigPublic: {

@@ -70,6 +70,11 @@ import {
   type NoTradeReasonAnalysis,
 } from "./noTradeReasonAnalyzer.ts";
 import {
+  evaluatePaperEvidenceDataQuality,
+  type PaperEvidenceDataQuality,
+  type PaperEvidenceFreshness,
+} from "./paperEvidenceDataQuality.ts";
+import {
   evaluateReviewReadinessScore,
   type ReviewReadinessScore,
 } from "./reviewReadinessScore.ts";
@@ -147,6 +152,7 @@ export interface PaperLoopDiagnostics {
   lastNoTradeReason: string | null;
   noTradeReasonCounts: Record<string, number>;
   noTradeReasonAnalysis: NoTradeReasonAnalysis;
+  paperEvidenceDataQuality: PaperEvidenceDataQuality;
   reviewReadinessScore: ReviewReadinessScore;
   mtfEntryCandidatePipeline: MtfEntryCandidatePipeline;
   mtfExactZoneFailureAttribution: MtfExactZoneFailureAttribution;
@@ -269,6 +275,7 @@ export interface PaperLoopDiagnosticsContext {
   noTradeReasons?: unknown;
   edgeDiagnostics?: unknown;
   paperDataQuality?: unknown;
+  latestDecisionFreshness?: PaperEvidenceFreshness | string | null;
   trendEvidenceDecisionSummary?: unknown;
   trendPaperEvidenceRunner?: unknown;
   historicalReplayCandidateScarcityReview?: HistoricalReplayCandidateScarcityReview | null;
@@ -1030,6 +1037,14 @@ export function buildPaperLoopDiagnostics(
       gridCount: dynamicGridDiagnostics.gridCount,
     },
   });
+  const paperEvidenceDataQuality = evaluatePaperEvidenceDataQuality({
+    events,
+    buyFillCount: summary.buyFillCount,
+    sellFillCount: summary.sellFillCount,
+    closedCycles,
+    latestDecisionFreshness: context.latestDecisionFreshness ?? (paperLoopState === "STALE_DATA" ? "STALE" : "UNKNOWN"),
+    oldEpochStatus: gridEpochContext.oldEpochStatus,
+  });
   const noTradeReasonAnalysis = evaluateNoTradeReasonAnalysis({
     noTradeDiagnostics: context.noTradeDiagnostics,
     noTradeReasons: context.noTradeReasons ?? Object.keys(noTradeReasonCounts),
@@ -1051,7 +1066,7 @@ export function buildPaperLoopDiagnostics(
   const reviewReadinessScore = evaluateReviewReadinessScore({
     edgeDiagnostics: context.edgeDiagnostics ?? { closedCycles },
     costGate: context.costGate,
-    paperDataQuality: context.paperDataQuality,
+    paperDataQuality: context.paperDataQuality ?? paperEvidenceDataQuality,
     sellFillCount: summary.sellFillCount,
     trendEdgeReview,
     trendStrategy,
@@ -1200,6 +1215,7 @@ export function buildPaperLoopDiagnostics(
     lastNoTradeReason,
     noTradeReasonCounts,
     noTradeReasonAnalysis,
+    paperEvidenceDataQuality,
     reviewReadinessScore,
     mtfEntryCandidatePipeline,
     mtfExactZoneFailureAttribution,

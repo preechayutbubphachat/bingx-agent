@@ -79,6 +79,80 @@ test("maps grid epoch context defensively with forced safety flags", () => {
   assert.equal(gridEpochContext.liveActivationAllowed, false);
 });
 
+test("maps paper evidence data quality defensively with forced safety flags", () => {
+  const vm = mapToViewModel(
+    {
+      generatedAt: "2026-06-28T00:00:00.000Z",
+      phase: "M-0B_BLOCKED",
+      exchangeManualApproval: "not_approved",
+      runtimeCoreFiles: { latestDecision: "exists" },
+    },
+    {
+      checkedAt: "2026-06-28T00:00:00.000Z",
+      paperJournal: {
+        paperModeDetected: true,
+        totalOrderFilled: 1,
+        totalPaperEvents: 1,
+        recentEvents: [],
+      },
+    },
+    {
+      edgeDiagnostics: { closedCycles: 0 },
+      paperLoopDiagnostics: {
+        paperEvidenceDataQuality: {
+          schemaVersion: 1,
+          source: "PAPER_EVIDENCE_DATA_QUALITY_V1",
+          readiness: "REVIEW_NOT_ACTIVATION",
+          qualityState: "INSUFFICIENT",
+          hasFillEvents: true,
+          hasAverageFillPrice: false,
+          hasClosedCycleVisibility: false,
+          hasGridSpacingPct: false,
+          hasModeTags: true,
+          hasRegimeTags: true,
+          hasSessionTags: true,
+          hasNoTradeReasonCoverage: false,
+          missingFields: ["averageFillPrice", "gridSpacingPct"],
+          blockers: ["average_fill_price_missing"],
+          warnings: ["latest_decision_stale"],
+          nextAction: "repair missing evidence fields before review readiness can improve",
+          activationAllowed: true,
+          paperActivationAllowed: true,
+          liveActivationAllowed: true,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
+      },
+      costGate: {},
+    },
+  );
+
+  const quality = vm.paper.paperEvidenceDataQuality;
+  assert.ok(quality);
+  assert.equal(quality.qualityState, "INSUFFICIENT");
+  assert.deepEqual(quality.missingFields, ["averageFillPrice", "gridSpacingPct"]);
+  assert.equal(quality.activationAllowed, false);
+  assert.equal(quality.paperActivationAllowed, false);
+  assert.equal(quality.liveActivationAllowed, false);
+});
+
+test("dynamic regrid card exposes paper evidence quality rows without controls", () => {
+  const source = readFileSync(
+    new URL("../../components/trading-agent-hq/DynamicRegridStatusCard.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /Paper Evidence Data Quality/);
+  assert.match(source, /Evidence quality/);
+  assert.match(source, /Missing fields/);
+  assert.match(source, /Closed-cycle visibility/);
+  assert.match(source, /Cost gate measurable/);
+  assert.match(source, /No-trade coverage/);
+  assert.match(source, /Freshness warning/);
+  assert.match(source, /Next action/);
+  assert.doesNotMatch(source, /<button/i);
+});
+
 test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   const vm = mapToViewModel(
     {

@@ -102,6 +102,7 @@ export interface PaperVM {
   historicalReplayCandidateScarcityReview: HistoricalReplayCandidateScarcityReviewVM;
   shadowEvidenceCoverage: ShadowEvidenceCoverageVM | null;
   noTradeReasonAnalysis: NoTradeReasonAnalysisVM | null;
+  paperEvidenceDataQuality?: PaperEvidenceDataQualityVM | null;
   // T-3H-6-a: read-only rejection/decision frequency summary (observability only)
   trendEvidenceDecisionSummary: TrendEvidenceDecisionSummaryVM;
   // T-3H-6-b: non-secret display config for RR drilldown (read-only exposure; env is still the source)
@@ -537,6 +538,30 @@ export interface NoTradeReasonAnalysisVM {
   diagnosticsGap: boolean;
   primaryReason: { code: string; category: string; label: string } | null;
   tag: string | null;
+}
+
+export interface PaperEvidenceDataQualityVM {
+  schemaVersion: number;
+  source: string;
+  readiness: string;
+  qualityState: string;
+  hasFillEvents: boolean;
+  hasAverageFillPrice: boolean;
+  hasClosedCycleVisibility: boolean;
+  hasGridSpacingPct: boolean;
+  hasModeTags: boolean;
+  hasRegimeTags: boolean;
+  hasSessionTags: boolean;
+  hasNoTradeReasonCoverage: boolean;
+  missingFields: string[];
+  blockers: string[];
+  warnings: string[];
+  nextAction: string;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
 }
 
 export interface ReviewReadinessScoreVM {

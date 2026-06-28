@@ -82,6 +82,15 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
   const cost = paper.costGateBreakdown;
   const vol = paper.volBaselineDiagnostic;
   const inventory = paper.runtimeMonitor;
+  const paperEvidence: Pick<NonNullable<PaperVM["paperEvidenceDataQuality"]>, "qualityState" | "hasClosedCycleVisibility" | "hasGridSpacingPct" | "hasNoTradeReasonCoverage" | "missingFields" | "warnings" | "nextAction"> = paper.paperEvidenceDataQuality ?? {
+    qualityState: "NO_DATA",
+    hasClosedCycleVisibility: false,
+    hasGridSpacingPct: false,
+    hasNoTradeReasonCoverage: false,
+    missingFields: [],
+    warnings: [],
+    nextAction: "collect paper or no-trade evidence before algorithm review",
+  };
   const gridEpoch = paper.gridEpochContext ?? {
     oldEpochStatus: "NONE",
     oldEpochPolicy: [],
@@ -202,6 +211,33 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
         </div>
         <div className="mt-2 rounded-md border border-[#dcc7aa] bg-[#fffaf0] px-2 py-1.5 text-[11px] font-black text-[#5b4432]">
           Old epoch policy: {gridEpoch.oldEpochPolicy.length ? gridEpoch.oldEpochPolicy.join(" / ") : "audit-only policy missing"}
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-md border border-[#e4cba8] bg-white/60 p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-black text-[#5b4432]">Paper Evidence Data Quality</div>
+            <div className="text-[10px] font-bold text-[#80644c]">Review input only - does not permit paper/live execution</div>
+          </div>
+          <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">
+            {paperEvidence.qualityState}
+          </span>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Evidence quality" value={paperEvidence.qualityState} />
+          <Metric
+            label="Missing fields"
+            value={paperEvidence.missingFields.length ? paperEvidence.missingFields.join(", ") : "none"}
+          />
+          <Metric label="Closed-cycle visibility" value={boolText(paperEvidence.hasClosedCycleVisibility)} />
+          <Metric label="Cost gate measurable" value={boolText(paperEvidence.hasGridSpacingPct)} />
+          <Metric label="No-trade coverage" value={boolText(paperEvidence.hasNoTradeReasonCoverage)} />
+          <Metric
+            label="Freshness warning"
+            value={paperEvidence.warnings.includes("latest_decision_stale") ? "latest_decision stale" : "none"}
+          />
+          <Metric label="Next action" value={paperEvidence.nextAction} />
         </div>
       </div>
 

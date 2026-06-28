@@ -128,6 +128,71 @@ test("empty journal → safe defaults, no throw", () => {
   assert.equal(d.dynamicGrid.enabled, false);
 });
 
+test("G1 grid epoch context quarantines old exposure while evaluating current grid eligibility", () => {
+  const regimeEvidence = buildRegimeEvidence({
+    decision: { market_mode: "GRID_NEUTRAL", regime: "RANGE" },
+    marketSnapshot: null,
+    planStatusState: null,
+    sourceInfo: null,
+    indicatorEvidence: {
+      source: "market_snapshot",
+      calculatedAt: "2026-06-28T00:00:00.000Z",
+      candleCount: 120,
+      timeframe: "15M",
+      freshness: { latestCandleAt: null, ageMs: 0 },
+      missingFields: [],
+      notes: [],
+      adx: 16,
+      plusDI: null,
+      minusDI: null,
+      rsi: null,
+      atr: null,
+      atrPct: 1.1,
+      bbw: 3.2,
+      macd: null,
+      macdSignal: null,
+      macdHistogram: null,
+      emaSlope: null,
+    },
+  });
+  const d = buildPaperLoopDiagnostics(
+    summary({
+      buyFillCount: 4,
+      sellFillCount: 0,
+      recentEvents: [
+        ev({
+          gridLower: 90,
+          gridUpper: 110,
+          gridMid: 100,
+          currentPrice: 120,
+          noTradeReason: "price_above_grid_upper",
+          strategyMode: "GRID_NEUTRAL",
+          regime: "RANGE",
+        }),
+      ],
+    }),
+    null,
+    {
+      canonicalMarketRegime: canonicalRegime({
+        regime: "RANGE",
+        direction: "NEUTRAL",
+        sourceFreshness: { status: "fresh", generatedAt: null, latestCandleAtByTimeframe: {}, warnings: [] },
+      }),
+      regimeEvidence,
+      costGate: { gridSpacingPct: 0.7, requiredMinSpacingPct: 0.5, pass: true },
+    },
+  );
+
+  assert.equal(d.gridEpochContext.oldEpochStatus, "OBSOLETE_MARKET_CHANGED");
+  assert.equal(d.gridEpochContext.currentGridEligibility, "GRID_REGIME_ELIGIBLE");
+  assert.equal(d.gridEpochContext.freshGridCandidateReview.status, "CANDIDATE_REVIEW_READY");
+  assert.notEqual(d.gridEpochContext.freshGridCandidateReview.candidateGridLower, 90);
+  assert.notEqual(d.gridEpochContext.freshGridCandidateReview.candidateGridUpper, 110);
+  assert.equal(d.gridEpochContext.activationAllowed, false);
+  assert.equal(d.gridEpochContext.paperActivationAllowed, false);
+  assert.equal(d.gridEpochContext.liveActivationAllowed, false);
+});
+
 test("CostGate spacing observability uses finite dynamicGrid spacing", () => {
   const costGate = enrichCostGateWithGridSpacing(
     {

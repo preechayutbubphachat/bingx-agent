@@ -5,6 +5,7 @@
 
 import type { PaperJournalSummary, PaperEventSummary } from "../readPaperJournal.ts";
 import { calculateDynamicGrid, type DynamicGridResult } from "../grid/dynamicGrid.ts";
+import { buildGridEpochContext, type GridEpochContext } from "../grid/gridEpochContext.ts";
 import { evaluateRegridCandidate, type RegridCandidate } from "../grid/regridCandidate.ts";
 import {
   buildPaperEpochDiagnostics,
@@ -176,6 +177,7 @@ export interface PaperLoopDiagnostics {
   };
   runtimeMonitor: PaperRuntimeMonitor;
   regridReadiness: RegridReadiness;
+  gridEpochContext: GridEpochContext;
   paperEpoch: PaperEpochDiagnostics;
   regimeEvidence: RegimeEvidence;
   indicatorGate: IndicatorGate;
@@ -1003,6 +1005,31 @@ export function buildPaperLoopDiagnostics(
     monitorStatus,
     monitorSummary,
   };
+  const gridEpochContext = buildGridEpochContext({
+    oldEpoch: {
+      buyFillCount: summary.buyFillCount,
+      sellFillCount: summary.sellFillCount,
+      closedCycles,
+      oldGridLower: gridLower,
+      oldGridUpper: gridUpper,
+      marketChanged: priceVsGrid === "BELOW_GRID" || priceVsGrid === "ABOVE_GRID",
+    },
+    current: {
+      currentPrice,
+      regime: context.canonicalMarketRegime?.regime ?? regime,
+      atrPct: evidenceNumber(regimeEvidence.indicators.atrPct),
+      bbwPct: evidenceNumber(regimeEvidence.indicators.bbw),
+      adx: evidenceNumber(regimeEvidence.indicators.adx),
+      sourceFresh: context.canonicalMarketRegime?.sourceFreshness?.status === "fresh",
+    },
+    costGate: {
+      candidateGridSpacingPct: context.costGate?.gridSpacingPct ?? dynamicGridDiagnostics.spacingPct,
+      requiredMinSpacingPct: context.costGate?.requiredMinSpacingPct ?? null,
+    },
+    candidate: {
+      gridCount: dynamicGridDiagnostics.gridCount,
+    },
+  });
   const noTradeReasonAnalysis = evaluateNoTradeReasonAnalysis({
     noTradeDiagnostics: context.noTradeDiagnostics,
     noTradeReasons: context.noTradeReasons ?? Object.keys(noTradeReasonCounts),
@@ -1189,6 +1216,7 @@ export function buildPaperLoopDiagnostics(
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,
     regridReadiness,
+    gridEpochContext,
     paperEpoch,
     regimeEvidence,
     indicatorGate,

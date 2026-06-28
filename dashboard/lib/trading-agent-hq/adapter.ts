@@ -1075,6 +1075,35 @@ function buildOperatorSummaryFromRaw(loop: AnyObj): PaperVM["operatorSummary"] {
   };
 }
 
+function mapGridEpochContext(raw: AnyObj): PaperVM["gridEpochContext"] {
+  const fresh = obj(raw.freshGridCandidateReview);
+  return {
+    oldEpochStatus: str(raw.oldEpochStatus, "NONE"),
+    oldEpochPolicy: strArray(raw.oldEpochPolicy),
+    currentGridEligibility: str(raw.currentGridEligibility, "NOT_EVALUATED"),
+    currentRegime: str(raw.currentRegime, "UNKNOWN"),
+    proposedNextResearch: str(raw.proposedNextResearch, "NO_ACTION"),
+    freshGridCandidateReview: {
+      status: str(fresh.status, "NO_CANDIDATE"),
+      candidateGridLower: numOrNull(fresh.candidateGridLower),
+      candidateGridUpper: numOrNull(fresh.candidateGridUpper),
+      candidateGridMid: numOrNull(fresh.candidateGridMid),
+      candidateGridWidthPct: numOrNull(fresh.candidateGridWidthPct),
+      candidateSpacingPct: numOrNull(fresh.candidateSpacingPct),
+      gridCount: numOrNull(fresh.gridCount),
+      costGatePass: boolOrNull(fresh.costGatePass),
+      blockers: strArray(fresh.blockers),
+    },
+    blockers: strArray(raw.blockers),
+    nextAction: strOrNull(raw.nextAction),
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: raw.reviewOnly === false ? false : true,
+    shadowOnly: raw.shadowOnly === false ? false : true,
+  };
+}
+
 function mapShadowEvidenceCoverage(raw: AnyObj): PaperVM["shadowEvidenceCoverage"] {
   if (!Object.keys(raw).length) return null;
   const requirements = Array.isArray(raw.requirements)
@@ -1269,6 +1298,7 @@ function mapPaper(status: AnyObj, perf: AnyObj): PaperVM {
       monitorSummary: strOrNull(runtimeMonitor.monitorSummary),
     },
     regridReadiness: mapRegridReadiness(readiness),
+    gridEpochContext: mapGridEpochContext(obj(loop.gridEpochContext)),
     regridReadinessBeforeCanonicalGate: Object.keys(readinessBeforeCanonicalGate).length
       ? mapRegridReadiness(readinessBeforeCanonicalGate)
       : mapRegridReadiness(readiness),

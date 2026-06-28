@@ -19,6 +19,66 @@ test("entry candidate card exposes compact replay diagnostics without controls",
   assert.doesNotMatch(source, /<button[^>]*>[^<]*Replay/i);
 });
 
+test("maps grid epoch context defensively with forced safety flags", () => {
+  const vm = mapToViewModel(
+    {
+      generatedAt: "2026-06-28T00:00:00.000Z",
+      phase: "M-0B_BLOCKED",
+      exchangeManualApproval: "not_approved",
+      runtimeCoreFiles: { latestDecision: "exists" },
+    },
+    {
+      checkedAt: "2026-06-28T00:00:00.000Z",
+      paperJournal: {
+        paperModeDetected: true,
+        totalOrderFilled: 0,
+        totalPaperEvents: 0,
+        recentEvents: [],
+      },
+    },
+    {
+      edgeDiagnostics: { closedCycles: 0 },
+      paperLoopDiagnostics: {
+        gridEpochContext: {
+          oldEpochStatus: "QUARANTINED",
+          oldEpochPolicy: ["DO_NOT_FORCE_SELL", "DO_NOT_COUNT_AS_EDGE", "DO_NOT_USE_FOR_NEW_GRID_RANGE", "KEEP_FOR_AUDIT_ONLY"],
+          currentGridEligibility: "GRID_REGIME_ELIGIBLE",
+          currentRegime: "RANGE",
+          proposedNextResearch: "EVALUATE_FRESH_GRID_CANDIDATE",
+          freshGridCandidateReview: {
+            status: "CANDIDATE_REVIEW_READY",
+            candidateGridLower: 118,
+            candidateGridUpper: 122,
+            candidateGridMid: 120,
+            candidateGridWidthPct: 3.2,
+            candidateSpacingPct: 0.7,
+            gridCount: 10,
+            costGatePass: true,
+            blockers: [],
+          },
+          blockers: [],
+          nextAction: "review_fresh_grid_candidate_only",
+          activationAllowed: true,
+          paperActivationAllowed: true,
+          liveActivationAllowed: true,
+          reviewOnly: true,
+          shadowOnly: true,
+        },
+      },
+      costGate: {},
+    },
+  );
+
+  const gridEpochContext = vm.paper.gridEpochContext;
+  assert.ok(gridEpochContext);
+  assert.equal(gridEpochContext.oldEpochStatus, "QUARANTINED");
+  assert.equal(gridEpochContext.currentGridEligibility, "GRID_REGIME_ELIGIBLE");
+  assert.equal(gridEpochContext.freshGridCandidateReview.candidateSpacingPct, 0.7);
+  assert.equal(gridEpochContext.activationAllowed, false);
+  assert.equal(gridEpochContext.paperActivationAllowed, false);
+  assert.equal(gridEpochContext.liveActivationAllowed, false);
+});
+
 test("maps MTF entry candidate runtime evidence through Agent HQ VM", () => {
   const vm = mapToViewModel(
     {

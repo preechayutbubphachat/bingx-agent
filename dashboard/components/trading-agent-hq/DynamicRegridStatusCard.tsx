@@ -82,6 +82,32 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
   const cost = paper.costGateBreakdown;
   const vol = paper.volBaselineDiagnostic;
   const inventory = paper.runtimeMonitor;
+  const gridEpoch = paper.gridEpochContext ?? {
+    oldEpochStatus: "NONE",
+    oldEpochPolicy: [],
+    currentGridEligibility: "NOT_EVALUATED",
+    currentRegime: "UNKNOWN",
+    proposedNextResearch: "NO_ACTION",
+    freshGridCandidateReview: {
+      status: "NO_CANDIDATE",
+      candidateGridLower: null,
+      candidateGridUpper: null,
+      candidateGridMid: null,
+      candidateGridWidthPct: null,
+      candidateSpacingPct: null,
+      gridCount: null,
+      costGatePass: null,
+      blockers: [],
+    },
+    blockers: [],
+    nextAction: "no_action",
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+  };
+  const freshCandidate = gridEpoch.freshGridCandidateReview;
   const oldExposurePolicy = paper.paperEpoch.oldExposurePolicy;
   const oneSided = inventory.cumulativeBuyFillCount > 0 && inventory.cumulativeSellFillCount === 0;
   const quarantined = oldExposurePolicy.some((item) => item.toUpperCase().includes("QUARANTINE"));
@@ -152,6 +178,36 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
       <div className="mt-3 rounded-md border border-[#e4cba8] bg-white/60 p-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
+            <div className="text-[11px] font-black text-[#5b4432]">Grid Epoch / Fresh Candidate Review</div>
+            <div className="text-[10px] font-bold text-[#80644c]">Old exposure is audit-only. Current grid eligibility uses current market only.</div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">
+              review-only
+            </span>
+            <span className="rounded-full bg-[#fff7e8] px-2 py-1 text-[10px] font-black text-[#6d5745]">
+              activation: blocked
+            </span>
+          </div>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Old epoch status" value={gridEpoch.oldEpochStatus} />
+          <Metric label="Grid eligibility" value={gridEpoch.currentGridEligibility} />
+          <Metric label="Current regime" value={gridEpoch.currentRegime} />
+          <Metric label="Candidate status" value={freshCandidate.status} />
+          <Metric label="Candidate spacing" value={pct(freshCandidate.candidateSpacingPct)} />
+          <Metric label="Cost gate" value={boolText(freshCandidate.costGatePass)} />
+          <Metric label="Grid count" value={freshCandidate.gridCount ?? "-"} />
+          <Metric label="Next action" value={gridEpoch.nextAction ?? "no_action"} />
+        </div>
+        <div className="mt-2 rounded-md border border-[#dcc7aa] bg-[#fffaf0] px-2 py-1.5 text-[11px] font-black text-[#5b4432]">
+          Old epoch policy: {gridEpoch.oldEpochPolicy.length ? gridEpoch.oldEpochPolicy.join(" / ") : "audit-only policy missing"}
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-md border border-[#e4cba8] bg-white/60 p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
             <div className="text-[11px] font-black text-[#5b4432]">Cost Gate Breakdown</div>
             <div className="text-[10px] font-bold text-[#80644c]">Read-only diagnostic - does not change grid behavior</div>
           </div>
@@ -211,7 +267,7 @@ export default function DynamicRegridStatusCard({ paper, safety }: DynamicRegrid
           <Metric label="priceVsGrid" value={regridStatusLabel(regrid.priceVsGrid)} />
         </div>
         <div className="mt-2 rounded-md border border-[#dcc7aa] bg-[#fffaf0] px-2 py-1.5 text-[11px] font-black text-[#5b4432]">
-          One-sided exposure detected: {oneSided ? "yes" : "no"} · Old exposure is {quarantined ? "quarantined" : "not marked quarantined"} · No force close / no fake closed cycles
+          One-sided exposure detected: {oneSided ? "yes" : "no"} - Old exposure is {quarantined ? "quarantined" : "not marked quarantined"} - No close action / no fake closed cycles
         </div>
       </div>
 

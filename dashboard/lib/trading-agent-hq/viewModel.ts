@@ -61,6 +61,7 @@ export interface PaperVM {
   dynamicRegrid: DynamicRegridVM;
   runtimeMonitor: RuntimeMonitorVM;
   regridReadiness: RegridReadinessVM;
+  gridEpochContext?: GridEpochContextVM;
   paperEpoch: PaperEpochVM;
   regimeEvidence: RegimeEvidenceVM;
   indicatorGate: IndicatorGateVM;
@@ -1320,6 +1321,32 @@ export interface DynamicRegridVM {
   sellFillCount: number;
   closedCycles: number;
   candidate: DynamicRegridCandidateVM;
+}
+
+export interface GridEpochContextVM {
+  oldEpochStatus: string;
+  oldEpochPolicy: string[];
+  currentGridEligibility: string;
+  currentRegime: string;
+  proposedNextResearch: string;
+  freshGridCandidateReview: {
+    status: string;
+    candidateGridLower: number | null;
+    candidateGridUpper: number | null;
+    candidateGridMid: number | null;
+    candidateGridWidthPct: number | null;
+    candidateSpacingPct: number | null;
+    gridCount: number | null;
+    costGatePass: boolean | null;
+    blockers: string[];
+  };
+  blockers: string[];
+  nextAction: string | null;
+  activationAllowed: boolean;
+  paperActivationAllowed: boolean;
+  liveActivationAllowed: boolean;
+  reviewOnly: boolean;
+  shadowOnly: boolean;
 }
 
 export interface RuntimeMonitorVM {

@@ -7,9 +7,11 @@ import test from "node:test";
 import {
   buildReplayInputPack,
   classifyDataQuality,
+  classifyHistoricalPackTimeframe,
   normalizeCandlesForPack,
   plannedPackFiles,
   type DataQualityStatus,
+  type ReplayPackTimeframe,
   type ReplayInputPackManifest,
 } from "./build-d8-4-2-replay-input-pack.ts";
 
@@ -34,8 +36,28 @@ function candle(index: number, overrides: Record<string, unknown> = {}) {
   };
 }
 
+function candleFor(timeframe: ReplayPackTimeframe, index: number, overrides: Record<string, unknown> = {}) {
+  const minutes = timeframe === "5M" ? 5 : timeframe === "15M" ? 15 : 60;
+  return {
+    timeframe,
+    openTime: new Date(BASE + index * minutes * 60_000).toISOString(),
+    closeTime: new Date(BASE + (index + 1) * minutes * 60_000).toISOString(),
+    open: 100 + index,
+    high: 102 + index,
+    low: 99 + index,
+    close: 101 + index,
+    volume: 10 + index,
+    complete: true,
+    ...overrides,
+  };
+}
+
 async function writeJsonl(path: string, rows: readonly unknown[]) {
   await writeFile(path, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
+}
+
+async function writeJson(path: string, rows: readonly unknown[]) {
+  await writeFile(path, `${JSON.stringify(rows, null, 2)}\n`, "utf8");
 }
 
 async function fixtureMirror(candles: readonly unknown[] = [candle(0), candle(1), candle(2)]) {
@@ -141,6 +163,50 @@ test("classifies data quality readiness states", () => {
   for (const [expected, input] of cases) {
     assert.equal(classifyDataQuality(input), expected);
   }
+});
+
+test("classifies historical-pack filenames using strict timeframe tokens", () => {
+  assert.equal(classifyHistoricalPackTimeframe("klines_15m.json"), "15M");
+  assert.equal(classifyHistoricalPackTimeframe("klines_15min.json"), "15M");
+  assert.equal(classifyHistoricalPackTimeframe("klines_5m.json"), "5M");
+  assert.equal(classifyHistoricalPackTimeframe("klines_5min.json"), "5M");
+  assert.equal(classifyHistoricalPackTimeframe("klines_1h.json"), "1H");
+  assert.equal(classifyHistoricalPackTimeframe("klines_15m_5m.json"), null);
+  assert.equal(classifyHistoricalPackTimeframe("klines.json"), null);
+});
+
+test("historical-pack timeframe matching keeps 15M data out of 5M output", async () => {
+  const root = await fixtureMirror([]);
+  const historicalRoot = join(root, "dashboard/tmp/historical-packs");
+  await writeJson(join(historicalRoot, "klines_5m.json"), Array.from({ length: 199 }, (_, index) => candleFor("5M", index)));
+  await writeJson(join(historicalRoot, "klines_15m.json"), Array.from({ length: 199 }, (_, index) => candleFor("15M", index)));
+  await writeJson(join(historicalRoot, "klines_1h.json"), Array.from({ length: 199 }, (_, index) => candleFor("1H", index)));
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root, apply: true });
+
+  assert.deepEqual(result.manifest.candleCounts, { "5M": 199, "15M": 199, "1H": 199 });
+  const packRoot = join(root, "research-packs/d8-4-2-replay-input");
+  const fiveMinuteRows = (await readFile(join(packRoot, "candles_5m.jsonl"), "utf8"))
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+  assert.equal(fiveMinuteRows.length, 199);
+  assert.equal(
+    fiveMinuteRows.some((row) => Date.parse(row.closeTime) - Date.parse(row.openTime) !== 5 * 60_000),
+    false,
+  );
+  const inventory = JSON.parse(await readFile(join(packRoot, "source_file_inventory.json"), "utf8"));
+  const historicalEntries = inventory.files.filter((entry: { relativePath: string }) => entry.relativePath.includes("historical-packs"));
+  assert.deepEqual(
+    historicalEntries.map((entry: { relativePath: string }) => entry.relativePath).sort(),
+    [
+      "dashboard/tmp/historical-packs/candles_5m.jsonl",
+      "dashboard/tmp/historical-packs/klines_15m.json",
+      "dashboard/tmp/historical-packs/klines_1h.json",
+      "dashboard/tmp/historical-packs/klines_5m.json",
+    ],
+  );
 });
 
 test("apply writes only expected pack files under local mirror root with manifest safety literals", async () => {

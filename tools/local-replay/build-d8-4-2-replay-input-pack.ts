@@ -364,6 +364,15 @@ function fileClass(relativePath: string): string {
   return "unknown";
 }
 
+export function classifyHistoricalPackTimeframe(filePath: string): ReplayPackTimeframe | null {
+  const name = basename(filePath).toLowerCase();
+  const matches: ReplayPackTimeframe[] = [];
+  if (/(^|[^a-z0-9])(5m|5min)(?=$|[^a-z0-9])/.test(name)) matches.push("5M");
+  if (/(^|[^a-z0-9])(15m|15min)(?=$|[^a-z0-9])/.test(name)) matches.push("15M");
+  if (/(^|[^a-z0-9])1h(?=$|[^a-z0-9])/.test(name)) matches.push("1H");
+  return matches.length === 1 ? matches[0] : null;
+}
+
 async function inventory(root: string, packPath: string): Promise<SourceFileInventory> {
   const files = await listFiles(root);
   const entries: SourceInventoryEntry[] = [];
@@ -398,10 +407,8 @@ async function inventory(root: string, packPath: string): Promise<SourceFileInve
 
 async function candleRowsFor(root: string, timeframe: ReplayPackTimeframe): Promise<Array<{ path: string; rows: unknown[] }>> {
   const historicalRoot = join(root, "dashboard", "tmp", "historical-packs");
-  const suffix = timeframe.toLowerCase();
   const files = (await listFiles(historicalRoot)).filter((file) => {
-    const name = basename(file).toLowerCase();
-    return (name.includes(suffix) || name.includes(timeframe.toLowerCase().replace("m", "min"))) && (name.endsWith(".json") || name.endsWith(".jsonl"));
+    return classifyHistoricalPackTimeframe(file) === timeframe && (file.endsWith(".json") || file.endsWith(".jsonl"));
   });
   const rows: Array<{ path: string; rows: unknown[] }> = [];
   for (const file of files) {

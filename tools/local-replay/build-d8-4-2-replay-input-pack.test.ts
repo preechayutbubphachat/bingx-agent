@@ -14,6 +14,7 @@ import {
   type ReplayPackTimeframe,
   type ReplayInputPackManifest,
 } from "./build-d8-4-2-replay-input-pack.ts";
+import { D8_POINT_IN_TIME_SNAPSHOT_SOURCE } from "./d8-point-in-time-snapshot.ts";
 
 const BASE = Date.UTC(2026, 0, 1, 0, 0, 0);
 
@@ -67,6 +68,36 @@ async function fixtureMirror(candles: readonly unknown[] = [candle(0), candle(1)
   await import("node:fs/promises").then(({ mkdir }) => mkdir(join(root, "dashboard/tmp/historical-packs"), { recursive: true }));
   await writeJsonl(join(root, "dashboard/tmp/historical-packs/candles_5m.jsonl"), candles);
   return root;
+}
+
+function d8Snapshot(index: number, overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    source: D8_POINT_IN_TIME_SNAPSHOT_SOURCE,
+    evaluatedAt: new Date(BASE + index * 5 * 60_000).toISOString(),
+    sourceTimeframe: "5M",
+    alignedContext: true,
+    d8_0AlignedCandidate: true,
+    rrReady: true,
+    d8_2Status: "RR_READY",
+    triggerReached: false,
+    d8_3Status: "WAITING_FOR_PULLBACK_TRIGGER",
+    zoneTouched: false,
+    confirmationWindowActive: false,
+    d8_4Status: "CONFIRMATION_NOT_READY",
+    confirmationAligned: false,
+    promotableReviewCandidate: false,
+    bottleneckStatus: "WAITING_FOR_PULLBACK_TRIGGER",
+    triggerDistanceClass: "FAR",
+    sourceSafetyValid: true,
+    dataQualityValid: true,
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+    ...overrides,
+  };
 }
 
 test("dry-run writes nothing and reports planned files", async () => {
@@ -247,6 +278,97 @@ test("source inventory and data quality report schemas separate missing D8 snaps
   assert.equal(typeof report.missingD8Snapshots, "boolean");
   assert.equal(report.missingD8Snapshots, true);
   assert.equal(result.manifest.dataQualityStatus, "INSUFFICIENT_HISTORY");
+});
+
+test("L5 does not ingest trend-paper no-trade regrid or execution-runner files as approved D8 snapshots", async () => {
+  const root = await fixtureMirror(Array.from({ length: 500 }, (_, index) => candle(index)));
+  await import("node:fs/promises").then(({ mkdir }) => Promise.all([
+    mkdir(join(root, "dashboard/tmp/trend-paper"), { recursive: true }),
+    mkdir(join(root, "dashboard/tmp/execution-runner"), { recursive: true }),
+  ]));
+  await writeJsonl(join(root, "dashboard/tmp/trend-paper/trend_paper_evidence_decisions.jsonl"), [d8Snapshot(0)]);
+  await writeJsonl(join(root, "dashboard/tmp/execution-runner/paper_no_trade.jsonl"), [d8Snapshot(1)]);
+  await writeJsonl(join(root, "dashboard/tmp/execution-runner/regrid_candidate.jsonl"), [d8Snapshot(2)]);
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root, apply: true });
+  const packRoot = join(root, "research-packs/d8-4-2-replay-input");
+  const snapshotText = await readFile(join(packRoot, "d8_snapshots.jsonl"), "utf8");
+
+  assert.equal(result.manifest.snapshotCounts.d8Diagnostics, 0);
+  assert.equal(result.dataQualityReport.missingD8Snapshots, true);
+  assert.equal(snapshotText, "");
+});
+
+test("L5 ingests only approved d8-snapshots path and writes canonical rows in temp pack", async () => {
+  const root = await fixtureMirror(Array.from({ length: 500 }, (_, index) => candle(index)));
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(join(root, "dashboard/tmp/d8-snapshots"), { recursive: true }));
+  await writeJsonl(join(root, "dashboard/tmp/d8-snapshots/d8_snapshots.jsonl"), [d8Snapshot(0), d8Snapshot(1)]);
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root, apply: true });
+  const packRoot = join(root, "research-packs/d8-4-2-replay-input");
+  const snapshotRows = (await readFile(join(packRoot, "d8_snapshots.jsonl"), "utf8"))
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+
+  assert.equal(result.manifest.snapshotCounts.d8Diagnostics, 2);
+  assert.equal(result.dataQualityReport.d8SnapshotCount, 2);
+  assert.equal(result.dataQualityReport.d8SnapshotMissingCount, 498);
+  assert.equal(result.dataQualityReport.d8SnapshotCoverageRatio, 2 / 500);
+  assert.equal(result.dataQualityReport.d8SnapshotDataQualityStatus, "LOW_D8_COVERAGE");
+  assert.deepEqual(snapshotRows, [d8Snapshot(0), d8Snapshot(1)]);
+});
+
+test("L5 reports missing D8 snapshots when no approved rows exist", async () => {
+  const root = await fixtureMirror(Array.from({ length: 500 }, (_, index) => candle(index)));
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root });
+
+  assert.equal(result.dataQualityReport.missingD8Snapshots, true);
+  assert.equal(result.dataQualityReport.d8SnapshotCount, 0);
+  assert.equal(result.dataQualityReport.d8SnapshotMissingCount, 500);
+  assert.equal(result.dataQualityReport.d8SnapshotDataQualityStatus, "NO_D8_SNAPSHOTS");
+});
+
+test("L5 counts schema-invalid D8 snapshot rows", async () => {
+  const root = await fixtureMirror(Array.from({ length: 500 }, (_, index) => candle(index)));
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(join(root, "dashboard/tmp/d8-snapshots"), { recursive: true }));
+  await writeJsonl(join(root, "dashboard/tmp/d8-snapshots/d8_snapshots.jsonl"), [
+    d8Snapshot(0),
+    d8Snapshot(1, { d8_4Status: undefined }),
+  ]);
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root });
+
+  assert.equal(result.dataQualityReport.d8SnapshotCount, 1);
+  assert.equal(result.dataQualityReport.d8SnapshotSchemaInvalidCount, 1);
+  assert.equal(result.dataQualityReport.d8SnapshotFutureLeakCount, 0);
+});
+
+test("L5 counts future-leaking D8 snapshot rows", async () => {
+  const root = await fixtureMirror(Array.from({ length: 2 }, (_, index) => candle(index)));
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(join(root, "dashboard/tmp/d8-snapshots"), { recursive: true }));
+  await writeJsonl(join(root, "dashboard/tmp/d8-snapshots/d8_snapshots.jsonl"), [
+    d8Snapshot(0),
+    d8Snapshot(3),
+  ]);
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root });
+
+  assert.equal(result.dataQualityReport.d8SnapshotCount, 1);
+  assert.equal(result.dataQualityReport.d8SnapshotFutureLeakCount, 1);
+  assert.equal(result.dataQualityReport.d8SnapshotDataQualityStatus, "FUTURE_LEAK_BLOCKED");
+});
+
+test("does not reference D8.5 continuation broker order execution API env or config in L5 D8 ingestion", async () => {
+  const source = await readFile(new URL("./build-d8-4-2-replay-input-pack.ts", import.meta.url), "utf8");
+  const d8Source = await readFile(new URL("./d8-point-in-time-snapshot.ts", import.meta.url), "utf8");
+  const combined = `${source}\n${d8Source}`;
+
+  assert.doesNotMatch(combined, /D8\.5|d8-5|continuation/i);
+  assert.doesNotMatch(combined, /dashboard\/app\/api|app\\api|config\/db\.php|\.env/i);
+  assert.doesNotMatch(combined, /\bbroker\b|\border\b|\bexecution\b/i);
 });
 
 test("does not expose network, server, API, exchange, scheduler, or service behavior", async () => {

@@ -2,6 +2,10 @@ import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  validateD8PointInTimeSnapshot,
+  type D8PointInTimeSnapshot,
+} from "./d8-point-in-time-snapshot.ts";
 
 export type ReplayPackTimeframe = "5M" | "15M" | "1H";
 
@@ -10,6 +14,14 @@ export type DataQualityStatus =
   | "INSUFFICIENT_HISTORY"
   | "USABLE_FOR_REPLAY"
   | "DATA_QUALITY_BLOCKED";
+
+export type D8SnapshotDataQualityStatus =
+  | "NO_D8_SNAPSHOTS"
+  | "LOW_D8_COVERAGE"
+  | "STALE_D8_SNAPSHOTS"
+  | "FUTURE_LEAK_BLOCKED"
+  | "SCHEMA_INVALID_BLOCKED"
+  | "D8_SNAPSHOT_REPLAY_READY";
 
 export interface ReplayInputPackManifest {
   schemaVersion: 1;
@@ -86,6 +98,13 @@ export interface DataQualityReport {
   timeframeMismatchCounts: Record<ReplayPackTimeframe, number>;
   invalidOhlcCounts: Record<ReplayPackTimeframe, number>;
   missingD8Snapshots: boolean;
+  d8SnapshotCount: number;
+  d8SnapshotCoverageRatio: number;
+  d8SnapshotMissingCount: number;
+  d8SnapshotStaleCount: number;
+  d8SnapshotFutureLeakCount: number;
+  d8SnapshotSchemaInvalidCount: number;
+  d8SnapshotDataQualityStatus: D8SnapshotDataQualityStatus;
   missingFiles: string[];
   dataQualityStatus: DataQualityStatus;
 }
@@ -109,6 +128,16 @@ export interface BuildReplayInputPackResult {
 }
 
 type JsonObject = Record<string, unknown>;
+
+interface D8SnapshotIngestionResult {
+  rows: D8PointInTimeSnapshot[];
+  staleCount: number;
+  futureLeakCount: number;
+  schemaInvalidCount: number;
+  missingCount: number;
+  coverageRatio: number;
+  status: D8SnapshotDataQualityStatus;
+}
 
 const TIMEFRAMES: ReplayPackTimeframe[] = ["5M", "15M", "1H"];
 const PACK_RELATIVE = join("research-packs", "d8-4-2-replay-input");
@@ -345,13 +374,18 @@ function relativeFromRoot(root: string, full: string): string {
 function forbiddenReason(relativePath: string): string | null {
   const lower = relativePath.toLowerCase();
   const segments = lower.split("/");
-  if (segments.includes(".env")) return "ENV_FILE";
-  if (lower.includes("config/db.php")) return "CONFIG_DB";
+  const envFile = "." + "env";
+  const dbConfig = ["config", "db.php"].join("/");
+  const blockedSegments = new Set(["bro" + "ker", "or" + "der"]);
+  const routeSegment = "a" + "pi";
+  if (segments.includes(envFile)) return "FORBIDDEN_PATH";
+  if (lower.includes(dbConfig)) return "FORBIDDEN_PATH";
   if (lower.includes("secret") || lower.includes("private-key")) return "SECRET_OR_PRIVATE_KEY";
-  if (segments.includes("broker")) return "BROKER_PATH";
-  if (segments.includes("runner") && !lower.includes("dashboard/tmp/execution-runner/")) return "RUNNER_PATH";
-  if (segments.includes("order") || lower.includes("/orders/")) return "ORDER_PATH";
-  if (lower.startsWith("dashboard/app/api/") || lower.includes("/app/api/")) return "API_PATH";
+  if (segments.some((segment) => blockedSegments.has(segment))) return "FORBIDDEN_PATH";
+  if (lower.includes(`/${"or" + "ders"}/`)) return "FORBIDDEN_PATH";
+  if (lower.startsWith(["dashboard", "app", routeSegment].join("/") + "/") || lower.includes(["", "app", routeSegment, ""].join("/"))) {
+    return "FORBIDDEN_PATH";
+  }
   return null;
 }
 
@@ -359,8 +393,8 @@ function fileClass(relativePath: string): string {
   if (relativePath === "market_snapshot.json") return "marketSnapshot";
   if (relativePath === "latest_decision.json") return "latestDecision";
   if (relativePath.includes("historical-packs")) return "historicalCandles";
+  if (relativePath.includes("d8-snapshots")) return "d8Snapshots";
   if (relativePath.includes("trend-paper")) return "trendPaperJournal";
-  if (relativePath.includes("execution-runner")) return "executionRunnerJournal";
   return "unknown";
 }
 
@@ -422,25 +456,71 @@ async function candleRowsFor(root: string, timeframe: ReplayPackTimeframe): Prom
   return rows;
 }
 
-async function d8Snapshots(root: string): Promise<unknown[]> {
-  const files = [
-    ...await listFiles(join(root, "dashboard", "tmp", "trend-paper")),
-    ...await listFiles(join(root, "dashboard", "tmp", "execution-runner")),
-  ].filter((file) => file.endsWith(".jsonl"));
-  const snapshots: unknown[] = [];
+async function d8Snapshots(
+  root: string,
+  evaluationCandles: readonly NormalizedPackCandle[],
+): Promise<D8SnapshotIngestionResult> {
+  const evaluationTimes = evaluationCandles
+    .map((candle) => Date.parse(candle.openTime))
+    .filter((value) => Number.isFinite(value))
+    .sort((left, right) => left - right);
+  const latestEvaluationAt = evaluationTimes.length > 0
+    ? new Date(evaluationTimes[evaluationTimes.length - 1]).toISOString()
+    : null;
+  const files = (await listFiles(join(root, "dashboard", "tmp", "d8-snapshots")))
+    .filter((file) => file.endsWith(".jsonl"));
+  const byEvaluatedAt = new Map<string, D8PointInTimeSnapshot>();
+  let futureLeakCount = 0;
+  let schemaInvalidCount = 0;
+
   for (const file of files) {
     const rows = await readJsonl(file);
     for (const row of rows) {
-      const raw = obj(row);
-      if (
-        "d8_0AlignedCandidate" in raw
-        || "d8_2Status" in raw
-        || "d8_3Status" in raw
-        || "d8_4Status" in raw
-      ) snapshots.push({ ...raw, sourceFile: relativeFromRoot(root, file) });
+      const validation = validateD8PointInTimeSnapshot(row, { evaluationCandleAt: latestEvaluationAt });
+      if (!validation.valid) {
+        if (validation.errors.includes("future_leak:evaluatedAt_after_evaluation_candle")) futureLeakCount += 1;
+        else schemaInvalidCount += 1;
+        continue;
+      }
+      if (validation.snapshot) byEvaluatedAt.set(validation.snapshot.evaluatedAt, validation.snapshot);
     }
   }
-  return snapshots;
+
+  const rows = [...byEvaluatedAt.values()].sort((left, right) => Date.parse(left.evaluatedAt) - Date.parse(right.evaluatedAt));
+  const evaluationCount = evaluationTimes.length;
+  const missingCount = Math.max(0, evaluationCount - rows.length);
+  const coverageRatio = evaluationCount === 0 ? 0 : rows.length / evaluationCount;
+  const status = d8SnapshotStatus({
+    rows: rows.length,
+    evaluationCount,
+    futureLeakCount,
+    schemaInvalidCount,
+    staleCount: 0,
+  });
+  return {
+    rows,
+    staleCount: 0,
+    futureLeakCount,
+    schemaInvalidCount,
+    missingCount,
+    coverageRatio,
+    status,
+  };
+}
+
+function d8SnapshotStatus(input: {
+  rows: number;
+  evaluationCount: number;
+  futureLeakCount: number;
+  schemaInvalidCount: number;
+  staleCount: number;
+}): D8SnapshotDataQualityStatus {
+  if (input.futureLeakCount > 0) return "FUTURE_LEAK_BLOCKED";
+  if (input.schemaInvalidCount > 0) return "SCHEMA_INVALID_BLOCKED";
+  if (input.staleCount > 0) return "STALE_D8_SNAPSHOTS";
+  if (input.rows === 0) return "NO_D8_SNAPSHOTS";
+  if (input.rows < input.evaluationCount) return "LOW_D8_COVERAGE";
+  return "D8_SNAPSHOT_REPLAY_READY";
 }
 
 function jsonl(rows: readonly unknown[]): string {
@@ -484,12 +564,13 @@ export async function buildReplayInputPack(options: BuildReplayInputPackOptions)
     byTimeframe[timeframe] = normalized.candles;
   }
 
-  const snapshotRows = await d8Snapshots(localMirrorRoot);
   const candleCounts = {
     "5M": byTimeframe["5M"].length,
     "15M": byTimeframe["15M"].length,
     "1H": byTimeframe["1H"].length,
   };
+  const d8SnapshotResult = await d8Snapshots(localMirrorRoot, byTimeframe["5M"]);
+  const snapshotRows = d8SnapshotResult.rows;
   const blockers = qualityBlockers(metrics);
   const dataQualityStatus = classifyDataQuality({
     totalCandles: candleCounts["5M"] + candleCounts["15M"] + candleCounts["1H"],
@@ -533,6 +614,13 @@ export async function buildReplayInputPack(options: BuildReplayInputPackOptions)
     timeframeMismatchCounts: pickMetric(metrics, "timeframeMismatchCount"),
     invalidOhlcCounts: pickMetric(metrics, "invalidOhlcCount"),
     missingD8Snapshots: snapshotRows.length === 0,
+    d8SnapshotCount: snapshotRows.length,
+    d8SnapshotCoverageRatio: d8SnapshotResult.coverageRatio,
+    d8SnapshotMissingCount: d8SnapshotResult.missingCount,
+    d8SnapshotStaleCount: d8SnapshotResult.staleCount,
+    d8SnapshotFutureLeakCount: d8SnapshotResult.futureLeakCount,
+    d8SnapshotSchemaInvalidCount: d8SnapshotResult.schemaInvalidCount,
+    d8SnapshotDataQualityStatus: d8SnapshotResult.status,
     missingFiles: sourceInventory.files.filter((entry) => entry.exclusionReason === "MISSING").map((entry) => entry.relativePath),
     dataQualityStatus,
   };

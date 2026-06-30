@@ -70,6 +70,11 @@ import {
   type NoTradeReasonAnalysis,
 } from "./noTradeReasonAnalyzer.ts";
 import {
+  captureD8PointInTimeSnapshot,
+  type D8PointInTimeSnapshotCaptureInput,
+} from "./d8PointInTimeSnapshotCapture.ts";
+import type { D8PointInTimeSnapshot } from "../../../tools/local-replay/d8-point-in-time-snapshot.ts";
+import {
   evaluatePaperEvidenceDataQuality,
   type PaperEvidenceDataQuality,
   type PaperEvidenceFreshness,
@@ -165,6 +170,7 @@ export interface PaperLoopDiagnostics {
   pullbackZoneTouchEvidence: PullbackZoneTouchEvidence;
   touchAwareConfirmationReview: TouchAwareConfirmationReview;
   noReviewCandidateBottleneckResolver: NoReviewCandidateBottleneckResolver;
+  d8PointInTimeSnapshot: D8PointInTimeSnapshot;
   historicalReplayCandidateScarcityReview: HistoricalReplayCandidateScarcityReview;
   dynamicGrid: {
     enabled: boolean;
@@ -526,6 +532,14 @@ function parseTimestampMs(value: string | null): number | null {
   if (!value) return null;
   const ts = Date.parse(value);
   return Number.isFinite(ts) ? ts : null;
+}
+
+function deterministicIsoTimestamp(...values: Array<string | null | undefined>): string {
+  for (const value of values) {
+    const ts = parseTimestampMs(value ?? null);
+    if (ts != null) return new Date(ts).toISOString();
+  }
+  return "1970-01-01T00:00:00.000Z";
 }
 
 function countArray(value: unknown): number | null {
@@ -1182,6 +1196,16 @@ export function buildPaperLoopDiagnostics(
     touchAwareConfirmationReview,
     multiTimeframeIndicatorEvidence: context.multiTimeframeIndicatorEvidence ?? null,
   });
+  const d8SnapshotInput: D8PointInTimeSnapshotCaptureInput = {
+    evaluatedAt: deterministicIsoTimestamp(summary.checkedAt, summary.lastPaperEventAt),
+    sourceTimeframe: "5M",
+    entryCandidateResolution,
+    pullbackTriggerThresholds,
+    pullbackZoneTouchEvidence,
+    touchAwareConfirmationReview,
+    noReviewCandidateBottleneckResolver,
+  };
+  const d8PointInTimeSnapshot = captureD8PointInTimeSnapshot(d8SnapshotInput);
   const suppliedHistoricalReplay = context.historicalReplayCandidateScarcityReview;
   const historicalReplayCandidateScarcityReview: HistoricalReplayCandidateScarcityReview = suppliedHistoricalReplay
     ? {
@@ -1228,6 +1252,7 @@ export function buildPaperLoopDiagnostics(
     pullbackZoneTouchEvidence,
     touchAwareConfirmationReview,
     noReviewCandidateBottleneckResolver,
+    d8PointInTimeSnapshot,
     historicalReplayCandidateScarcityReview,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,

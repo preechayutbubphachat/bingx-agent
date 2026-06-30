@@ -19,6 +19,7 @@ import {
   type HistoricalReplayCandidateScarcityReview,
   type HistoricalReplayPoint,
 } from "../trend/historicalReplayCandidateScarcityReview.ts";
+import { validateD8PointInTimeSnapshot } from "../../../tools/local-replay/d8-point-in-time-snapshot.ts";
 
 function ev(p: Partial<PaperEventSummary>): PaperEventSummary {
   return {
@@ -519,6 +520,30 @@ test("approved offline replay review is exposed additively with forced safety", 
   assert.equal(d.historicalReplayCandidateScarcityReview.liveActivationAllowed, false);
   assert.equal(d.historicalReplayCandidateScarcityReview.reviewOnly, true);
   assert.equal(d.historicalReplayCandidateScarcityReview.shadowOnly, true);
+});
+
+test("D8 point-in-time snapshot is exposed read-only from diagnostics", () => {
+  const d = buildPaperLoopDiagnostics(summary({ checkedAt: "2026-06-30T00:00:00.000Z", recentEvents: [] }));
+
+  assert.equal(d.d8PointInTimeSnapshot.evaluatedAt, "2026-06-30T00:00:00.000Z");
+  assert.equal(d.d8PointInTimeSnapshot.sourceTimeframe, "5M");
+  assert.equal(d.d8PointInTimeSnapshot.activationAllowed, false);
+  assert.equal(d.d8PointInTimeSnapshot.paperActivationAllowed, false);
+  assert.equal(d.d8PointInTimeSnapshot.liveActivationAllowed, false);
+  assert.equal(d.d8PointInTimeSnapshot.reviewOnly, true);
+  assert.equal(d.d8PointInTimeSnapshot.shadowOnly, true);
+  assert.equal(validateD8PointInTimeSnapshot(d.d8PointInTimeSnapshot).valid, true);
+});
+
+test("D8 snapshot diagnostics do not change activation order or execution behavior", () => {
+  const d = buildPaperLoopDiagnostics(summary({ checkedAt: "2026-06-30T00:00:00.000Z", recentEvents: [] }));
+
+  assert.equal(d.runtimeMonitor.activationAllowed, false);
+  assert.equal(d.trendPaperExecutionEngine.lastAction, "NO_ACTION");
+  assert.equal(d.trendPaperExecutionEngine.liveActivationAllowed, false);
+  assert.equal(d.d8PointInTimeSnapshot.activationAllowed, false);
+  assert.equal(d.d8PointInTimeSnapshot.paperActivationAllowed, false);
+  assert.equal(d.d8PointInTimeSnapshot.liveActivationAllowed, false);
 });
 
 test("D5.4 no-trade reason analysis surfaces diagnostics gap and runtime counters", () => {

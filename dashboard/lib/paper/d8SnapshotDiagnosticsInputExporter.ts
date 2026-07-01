@@ -55,6 +55,11 @@ export interface WriteD8SnapshotDiagnosticsInputRowsResult {
   rowCount: number;
 }
 
+export interface D8SnapshotDiagnosticsInputRowValidation {
+  valid: boolean;
+  errors: string[];
+}
+
 const SAFETY: D8SnapshotDiagnosticsSafety = {
   activationAllowed: false,
   paperActivationAllowed: false,
@@ -173,6 +178,40 @@ export function createD8SnapshotDiagnosticsInputRow(
     d8PointInTimeSnapshot: snapshot,
     safety: { ...SAFETY },
   };
+}
+
+export function validateD8SnapshotDiagnosticsInputRowShape(
+  value: unknown,
+): D8SnapshotDiagnosticsInputRowValidation {
+  const errors: string[] = [];
+  const row = obj(value);
+
+  if (row.schemaVersion !== 1) errors.push("invalid_schemaVersion");
+  if (typeof row.source !== "string" || !row.source.trim()) errors.push("missing_source");
+  if (typeof row.evaluatedAt !== "string" || !Number.isFinite(Date.parse(row.evaluatedAt))) {
+    errors.push("invalid_evaluatedAt");
+  }
+  if (typeof row.producedAt !== "string" || !Number.isFinite(Date.parse(row.producedAt))) {
+    errors.push("invalid_producedAt");
+  }
+  if (row.sourceTimeframe !== "5M" && row.sourceTimeframe !== "15M" && row.sourceTimeframe !== "1H") {
+    errors.push("invalid_sourceTimeframe");
+  }
+  if (Object.keys(obj(row.diagnostics)).length === 0) errors.push("missing_diagnostics");
+
+  const snapshotValidation = validateD8PointInTimeSnapshot(row.d8PointInTimeSnapshot);
+  if (!snapshotValidation.valid) {
+    errors.push(...snapshotValidation.errors.map((error) => `d8PointInTimeSnapshot:${error}`));
+  }
+
+  const safety = obj(row.safety);
+  if (safety.activationAllowed !== false) errors.push("unsafe_activationAllowed");
+  if (safety.paperActivationAllowed !== false) errors.push("unsafe_paperActivationAllowed");
+  if (safety.liveActivationAllowed !== false) errors.push("unsafe_liveActivationAllowed");
+  if (safety.reviewOnly !== true) errors.push("unsafe_reviewOnly");
+  if (safety.shadowOnly !== true) errors.push("unsafe_shadowOnly");
+
+  return { valid: errors.length === 0, errors };
 }
 
 export function validateD8SnapshotDiagnosticsInputOutputPath(

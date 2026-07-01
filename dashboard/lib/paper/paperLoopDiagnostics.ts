@@ -75,6 +75,10 @@ import {
 } from "./d8PointInTimeSnapshotCapture.ts";
 import type { D8PointInTimeSnapshot } from "./d8PointInTimeSnapshot.ts";
 import {
+  createD8SnapshotDiagnosticsInputRow,
+  type D8SnapshotDiagnosticsInputRow,
+} from "./d8SnapshotDiagnosticsInputExporter.ts";
+import {
   evaluatePaperEvidenceDataQuality,
   type PaperEvidenceDataQuality,
   type PaperEvidenceFreshness,
@@ -171,6 +175,7 @@ export interface PaperLoopDiagnostics {
   touchAwareConfirmationReview: TouchAwareConfirmationReview;
   noReviewCandidateBottleneckResolver: NoReviewCandidateBottleneckResolver;
   d8PointInTimeSnapshot: D8PointInTimeSnapshot;
+  d8SnapshotDiagnosticsInput: D8SnapshotDiagnosticsInputRow;
   historicalReplayCandidateScarcityReview: HistoricalReplayCandidateScarcityReview;
   dynamicGrid: {
     enabled: boolean;
@@ -1206,6 +1211,20 @@ export function buildPaperLoopDiagnostics(
     noReviewCandidateBottleneckResolver,
   };
   const d8PointInTimeSnapshot = captureD8PointInTimeSnapshot(d8SnapshotInput);
+  const d8SnapshotDiagnosticsInput = createD8SnapshotDiagnosticsInputRow({
+    evaluatedAt: d8PointInTimeSnapshot.evaluatedAt,
+    producedAt: d8PointInTimeSnapshot.evaluatedAt,
+    source: "paper-loop-diagnostics",
+    sourceTimeframe: d8PointInTimeSnapshot.sourceTimeframe,
+    diagnostics: {
+      entryCandidateResolution,
+      pullbackTriggerThresholds,
+      pullbackZoneTouchEvidence,
+      touchAwareConfirmationReview,
+      noReviewCandidateBottleneckResolver,
+      d8PointInTimeSnapshot,
+    },
+  });
   const suppliedHistoricalReplay = context.historicalReplayCandidateScarcityReview;
   const historicalReplayCandidateScarcityReview: HistoricalReplayCandidateScarcityReview = suppliedHistoricalReplay
     ? {
@@ -1253,6 +1272,7 @@ export function buildPaperLoopDiagnostics(
     touchAwareConfirmationReview,
     noReviewCandidateBottleneckResolver,
     d8PointInTimeSnapshot,
+    d8SnapshotDiagnosticsInput,
     historicalReplayCandidateScarcityReview,
     dynamicGrid: dynamicGridDiagnostics,
     runtimeMonitor,

@@ -20,6 +20,7 @@ import {
   type HistoricalReplayPoint,
 } from "../trend/historicalReplayCandidateScarcityReview.ts";
 import { validateD8PointInTimeSnapshot } from "./d8PointInTimeSnapshot.ts";
+import { validateD8SnapshotDiagnosticsInputRowShape } from "./d8SnapshotDiagnosticsInputExporter.ts";
 
 function ev(p: Partial<PaperEventSummary>): PaperEventSummary {
   return {
@@ -544,6 +545,60 @@ test("D8 snapshot diagnostics do not change activation order or execution behavi
   assert.equal(d.d8PointInTimeSnapshot.activationAllowed, false);
   assert.equal(d.d8PointInTimeSnapshot.paperActivationAllowed, false);
   assert.equal(d.d8PointInTimeSnapshot.liveActivationAllowed, false);
+});
+
+test("D8 diagnostics input row is exposed read-only from paper diagnostics", () => {
+  const d = buildPaperLoopDiagnostics(summary({ checkedAt: "2026-06-30T00:00:00.000Z", recentEvents: [] }));
+  const row = d.d8SnapshotDiagnosticsInput;
+
+  assert.equal(row.schemaVersion, 1);
+  assert.equal(row.source, "paper-loop-diagnostics");
+  assert.equal(row.evaluatedAt, "2026-06-30T00:00:00.000Z");
+  assert.equal(row.sourceTimeframe, "5M");
+  assert.equal(typeof row.producedAt, "string");
+  assert.deepEqual(row.d8PointInTimeSnapshot, d.d8PointInTimeSnapshot);
+  assert.equal(validateD8PointInTimeSnapshot(row.d8PointInTimeSnapshot).valid, true);
+  assert.equal(validateD8SnapshotDiagnosticsInputRowShape(row).valid, true);
+});
+
+test("D8 diagnostics input row forces safe flags and preserves deterministic computed diagnostics", () => {
+  const d = buildPaperLoopDiagnostics(summary({ checkedAt: "2026-06-30T00:00:00.000Z", recentEvents: [] }));
+  const row = d.d8SnapshotDiagnosticsInput;
+
+  assert.deepEqual(row.safety, {
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+  });
+  assert.equal(row.d8PointInTimeSnapshot.activationAllowed, false);
+  assert.equal(row.d8PointInTimeSnapshot.paperActivationAllowed, false);
+  assert.equal(row.d8PointInTimeSnapshot.liveActivationAllowed, false);
+  assert.equal(row.d8PointInTimeSnapshot.reviewOnly, true);
+  assert.equal(row.d8PointInTimeSnapshot.shadowOnly, true);
+  assert.equal(row.d8PointInTimeSnapshot.d8_2Status, "NO_GATE");
+  assert.equal(row.d8PointInTimeSnapshot.d8_3Status, "NO_TRIGGER_CONTEXT");
+  assert.equal(row.d8PointInTimeSnapshot.d8_4Status, "NO_TOUCH_CONTEXT");
+  assert.equal(row.d8PointInTimeSnapshot.triggerReached, false);
+  assert.equal(row.d8PointInTimeSnapshot.zoneTouched, false);
+});
+
+test("D8 diagnostics input source does not import writers producers collectors or locked roadmap paths", async () => {
+  const source = await import("node:fs/promises")
+    .then(({ readFile }) => readFile("dashboard/lib/paper/paperLoopDiagnostics.ts", "utf8"));
+
+  for (const term of [
+    "writeD8SnapshotDiagnosticsInputRows",
+    "writeD8PointInTimeSnapshotJournalRows",
+    "produce-d8-snapshot-diagnostics-local-only",
+    "collect-d8-snapshots-local-only",
+    "tools/" + "local-replay",
+    "D8" + ".5",
+    "cont" + "inuation",
+  ]) {
+    assert.equal(source.includes(term), false);
+  }
 });
 
 test("D5.4 no-trade reason analysis surfaces diagnostics gap and runtime counters", () => {

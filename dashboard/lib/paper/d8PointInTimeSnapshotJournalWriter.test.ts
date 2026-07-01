@@ -7,7 +7,7 @@ import { test } from "node:test";
 import {
   D8_POINT_IN_TIME_SNAPSHOT_SOURCE,
   type D8PointInTimeSnapshot,
-} from "../../../tools/local-replay/d8-point-in-time-snapshot.ts";
+} from "./d8PointInTimeSnapshot.ts";
 import {
   appendD8PointInTimeSnapshot,
   D8_SNAPSHOT_JOURNAL_FILENAME,

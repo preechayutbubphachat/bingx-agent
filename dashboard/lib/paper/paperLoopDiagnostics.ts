@@ -73,7 +73,7 @@ import {
   captureD8PointInTimeSnapshot,
   type D8PointInTimeSnapshotCaptureInput,
 } from "./d8PointInTimeSnapshotCapture.ts";
-import type { D8PointInTimeSnapshot } from "../../../tools/local-replay/d8-point-in-time-snapshot.ts";
+import type { D8PointInTimeSnapshot } from "./d8PointInTimeSnapshot.ts";
 import {
   evaluatePaperEvidenceDataQuality,
   type PaperEvidenceDataQuality,

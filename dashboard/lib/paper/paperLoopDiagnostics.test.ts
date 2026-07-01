@@ -19,7 +19,7 @@ import {
   type HistoricalReplayCandidateScarcityReview,
   type HistoricalReplayPoint,
 } from "../trend/historicalReplayCandidateScarcityReview.ts";
-import { validateD8PointInTimeSnapshot } from "../../../tools/local-replay/d8-point-in-time-snapshot.ts";
+import { validateD8PointInTimeSnapshot } from "./d8PointInTimeSnapshot.ts";
 
 function ev(p: Partial<PaperEventSummary>): PaperEventSummary {
   return {

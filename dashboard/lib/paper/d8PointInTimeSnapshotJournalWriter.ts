@@ -3,7 +3,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   validateD8PointInTimeSnapshot,
   type D8PointInTimeSnapshot,
-} from "../../../tools/local-replay/d8-point-in-time-snapshot.ts";
+} from "./d8PointInTimeSnapshot.ts";
 
 export const D8_SNAPSHOT_JOURNAL_FILENAME = "d8_snapshots.jsonl";
 

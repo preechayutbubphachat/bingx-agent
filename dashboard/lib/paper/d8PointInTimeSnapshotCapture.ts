@@ -3,7 +3,7 @@ import {
   validateD8PointInTimeSnapshot,
   type D8PointInTimeSnapshot,
   type D8SnapshotTimeframe,
-} from "../../../tools/local-replay/d8-point-in-time-snapshot.ts";
+} from "./d8PointInTimeSnapshot.ts";
 
 type AnyObj = Record<string, unknown>;
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { validateD8PointInTimeSnapshot } from "../../../tools/local-replay/d8-point-in-time-snapshot.ts";
+import { validateD8PointInTimeSnapshot } from "./d8PointInTimeSnapshot.ts";
 import { captureD8PointInTimeSnapshot } from "./d8PointInTimeSnapshotCapture.ts";
 
 const EVALUATED_AT = "2026-06-30T00:00:00.000Z";

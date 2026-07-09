@@ -37,6 +37,8 @@ execution_audit_log.json
 execution_log.json
 dashboard/tmp/
 dashboard/tmp/*.jsonl
+research-packs/
+research-runs/
 
 # Local runtime temp files
 *.tmp

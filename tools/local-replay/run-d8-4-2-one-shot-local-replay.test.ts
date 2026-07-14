@@ -15,6 +15,9 @@ type PackFixtureOptions = {
   omitFile?: string;
   unsafeActivation?: boolean;
   contaminate5mDelta?: boolean;
+  d8Rows?: readonly unknown[];
+  d8RawText?: string;
+  d8QualityOverrides?: Record<string, unknown>;
 };
 
 const requiredOutputFiles = [
@@ -55,10 +58,41 @@ async function writeJsonl(filePath: string, rows: readonly unknown[]) {
   await writeFile(filePath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
 }
 
+function d8Snapshot(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    source: "D8_POINT_IN_TIME_SNAPSHOT_V1",
+    evaluatedAt: "2026-06-20T00:00:00.000Z",
+    sourceTimeframe: "5M",
+    alignedContext: true,
+    d8_0AlignedCandidate: true,
+    rrReady: true,
+    d8_2Status: "RR_READY",
+    triggerReached: false,
+    d8_3Status: "WAITING_FOR_PULLBACK_TRIGGER",
+    zoneTouched: false,
+    confirmationWindowActive: false,
+    d8_4Status: "CONFIRMATION_NOT_READY",
+    confirmationAligned: false,
+    promotableReviewCandidate: false,
+    bottleneckStatus: "WAITING_FOR_PULLBACK_TRIGGER",
+    triggerDistanceClass: "FAR",
+    sourceSafetyValid: true,
+    dataQualityValid: true,
+    activationAllowed: false,
+    paperActivationAllowed: false,
+    liveActivationAllowed: false,
+    reviewOnly: true,
+    shadowOnly: true,
+    ...overrides,
+  };
+}
+
 async function createInputPack(root: string, options: PackFixtureOptions = {}) {
   const packPath = path.join(root, "mirror", "httpdocs", "research-packs", "d8-4-2-replay-input");
   await mkdir(packPath, { recursive: true });
 
+  const d8Rows = options.d8Rows ?? [d8Snapshot()];
   const manifest = {
     schemaVersion: 1,
     source: "D8_4_2_REPLAY_INPUT_PACK_V1",
@@ -76,7 +110,7 @@ async function createInputPack(root: string, options: PackFixtureOptions = {}) {
     snapshotCounts: {
       latestDecision: 1,
       marketSnapshot: 1,
-      d8Diagnostics: 0,
+      d8Diagnostics: d8Rows.length,
     },
     dataQualityStatus: "USABLE_FOR_REPLAY",
     blockers: [],
@@ -91,8 +125,15 @@ async function createInputPack(root: string, options: PackFixtureOptions = {}) {
   const dataQuality = {
     dataQualityStatus: "USABLE_FOR_REPLAY",
     blockers: [],
-    warnings: ["d8_snapshots.jsonl is empty"],
+    missingD8Snapshots: d8Rows.length === 0,
+    d8SnapshotCount: d8Rows.length,
+    d8SnapshotFutureLeakCount: 0,
+    d8SnapshotSchemaInvalidCount: 0,
+    d8SnapshotMalformedCount: 0,
+    d8SnapshotDuplicateCount: 0,
+    d8SnapshotDataQualityStatus: d8Rows.length === 0 ? "NO_D8_SNAPSHOTS" : "LOW_D8_COVERAGE",
     recommendedNextAction: "Run one-shot local replay.",
+    ...options.d8QualityOverrides,
   };
 
   const files = new Map<string, () => Promise<void>>([
@@ -109,7 +150,12 @@ async function createInputPack(root: string, options: PackFixtureOptions = {}) {
     ["candles_5m.jsonl", () => writeJsonl(path.join(packPath, "candles_5m.jsonl"), candleRows(199, 5, options.contaminate5mDelta))],
     ["candles_15m.jsonl", () => writeJsonl(path.join(packPath, "candles_15m.jsonl"), candleRows(199, 15))],
     ["candles_1h.jsonl", () => writeJsonl(path.join(packPath, "candles_1h.jsonl"), candleRows(199, 60))],
-    ["d8_snapshots.jsonl", () => writeFile(path.join(packPath, "d8_snapshots.jsonl"), "", "utf8")],
+    [
+      "d8_snapshots.jsonl",
+      () => options.d8RawText === undefined
+        ? writeJsonl(path.join(packPath, "d8_snapshots.jsonl"), d8Rows)
+        : writeFile(path.join(packPath, "d8_snapshots.jsonl"), options.d8RawText, "utf8"),
+    ],
   ]);
 
   for (const [fileName, writer] of files) {
@@ -226,7 +272,7 @@ test("rejects contaminated candle deltas", async () => {
   }
 });
 
-test("writes deterministic replay outputs only under output root", async () => {
+test("writes deterministic replay outputs only under output root with aligned D8 evidence", async () => {
   const tempRoot = await makeTempRoot();
   try {
     const inputPack = await createInputPack(tempRoot);
@@ -244,7 +290,7 @@ test("writes deterministic replay outputs only under output root", async () => {
     assert.equal(result.summary.candlesConsumed["1H"], 199);
     assert.equal(result.summary.evaluationPoints, 199);
     assert.equal(result.summary.edgeStatus, "EDGE_UNPROVEN_NO_CLOSED_CYCLES");
-    assert.equal(result.limitations.d8SnapshotsMissing, true);
+    assert.equal(result.limitations.d8SnapshotsMissing, false);
     assert.equal(result.limitations.sampleBelow500, true);
     assert.equal(result.limitations.noD8_5Approval, true);
     assert.equal(result.limitations.noContinuationApproval, true);
@@ -259,19 +305,106 @@ test("writes deterministic replay outputs only under output root", async () => {
   }
 });
 
-test("d8 snapshots missing is a limitation, not a failure", async () => {
+test("rejects an empty D8 file before creating replay output", async () => {
   const tempRoot = await makeTempRoot();
   try {
-    const inputPack = await createInputPack(tempRoot);
-    const result = await runOneShotReplay({
-      inputPack,
-      outputRoot: path.join(tempRoot, "mirror", "httpdocs", "research-runs", "l7"),
-      oneShot: true,
-      activeRepoRoot: process.cwd(),
-    });
+    const inputPack = await createInputPack(tempRoot, { d8Rows: [] });
+    const outputRoot = path.join(tempRoot, "mirror", "httpdocs", "research-runs", "l7");
+    await assert.rejects(
+      () => runOneShotReplay({ inputPack, outputRoot, oneShot: true, activeRepoRoot: process.cwd() }),
+      /NO_D8_SNAPSHOTS/,
+    );
+    await assert.rejects(() => readdir(outputRoot));
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
 
-    assert.equal(result.limitations.d8SnapshotsMissing, true);
-    assert.equal(result.summary.missingEvidenceFields.includes("d8_snapshots"), true);
+test("rejects a future-leaked D8 row through canonical row-level validation", async () => {
+  const tempRoot = await makeTempRoot();
+  try {
+    const inputPack = await createInputPack(tempRoot, {
+      d8Rows: [d8Snapshot({ evaluatedAt: "2026-06-20T16:35:00.000Z" })],
+      d8QualityOverrides: {
+        d8SnapshotMalformedCount: undefined,
+        d8SnapshotDuplicateCount: undefined,
+      },
+    });
+    const outputRoot = path.join(tempRoot, "mirror", "httpdocs", "research-runs", "l7-future-row");
+    await assert.rejects(
+      () => runOneShotReplay({ inputPack, outputRoot, oneShot: true, activeRepoRoot: process.cwd() }),
+      /FUTURE_LEAK_BLOCKED/,
+    );
+    await assert.rejects(() => readdir(outputRoot));
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("rejects a legacy usable pack with an empty D8 file through independent file validation", async () => {
+  const tempRoot = await makeTempRoot();
+  try {
+    const inputPack = await createInputPack(tempRoot, {
+      d8Rows: [],
+      d8QualityOverrides: {
+        missingD8Snapshots: undefined,
+        d8SnapshotCount: undefined,
+        d8SnapshotFutureLeakCount: undefined,
+        d8SnapshotSchemaInvalidCount: undefined,
+        d8SnapshotMalformedCount: undefined,
+        d8SnapshotDuplicateCount: undefined,
+        d8SnapshotDataQualityStatus: undefined,
+      },
+    });
+    const outputRoot = path.join(tempRoot, "mirror", "httpdocs", "research-runs", "l7-legacy-empty");
+    await assert.rejects(
+      () => runOneShotReplay({ inputPack, outputRoot, oneShot: true, activeRepoRoot: process.cwd() }),
+      /NO_D8_SNAPSHOTS/,
+    );
+    await assert.rejects(() => readdir(outputRoot));
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("rejects malformed, duplicate, and unsafe D8 rows before output creation", async () => {
+  const cases: Array<[string, PackFixtureOptions, RegExp]> = [
+    ["malformed", { d8RawText: "{malformed\n" }, /SCHEMA_INVALID_BLOCKED/],
+    ["duplicate", { d8Rows: [d8Snapshot(), d8Snapshot()] }, /DUPLICATE_D8_SNAPSHOTS/],
+    ["unsafe", { d8Rows: [d8Snapshot({ activationAllowed: true })] }, /SCHEMA_INVALID_BLOCKED/],
+  ];
+
+  for (const [name, options, errorPattern] of cases) {
+    const tempRoot = await makeTempRoot();
+    try {
+      const inputPack = await createInputPack(tempRoot, options);
+      const outputRoot = path.join(tempRoot, "mirror", "httpdocs", "research-runs", `l7-${name}`);
+      await assert.rejects(
+        () => runOneShotReplay({ inputPack, outputRoot, oneShot: true, activeRepoRoot: process.cwd() }),
+        errorPattern,
+      );
+      await assert.rejects(() => readdir(outputRoot));
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  }
+});
+
+test("rejects future-leak quality counters even when pack status says usable", async () => {
+  const tempRoot = await makeTempRoot();
+  try {
+    const inputPack = await createInputPack(tempRoot, {
+      d8QualityOverrides: {
+        d8SnapshotFutureLeakCount: 1,
+        d8SnapshotDataQualityStatus: "FUTURE_LEAK_BLOCKED",
+      },
+    });
+    const outputRoot = path.join(tempRoot, "mirror", "httpdocs", "research-runs", "l7-future");
+    await assert.rejects(
+      () => runOneShotReplay({ inputPack, outputRoot, oneShot: true, activeRepoRoot: process.cwd() }),
+      /FUTURE_LEAK_BLOCKED/,
+    );
+    await assert.rejects(() => readdir(outputRoot));
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

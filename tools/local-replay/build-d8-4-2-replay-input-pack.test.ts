@@ -108,6 +108,10 @@ test("dry-run writes nothing and reports planned files", async () => {
   assert.equal(result.wroteFiles.length, 0);
   assert.equal(existsSync(join(root, "research-packs")), false);
   assert.deepEqual(result.plannedOutputFiles, plannedPackFiles(root));
+  assert.equal(result.manifest.dataQualityStatus, "DATA_QUALITY_BLOCKED");
+  assert.ok(result.manifest.blockers.includes("NO_D8_SNAPSHOTS"));
+  assert.equal(result.dataQualityReport.d8SnapshotMalformedCount, 0);
+  assert.equal(result.dataQualityReport.d8SnapshotDuplicateCount, 0);
 });
 
 test("refuses repo-root output and server-like output paths", async () => {
@@ -242,6 +246,8 @@ test("historical-pack timeframe matching keeps 15M data out of 5M output", async
 
 test("apply writes only expected pack files under local mirror root with manifest safety literals", async () => {
   const root = await fixtureMirror(Array.from({ length: 500 }, (_, index) => candle(index)));
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(join(root, "dashboard/tmp/d8-snapshots"), { recursive: true }));
+  await writeJsonl(join(root, "dashboard/tmp/d8-snapshots/d8_snapshots.jsonl"), [d8Snapshot(0)]);
   const sourceBefore = await stat(join(root, "dashboard/tmp/historical-packs/candles_5m.jsonl"));
   const result = await buildReplayInputPack({ localMirrorRoot: root, apply: true });
 
@@ -277,7 +283,8 @@ test("source inventory and data quality report schemas separate missing D8 snaps
   assert.equal(typeof report.candleCounts["5M"], "number");
   assert.equal(typeof report.missingD8Snapshots, "boolean");
   assert.equal(report.missingD8Snapshots, true);
-  assert.equal(result.manifest.dataQualityStatus, "INSUFFICIENT_HISTORY");
+  assert.equal(result.manifest.dataQualityStatus, "DATA_QUALITY_BLOCKED");
+  assert.ok(result.manifest.blockers.includes("NO_D8_SNAPSHOTS"));
 });
 
 test("L5 does not ingest trend-paper no-trade regrid or execution-runner files as approved D8 snapshots", async () => {
@@ -317,6 +324,9 @@ test("L5 ingests only approved d8-snapshots path and writes canonical rows in te
   assert.equal(result.dataQualityReport.d8SnapshotMissingCount, 498);
   assert.equal(result.dataQualityReport.d8SnapshotCoverageRatio, 2 / 500);
   assert.equal(result.dataQualityReport.d8SnapshotDataQualityStatus, "LOW_D8_COVERAGE");
+  assert.equal(result.dataQualityReport.d8SnapshotMalformedCount, 0);
+  assert.equal(result.dataQualityReport.d8SnapshotDuplicateCount, 0);
+  assert.equal(result.manifest.dataQualityStatus, "USABLE_FOR_REPLAY");
   assert.deepEqual(snapshotRows, [d8Snapshot(0), d8Snapshot(1)]);
 });
 
@@ -329,6 +339,8 @@ test("L5 reports missing D8 snapshots when no approved rows exist", async () => 
   assert.equal(result.dataQualityReport.d8SnapshotCount, 0);
   assert.equal(result.dataQualityReport.d8SnapshotMissingCount, 500);
   assert.equal(result.dataQualityReport.d8SnapshotDataQualityStatus, "NO_D8_SNAPSHOTS");
+  assert.equal(result.manifest.dataQualityStatus, "DATA_QUALITY_BLOCKED");
+  assert.ok(result.manifest.blockers.includes("NO_D8_SNAPSHOTS"));
 });
 
 test("L5 counts schema-invalid D8 snapshot rows", async () => {
@@ -344,6 +356,8 @@ test("L5 counts schema-invalid D8 snapshot rows", async () => {
   assert.equal(result.dataQualityReport.d8SnapshotCount, 1);
   assert.equal(result.dataQualityReport.d8SnapshotSchemaInvalidCount, 1);
   assert.equal(result.dataQualityReport.d8SnapshotFutureLeakCount, 0);
+  assert.equal(result.manifest.dataQualityStatus, "DATA_QUALITY_BLOCKED");
+  assert.ok(result.manifest.blockers.includes("SCHEMA_INVALID_BLOCKED"));
 });
 
 test("L5 counts future-leaking D8 snapshot rows", async () => {
@@ -359,6 +373,47 @@ test("L5 counts future-leaking D8 snapshot rows", async () => {
   assert.equal(result.dataQualityReport.d8SnapshotCount, 1);
   assert.equal(result.dataQualityReport.d8SnapshotFutureLeakCount, 1);
   assert.equal(result.dataQualityReport.d8SnapshotDataQualityStatus, "FUTURE_LEAK_BLOCKED");
+  assert.equal(result.manifest.dataQualityStatus, "DATA_QUALITY_BLOCKED");
+  assert.ok(result.manifest.blockers.includes("FUTURE_LEAK_BLOCKED"));
+});
+
+test("L5 blocks malformed D8 JSONL rows with an explicit counter", async () => {
+  const root = await fixtureMirror(Array.from({ length: 500 }, (_, index) => candle(index)));
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(join(root, "dashboard/tmp/d8-snapshots"), { recursive: true }));
+  await writeFile(join(root, "dashboard/tmp/d8-snapshots/d8_snapshots.jsonl"), "{malformed\n", "utf8");
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root });
+
+  assert.equal(result.dataQualityReport.d8SnapshotMalformedCount, 1);
+  assert.equal(result.dataQualityReport.d8SnapshotCount, 0);
+  assert.equal(result.manifest.dataQualityStatus, "DATA_QUALITY_BLOCKED");
+  assert.ok(result.manifest.blockers.includes("SCHEMA_INVALID_BLOCKED"));
+});
+
+test("L5 blocks duplicate D8 evaluatedAt rows instead of silently overwriting them", async () => {
+  const root = await fixtureMirror(Array.from({ length: 500 }, (_, index) => candle(index)));
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(join(root, "dashboard/tmp/d8-snapshots"), { recursive: true }));
+  await writeJsonl(join(root, "dashboard/tmp/d8-snapshots/d8_snapshots.jsonl"), [d8Snapshot(0), d8Snapshot(0)]);
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root });
+
+  assert.equal(result.dataQualityReport.d8SnapshotDuplicateCount, 1);
+  assert.equal(result.dataQualityReport.d8SnapshotCount, 1);
+  assert.equal(result.manifest.dataQualityStatus, "DATA_QUALITY_BLOCKED");
+  assert.ok(result.manifest.blockers.includes("DUPLICATE_D8_SNAPSHOTS"));
+});
+
+test("L5 blocks D8 rows with unlocked safety flags", async () => {
+  const root = await fixtureMirror(Array.from({ length: 500 }, (_, index) => candle(index)));
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(join(root, "dashboard/tmp/d8-snapshots"), { recursive: true }));
+  await writeJsonl(join(root, "dashboard/tmp/d8-snapshots/d8_snapshots.jsonl"), [d8Snapshot(0, { activationAllowed: true })]);
+
+  const result = await buildReplayInputPack({ localMirrorRoot: root });
+
+  assert.equal(result.dataQualityReport.d8SnapshotSchemaInvalidCount, 1);
+  assert.equal(result.dataQualityReport.d8SnapshotCount, 0);
+  assert.equal(result.manifest.dataQualityStatus, "DATA_QUALITY_BLOCKED");
+  assert.ok(result.manifest.blockers.includes("SCHEMA_INVALID_BLOCKED"));
 });
 
 test("does not reference D8.5 continuation broker order execution API env or config in L5 D8 ingestion", async () => {

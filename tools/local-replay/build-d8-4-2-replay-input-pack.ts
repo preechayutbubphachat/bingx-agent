@@ -104,6 +104,8 @@ export interface DataQualityReport {
   d8SnapshotStaleCount: number;
   d8SnapshotFutureLeakCount: number;
   d8SnapshotSchemaInvalidCount: number;
+  d8SnapshotMalformedCount: number;
+  d8SnapshotDuplicateCount: number;
   d8SnapshotDataQualityStatus: D8SnapshotDataQualityStatus;
   missingFiles: string[];
   dataQualityStatus: DataQualityStatus;
@@ -134,6 +136,8 @@ interface D8SnapshotIngestionResult {
   staleCount: number;
   futureLeakCount: number;
   schemaInvalidCount: number;
+  malformedCount: number;
+  duplicateCount: number;
   missingCount: number;
   coverageRatio: number;
   status: D8SnapshotDataQualityStatus;
@@ -352,6 +356,21 @@ async function readJsonl(path: string): Promise<unknown[]> {
   return rows;
 }
 
+async function readJsonlWithDiagnostics(path: string): Promise<{ rows: unknown[]; malformedCount: number }> {
+  const text = await readFile(path, "utf8");
+  const rows: unknown[] = [];
+  let malformedCount = 0;
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim() === "") continue;
+    try {
+      rows.push(JSON.parse(line));
+    } catch {
+      malformedCount += 1;
+    }
+  }
+  return { rows, malformedCount };
+}
+
 async function listFiles(root: string): Promise<string[]> {
   if (!existsSync(root)) return [];
   const out: string[] = [];
@@ -472,9 +491,13 @@ async function d8Snapshots(
   const byEvaluatedAt = new Map<string, D8PointInTimeSnapshot>();
   let futureLeakCount = 0;
   let schemaInvalidCount = 0;
+  let malformedCount = 0;
+  let duplicateCount = 0;
 
   for (const file of files) {
-    const rows = await readJsonl(file);
+    const loaded = await readJsonlWithDiagnostics(file);
+    malformedCount += loaded.malformedCount;
+    const rows = loaded.rows;
     for (const row of rows) {
       const validation = validateD8PointInTimeSnapshot(row, { evaluationCandleAt: latestEvaluationAt });
       if (!validation.valid) {
@@ -482,7 +505,10 @@ async function d8Snapshots(
         else schemaInvalidCount += 1;
         continue;
       }
-      if (validation.snapshot) byEvaluatedAt.set(validation.snapshot.evaluatedAt, validation.snapshot);
+      if (validation.snapshot) {
+        if (byEvaluatedAt.has(validation.snapshot.evaluatedAt)) duplicateCount += 1;
+        byEvaluatedAt.set(validation.snapshot.evaluatedAt, validation.snapshot);
+      }
     }
   }
 
@@ -495,6 +521,8 @@ async function d8Snapshots(
     evaluationCount,
     futureLeakCount,
     schemaInvalidCount,
+    malformedCount,
+    duplicateCount,
     staleCount: 0,
   });
   return {
@@ -502,6 +530,8 @@ async function d8Snapshots(
     staleCount: 0,
     futureLeakCount,
     schemaInvalidCount,
+    malformedCount,
+    duplicateCount,
     missingCount,
     coverageRatio,
     status,
@@ -513,10 +543,12 @@ function d8SnapshotStatus(input: {
   evaluationCount: number;
   futureLeakCount: number;
   schemaInvalidCount: number;
+  malformedCount: number;
+  duplicateCount: number;
   staleCount: number;
 }): D8SnapshotDataQualityStatus {
   if (input.futureLeakCount > 0) return "FUTURE_LEAK_BLOCKED";
-  if (input.schemaInvalidCount > 0) return "SCHEMA_INVALID_BLOCKED";
+  if (input.schemaInvalidCount > 0 || input.malformedCount > 0) return "SCHEMA_INVALID_BLOCKED";
   if (input.staleCount > 0) return "STALE_D8_SNAPSHOTS";
   if (input.rows === 0) return "NO_D8_SNAPSHOTS";
   if (input.rows < input.evaluationCount) return "LOW_D8_COVERAGE";
@@ -572,10 +604,17 @@ export async function buildReplayInputPack(options: BuildReplayInputPackOptions)
   const d8SnapshotResult = await d8Snapshots(localMirrorRoot, byTimeframe["5M"]);
   const snapshotRows = d8SnapshotResult.rows;
   const blockers = qualityBlockers(metrics);
+  if (snapshotRows.length === 0) blockers.push("NO_D8_SNAPSHOTS");
+  if (d8SnapshotResult.futureLeakCount > 0) blockers.push("FUTURE_LEAK_BLOCKED");
+  if (d8SnapshotResult.schemaInvalidCount > 0 || d8SnapshotResult.malformedCount > 0) {
+    blockers.push("SCHEMA_INVALID_BLOCKED");
+  }
+  if (d8SnapshotResult.duplicateCount > 0) blockers.push("DUPLICATE_D8_SNAPSHOTS");
+  const uniqueBlockers = [...new Set(blockers)];
   const dataQualityStatus = classifyDataQuality({
     totalCandles: candleCounts["5M"] + candleCounts["15M"] + candleCounts["1H"],
-    blockers,
-    hasQualityBlocker: blockers.length > 0,
+    blockers: uniqueBlockers,
+    hasQualityBlocker: uniqueBlockers.length > 0,
   });
   const allCandles = [...byTimeframe["5M"], ...byTimeframe["15M"], ...byTimeframe["1H"]]
     .sort((left, right) => Date.parse(left.openTime) - Date.parse(right.openTime));
@@ -595,7 +634,7 @@ export async function buildReplayInputPack(options: BuildReplayInputPackOptions)
       d8Diagnostics: snapshotRows.length,
     },
     dataQualityStatus,
-    blockers,
+    blockers: uniqueBlockers,
     nextAction: nextAction(dataQualityStatus),
     activationAllowed: false,
     paperActivationAllowed: false,
@@ -606,7 +645,7 @@ export async function buildReplayInputPack(options: BuildReplayInputPackOptions)
   const report: DataQualityReport = {
     schemaVersion: 1,
     candleCounts,
-    blockers,
+    blockers: uniqueBlockers,
     gapCounts: pickMetric(metrics, "gapCount"),
     duplicateTimestampCounts: pickMetric(metrics, "duplicateTimestampCount"),
     excludedIncompleteCounts: pickMetric(metrics, "excludedIncompleteCount"),
@@ -620,6 +659,8 @@ export async function buildReplayInputPack(options: BuildReplayInputPackOptions)
     d8SnapshotStaleCount: d8SnapshotResult.staleCount,
     d8SnapshotFutureLeakCount: d8SnapshotResult.futureLeakCount,
     d8SnapshotSchemaInvalidCount: d8SnapshotResult.schemaInvalidCount,
+    d8SnapshotMalformedCount: d8SnapshotResult.malformedCount,
+    d8SnapshotDuplicateCount: d8SnapshotResult.duplicateCount,
     d8SnapshotDataQualityStatus: d8SnapshotResult.status,
     missingFiles: sourceInventory.files.filter((entry) => entry.exclusionReason === "MISSING").map((entry) => entry.relativePath),
     dataQualityStatus,

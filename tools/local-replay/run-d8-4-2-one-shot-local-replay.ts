@@ -1,6 +1,7 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { validateD8PointInTimeSnapshot } from "./d8-point-in-time-snapshot.ts";
 
 type Timeframe = "5M" | "15M" | "1H";
 
@@ -45,6 +46,13 @@ type DataQualityReport = {
   blockers?: string[];
   warnings?: string[];
   recommendedNextAction?: string;
+  missingD8Snapshots?: boolean;
+  d8SnapshotCount?: number;
+  d8SnapshotFutureLeakCount?: number;
+  d8SnapshotSchemaInvalidCount?: number;
+  d8SnapshotMalformedCount?: number;
+  d8SnapshotDuplicateCount?: number;
+  d8SnapshotDataQualityStatus?: string;
 };
 
 type CandleAudit = {
@@ -232,6 +240,7 @@ async function readReplayInputPack(inputPack: string): Promise<ReplayInputPack> 
   const sourceFileInventory = await readJson<JsonObject>(path.join(inputPack, "source_file_inventory.json"));
 
   validateSafetyFlags(manifest);
+  validateD8QualityReport(dataQualityReport);
 
   if ((dataQualityReport.dataQualityStatus ?? manifest.dataQualityStatus) !== "USABLE_FOR_REPLAY") {
     throw new Error("input pack data quality is not USABLE_FOR_REPLAY");
@@ -260,15 +269,74 @@ async function readReplayInputPack(inputPack: string): Promise<ReplayInputPack> 
     }
   }
 
+  const latestEvaluationAt = String(candles["5M"].at(-1)?.openTime ?? "");
+  const d8Snapshots = await readAndValidateD8Snapshots(
+    path.join(inputPack, "d8_snapshots.jsonl"),
+    latestEvaluationAt,
+  );
+
   return {
     inputPack,
     manifest,
     dataQualityReport,
     sourceFileInventory,
     candles,
-    d8Snapshots: await readJsonl(path.join(inputPack, "d8_snapshots.jsonl")),
+    d8Snapshots,
     audits,
   };
+}
+
+function validateD8QualityReport(report: DataQualityReport): void {
+  const blockers = new Set(report.blockers ?? []);
+  if (report.missingD8Snapshots === true || report.d8SnapshotCount === 0 || blockers.has("NO_D8_SNAPSHOTS")) {
+    throw new Error("NO_D8_SNAPSHOTS");
+  }
+  if (
+    (report.d8SnapshotFutureLeakCount ?? 0) > 0
+    || report.d8SnapshotDataQualityStatus === "FUTURE_LEAK_BLOCKED"
+    || blockers.has("FUTURE_LEAK_BLOCKED")
+  ) {
+    throw new Error("FUTURE_LEAK_BLOCKED");
+  }
+  if (
+    (report.d8SnapshotSchemaInvalidCount ?? 0) > 0
+    || (report.d8SnapshotMalformedCount ?? 0) > 0
+    || report.d8SnapshotDataQualityStatus === "SCHEMA_INVALID_BLOCKED"
+    || blockers.has("SCHEMA_INVALID_BLOCKED")
+  ) {
+    throw new Error("SCHEMA_INVALID_BLOCKED");
+  }
+  if ((report.d8SnapshotDuplicateCount ?? 0) > 0 || blockers.has("DUPLICATE_D8_SNAPSHOTS")) {
+    throw new Error("DUPLICATE_D8_SNAPSHOTS");
+  }
+}
+
+async function readAndValidateD8Snapshots(filePath: string, evaluationCandleAt: string): Promise<JsonObject[]> {
+  const contents = await readFile(filePath, "utf8");
+  const lines = contents.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
+  if (lines.length === 0) throw new Error("NO_D8_SNAPSHOTS");
+
+  const rows: JsonObject[] = [];
+  const evaluatedAt = new Set<string>();
+  for (const line of lines) {
+    let row: JsonObject;
+    try {
+      row = JSON.parse(line) as JsonObject;
+    } catch {
+      throw new Error("SCHEMA_INVALID_BLOCKED");
+    }
+    const validation = validateD8PointInTimeSnapshot(row, { evaluationCandleAt });
+    if (!validation.valid || !validation.snapshot) {
+      if (validation.errors.includes("future_leak:evaluatedAt_after_evaluation_candle")) {
+        throw new Error("FUTURE_LEAK_BLOCKED");
+      }
+      throw new Error("SCHEMA_INVALID_BLOCKED");
+    }
+    if (evaluatedAt.has(validation.snapshot.evaluatedAt)) throw new Error("DUPLICATE_D8_SNAPSHOTS");
+    evaluatedAt.add(validation.snapshot.evaluatedAt);
+    rows.push(validation.snapshot as unknown as JsonObject);
+  }
+  return rows;
 }
 
 function auditCandleSeries(rows: readonly JsonObject[], expectedMinutes: number): CandleAudit {
